@@ -1,0 +1,9 @@
+export const COOKIE_NAME = "cyberjocx_session";
+export const OAUTH_STATE_COOKIE = "cyberjocx_oauth_state";
+export const ONE_MINUTE_MS = 60_000;
+export const MAX_UPLOAD_BYTES = 3 * 1024 * 1024;
+export const MAX_JSON_BODY_BYTES = "10mb";
+export const NVD_BATCH_SIZE = 200;
+export const NVD_LOOKBACK_HOURS = 48;
+export const HEALTH_PATH = "/health";
+export const READY_PATH = "/ready";

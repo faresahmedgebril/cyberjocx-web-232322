@@ -1,0 +1,55 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1787493692355,
+      "tag": "0000_happy_metal_master",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1787494733988,
+      "tag": "0001_cooing_wind_dancer",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1787495358025,
+      "tag": "0002_overjoyed_havok",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1787496942889,
+      "tag": "0003_previous_hardball",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1787499492207,
+      "tag": "0004_friendly_yellowjacket",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1787831688609,
+      "tag": "0005_goofy_the_santerians",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1787833180012,
+      "tag": "0006_overjoyed_preak",
+      "breakpoints": true
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+# Render Blueprint for the temporary deployment.
+# Render MySQL is provisioned separately as a private Docker service using
+# https://github.com/render-examples/mysql with a persistent disk mounted at
+# /var/lib/mysql. Set DATABASE_URL from that private service in the API and worker.
+services:
+  - type: web
+    name: cyberjocx-api
+    runtime: node
+    buildCommand: pnpm install --frozen-lockfile && pnpm build:server
+    preDeployCommand: pnpm db:migrate
+    startCommand: pnpm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SERVICE_ROLE
+        value: api
+      - key: PORT
+        value: 10000
+      - key: TRUST_PROXY
+        value: "true"
+      - key: DATABASE_URL
+        sync: false
+      - key: APP_WEB_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SESSION_COOKIE_SAMESITE
+        value: none
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
+      - key: SESSION_COOKIE_DOMAIN
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_OAUTH_REDIRECT_URI
+        sync: false
+      - key: CRON_SECRET
+        generateValue: true
+      - key: STORAGE_PROVIDER
+        value: s3
+      - key: STORAGE_ENDPOINT
+        sync: false
+      - key: STORAGE_REGION
+        value: auto
+      - key: STORAGE_BUCKET
+        sync: false
+      - key: STORAGE_ACCESS_KEY
+        sync: false
+      - key: STORAGE_SECRET_KEY
+        sync: false
+      - key: STORAGE_PUBLIC_BASE_URL
+        sync: false
+      - key: AI_API_KEY
+        sync: false
+      - key: AI_BASE_URL
+        value: https://api.openai.com/v1
+      - key: AI_MODEL
+        value: gpt-4o-mini
+      - key: NVD_API_URL
+        value: https://services.nvd.nist.gov/rest/json/cves/2.0
+      - key: NVD_API_KEY
+        sync: false
+      - key: LOG_LEVEL
+        value: info
+
+  - type: worker
+    name: cyberjocx-worker
+    runtime: node
+    buildCommand: pnpm install --frozen-lockfile && pnpm build:worker
+    startCommand: pnpm worker
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: SERVICE_ROLE
+        value: worker
+      - key: DATABASE_URL
+        sync: false
+      - key: NVD_API_URL
+        value: https://services.nvd.nist.gov/rest/json/cves/2.0
+      - key: NVD_API_KEY
+        sync: false
+      - key: LOG_LEVEL
+        value: info
+
+  - type: cron
+    name: cyberjocx-nvd-sync
+    runtime: node
+    schedule: "0 * * * *"
+    buildCommand: pnpm install --frozen-lockfile && pnpm build:server
+    startCommand: >-
+      node -e "fetch(process.env.API_BASE_URL + '/api/scheduled/nvd-sync',
+      {method:'POST', headers:{'x-cron-secret':process.env.CRON_SECRET}})
+      .then(async r=>{console.log(r.status, await r.text()); if(!r.ok) process.exit(1)})"
+    envVars:
+      - key: API_BASE_URL
+        sync: false
+      - key: SERVICE_ROLE
+        value: cron
+      - key: CRON_SECRET
+        sync: false
