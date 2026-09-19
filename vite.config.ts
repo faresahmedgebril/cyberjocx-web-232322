@@ -5,9 +5,11 @@ import path from "node:path";
 import { defineConfig } from "vite";
 
 const plugins = [react(), tailwindcss(), jsxLocPlugin()];
+const base = process.env.VITE_BASE_PATH ?? "/";
 
 export default defineConfig({
   plugins,
+  base,
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "client", "src"),
