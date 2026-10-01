@@ -32,6 +32,7 @@ export function createApp() {
   app.use("/api/auth", rateLimit(ENV.AUTH_RATE_LIMIT));
   registerPasswordAuthRoutes(app);
   app.post("/api/scheduled/nvd-sync", rateLimit(10), handleNvdSync);
+  app.use("/api/trpc", rateLimit(ENV.PUBLIC_API_RATE_LIMIT));
   app.use("/api/trpc", createExpressMiddleware({ router: appRouter, createContext }));
   return app;
 }
