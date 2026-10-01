@@ -45,6 +45,8 @@ const envSchema = z.object({
   ADMIN_RATE_LIMIT: z.coerce.number().int().positive().default(120),
   NVD_API_URL: z.string().url().default("https://services.nvd.nist.gov/rest/json/cves/2.0"),
   NVD_API_KEY: z.string().optional(),
+  LAB_MANAGER_URL: z.string().url().optional(),
+  LAB_MANAGER_TOKEN: z.string().optional(),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
   VITE_API_BASE_URL: z.string().url().optional(),
   VITE_ANALYTICS_ENDPOINT: z.string().url().optional(),
