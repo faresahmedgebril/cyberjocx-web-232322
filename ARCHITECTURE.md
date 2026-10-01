@@ -1721,3 +1721,1243 @@ Infrastructure exists to support this product loop — not the other way around.
 Any future technology, service, module, or architectural change should preserve this separation of responsibilities and should not introduce unnecessary coupling.
 
 This section is the **developer orientation map** for CyberJocx. A developer joining the project should use it as the first architectural reference before modifying the system.
+
+
+
+---
+
+# 52. Four-Month User Journey — End-to-End Product Story
+
+> This section is a **product-level user story**, not a promise about exact future UI.
+>
+> It describes how a hypothetical learner should experience CyberJocx from the moment they register until the end of their first four months.
+>
+> The goal is to make the intended relationship between **identity, onboarding, roadmap, learning, labs, CTFs, NEXUS, skills, projects, community, progress, portfolio, and career proof** obvious to every developer.
+
+## 52.1 The User We Are Designing For
+
+Imagine a new learner named **Ahmed**.
+
+Ahmed is interested in cybersecurity.
+
+He does not know exactly which specialization to choose.
+
+He wants to learn by doing rather than only watching videos.
+
+He has limited experience and wants CyberJocx to tell him:
+
+- Where should I start?
+- What should I learn first?
+- What should I practice?
+- What should I build?
+- What skills do I actually have?
+- What should I learn next?
+- How do I prove what I know?
+
+CyberJocx should behave like a combination of:
+
+```text
+Learning Platform
+       +
+Practice Platform
+       +
+CTF Platform
+       +
+AI Mentor
+       +
+Skill Graph
+       +
+Project Portfolio
+       +
+Career Preparation
+```
+
+---
+
+# 53. Month 0 — Registration and First Session
+
+## 53.1 Registration
+
+Ahmed opens:
+
+```text
+https://cyberjocx.com
+```
+
+He sees the platform value proposition and chooses:
+
+```text
+Create Account
+```
+
+Possible authentication methods:
+
+```text
+Email + Password
+Google / OAuth
+Future: GitHub / Other OAuth
+```
+
+The request goes:
+
+```text
+Browser
+  ↓
+Cloudflare
+  ↓
+Frontend
+  ↓
+Auth API
+  ↓
+Validation
+  ↓
+User Creation
+  ↓
+MySQL
+  ↓
+Session / Token
+  ↓
+Dashboard
+```
+
+The backend creates the minimum identity required for the platform.
+
+It should not create unnecessary business data before onboarding.
+
+---
+
+## 53.2 Welcome / Onboarding
+
+After registration, CyberJocx asks Ahmed a small number of meaningful questions.
+
+Example:
+
+```text
+What is your current level?
+
+[ Complete Beginner ]
+[ Beginner ]
+[ Intermediate ]
+[ Advanced ]
+```
+
+```text
+What are you interested in?
+
+☐ Web Security
+☐ Penetration Testing
+☐ SOC
+☐ Cloud Security
+☐ Malware / Reverse Engineering
+☐ Mobile Security
+```
+
+```text
+What is your goal?
+
+[ Learn Cybersecurity ]
+[ Get a Job ]
+[ Build Projects ]
+[ CTF / Competition ]
+[ Bug Bounty ]
+[ Academic Learning ]
+```
+
+```text
+How much time can you study?
+
+[ < 30 min/day ]
+[ 30–60 min/day ]
+[ 1–2 hours/day ]
+[ 2+ hours/day ]
+```
+
+These answers are used to personalize the initial roadmap.
+
+They should **not lock the user permanently** into one track.
+
+---
+
+# 54. Initial Assessment
+
+CyberJocx then gives Ahmed a short diagnostic assessment.
+
+The assessment can contain:
+
+```text
+Networking
+Linux
+Web
+Programming
+Security Fundamentals
+Problem Solving
+```
+
+The result is not simply:
+
+```text
+Score = 73%
+```
+
+Instead, the platform converts the result into a preliminary skill profile.
+
+Example:
+
+```text
+Networking          ███████░░░ 70%
+Linux               █████░░░░░ 50%
+Web Security        ███░░░░░░░ 30%
+Programming         ████░░░░░░ 40%
+Security Basics     ██████░░░░ 60%
+```
+
+This creates the first version of Ahmed's:
+
+**Skill Graph**
+
+The graph will change as he actually completes lessons, challenges, labs, and projects.
+
+---
+
+# 55. The Personalized Starting Roadmap
+
+CyberJocx generates:
+
+```text
+Ahmed's Cybersecurity Roadmap
+```
+
+Example:
+
+```text
+Foundation
+  ↓
+Networking
+  ↓
+Linux
+  ↓
+Web Fundamentals
+  ↓
+Security Fundamentals
+  ↓
+Web Security
+  ↓
+Practical Labs
+  ↓
+CTF
+  ↓
+Project
+```
+
+The roadmap is not just a list of videos.
+
+Each node can contain:
+
+```text
+Lesson
+Quiz
+Challenge
+Lab
+CTF
+Project
+Assessment
+```
+
+The system knows why each node exists.
+
+---
+
+# 56. First Day — Learning Begins
+
+Ahmed opens his dashboard.
+
+The dashboard should immediately answer:
+
+```text
+Where am I?
+What should I do today?
+How much have I completed?
+What is next?
+What skills am I building?
+```
+
+Example:
+
+```text
+TODAY
+
+Continue:
+Linux Fundamentals — File Permissions
+
+Practice:
+Linux Challenge #04
+
+Recommended:
+10-minute Networking Review
+
+Progress:
+██████░░░░ 58%
+
+Current Skill:
+Linux Fundamentals
+
+Next Milestone:
+Complete 3 Linux challenges
+```
+
+The system should minimize decision fatigue.
+
+Ahmed should not need to search through the entire website to discover what to do next.
+
+---
+
+# 57. First Week — Learn → Practice
+
+During the first week Ahmed follows the basic CyberJocx loop:
+
+```text
+Learn
+ ↓
+Understand
+ ↓
+Quiz
+ ↓
+Practice
+ ↓
+Submit
+ ↓
+Feedback
+ ↓
+Skill Evidence
+```
+
+For example:
+
+### Lesson
+
+**Linux File Permissions**
+
+↓
+
+### Quiz
+
+10 questions
+
+↓
+
+### Lightweight Challenge
+
+Ahmed opens a challenge URL.
+
+He performs the task.
+
+He discovers:
+
+```text
+CYBERJOCX{permissions_101}
+```
+
+He submits the flag.
+
+↓
+
+### Backend
+
+```text
+Submission
+ ↓
+Validator
+ ↓
+Correct
+ ↓
+XP
+ ↓
+Progress
+ ↓
+Skill Evidence
+```
+
+Ahmed does not just receive:
+
+```text
++100 XP
+```
+
+The platform also records:
+
+```text
+Skill:
+Linux / File Permissions
+
+Evidence:
+Completed challenge
+
+Difficulty:
+Beginner
+
+Timestamp:
+Recorded
+
+Result:
+Success
+```
+
+---
+
+# 58. NEXUS Appears During Learning
+
+Ahmed gets stuck.
+
+Instead of immediately giving him the answer, he opens:
+
+```text
+Ask NEXUS
+```
+
+NEXUS receives controlled context:
+
+```text
+User
++
+Current Course
++
+Current Lesson
++
+Current Challenge
++
+Allowed Knowledge
+```
+
+NEXUS can respond as a tutor.
+
+Example:
+
+```text
+Ahmed:
+Why can this user read the file but not modify it?
+```
+
+NEXUS explains the concept and may ask a guiding question.
+
+The product principle is:
+
+```text
+Hint before answer
+Explanation before solution
+Learning before shortcut
+```
+
+For CTFs and assessments, the system can enforce stricter assistance rules.
+
+---
+
+# 59. End of Week 1
+
+Ahmed sees his first progress summary.
+
+```text
+WEEK 1
+
+Lessons completed: 9
+Quizzes completed: 4
+Challenges solved: 7
+Labs completed: 1
+
+XP: +1,240
+
+Skills with evidence:
+• Linux Basics
+• File Permissions
+• Networking Basics
+
+Current streak:
+6 days
+
+Next:
+Web Fundamentals
+```
+
+The dashboard should make progress visible without turning learning into meaningless points.
+
+---
+
+# 60. Month 1 — Foundation
+
+During Month 1, Ahmed builds the foundation.
+
+Possible content:
+
+```text
+Networking
+├── IP
+├── TCP / UDP
+├── DNS
+├── HTTP / HTTPS
+└── Common Network Tools
+
+Linux
+├── Files
+├── Permissions
+├── Processes
+├── Users
+├── Services
+└── Bash Basics
+
+Web
+├── HTTP
+├── Cookies
+├── Sessions
+├── Headers
+└── Authentication
+```
+
+The learning loop becomes:
+
+```text
+Course
+ ↓
+Lesson
+ ↓
+Quiz
+ ↓
+Challenge
+ ↓
+Lab
+ ↓
+Skill Evidence
+```
+
+By the end of Month 1, Ahmed should have a visible foundation rather than merely a number of watched lessons.
+
+---
+
+# 61. Month 1 — First Real Lab
+
+Ahmed reaches:
+
+**Web Authentication**
+
+This topic requires a real environment.
+
+He clicks:
+
+```text
+Start Lab
+```
+
+The flow is:
+
+```text
+Frontend
+ ↓
+labs.start
+ ↓
+Authentication
+ ↓
+Authorization
+ ↓
+Lab Manager
+ ↓
+Create Instance
+ ↓
+Ephemeral Container
+ ↓
+Target Application
+ ↓
+Return Lab URL
+```
+
+Ahmed receives something like:
+
+```text
+Lab:
+Broken Authentication
+
+Target:
+https://instance-abc123.lab.cyberjocx.com
+
+Time Remaining:
+59:42
+```
+
+He performs the exercise.
+
+He finds the flag.
+
+```text
+CYBERJOCX{broken_authentication}
+```
+
+He submits it.
+
+The backend validates it.
+
+The instance is eventually destroyed.
+
+---
+
+# 62. Month 2 — Specialization Begins
+
+Ahmed now has enough foundation to start specialization.
+
+Suppose his interest is:
+
+**Web Security / Junior Penetration Testing**
+
+His roadmap evolves.
+
+```text
+Web Security
+│
+├── Authentication
+├── Authorization
+├── SQL Injection
+├── XSS
+├── CSRF
+├── SSRF
+├── Command Injection
+└── API Security
+```
+
+The platform starts adapting recommendations from actual behavior.
+
+For example:
+
+```text
+Weak evidence:
+API Authentication
+        ↓
+Recommended:
+OAuth Fundamentals
+        ↓
+Recommended Lab:
+Broken OAuth Flow
+```
+
+The system should not change the user's entire roadmap unpredictably.
+
+Instead, it should adjust:
+
+- recommendations
+- difficulty
+- review content
+- practice frequency
+- next challenges
+
+---
+
+# 63. Month 2 — CTF Introduction
+
+Ahmed enters his first CTF.
+
+The experience is:
+
+```text
+CTF
+│
+├── Web
+├── Crypto
+├── Forensics
+├── OSINT
+└── Linux
+```
+
+He solves a Web challenge.
+
+The submission flow:
+
+```text
+Flag
+ ↓
+CTF Validator
+ ↓
+Correct
+ ↓
+CTF Score
+ ↓
+XP
+ ↓
+Skill Evidence
+```
+
+His CTF activity also contributes to his skill graph.
+
+Example:
+
+```text
+Web Exploitation
+     │
+     ├── SQLi
+     ├── Authentication
+     └── Enumeration
+```
+
+---
+
+# 64. Month 2 — Community
+
+Ahmed discovers the CyberJocx community.
+
+He can:
+
+- Ask questions
+- Publish writeups
+- Discuss labs
+- Share projects
+- Follow learners
+- React to posts
+- Participate in competitions
+- Report bad content
+
+But community activity must remain connected to learning.
+
+For example:
+
+```text
+Completed Lab
+    ↓
+Writeup
+    ↓
+Community Post
+    ↓
+Portfolio Evidence
+```
+
+This creates a loop between learning and public proof.
+
+---
+
+# 65. Month 3 — Advanced Practice
+
+By Month 3, Ahmed should spend more time doing than watching.
+
+The ratio can gradually shift:
+
+```text
+Month 1
+Learning > Practice
+
+Month 2
+Learning ≈ Practice
+
+Month 3
+Practice > Learning
+
+Month 4
+Practice + Projects + Proof
+```
+
+Possible Month 3 activities:
+
+```text
+Advanced Web Labs
+API Security
+CTF
+Bug Hunting Simulations
+Linux Privilege Escalation
+Security Automation
+Mini Projects
+```
+
+The exact progression depends on the selected roadmap.
+
+---
+
+# 66. Month 3 — NEXUS Becomes a Mentor
+
+NEXUS now has more context about Ahmed.
+
+It can understand:
+
+```text
+Completed Courses
+Solved Challenges
+Failed Challenges
+Lab History
+Skill Graph
+Projects
+CTF Performance
+Learning Preferences
+```
+
+This allows questions such as:
+
+```text
+"What should I practice today?"
+```
+
+NEXUS can respond using the platform's actual state.
+
+Example:
+
+```text
+You completed SQL Injection basics.
+
+You struggled with:
+• UNION-based SQLi
+
+Recommended next:
+1. Review UNION SELECT
+2. Solve Challenge #17
+3. Start SQLi Lab #03
+4. Complete the mini assessment
+```
+
+NEXUS becomes a navigation layer over CyberJocx rather than a generic chatbot.
+
+---
+
+# 67. Month 3 — First Serious Project
+
+Ahmed reaches a project milestone.
+
+Example:
+
+**Build a Secure Authentication API**
+
+The project connects multiple skills:
+
+```text
+HTTP
++
+Authentication
++
+Sessions
++
+JWT
++
+Database
++
+Input Validation
++
+Security Testing
+```
+
+Project flow:
+
+```text
+Project Brief
+ ↓
+Requirements
+ ↓
+Implementation
+ ↓
+Testing
+ ↓
+Security Review
+ ↓
+Submission
+ ↓
+Evaluation
+ ↓
+Skill Evidence
+```
+
+NEXUS can act as a reviewer.
+
+The platform can evaluate predefined criteria.
+
+---
+
+# 68. Month 4 — Assessment and Proof
+
+Ahmed enters Month 4 with a much richer profile.
+
+CyberJocx now has evidence from:
+
+```text
+Lessons
+Quizzes
+Challenges
+Labs
+CTFs
+Projects
+Assessments
+Community Contributions
+```
+
+The Skill Graph becomes more meaningful.
+
+Example:
+
+```text
+WEB SECURITY
+████████░░ 82%
+
+Authentication
+█████████░ 90%
+
+SQL Injection
+████████░░ 80%
+
+XSS
+███████░░░ 70%
+
+API Security
+██████░░░░ 60%
+```
+
+These values should be based on a defined evidence model, not arbitrary UI percentages.
+
+---
+
+# 69. Four-Month Milestone Assessment
+
+Ahmed receives a practical assessment.
+
+Example:
+
+```text
+Final Practical Assessment
+──────────────────────────
+
+Scenario:
+Web Application Security Review
+
+Tasks:
+1. Reconnaissance
+2. Authentication testing
+3. Input validation testing
+4. Vulnerability identification
+5. Evidence collection
+6. Report writing
+7. Remediation recommendations
+```
+
+The assessment may combine:
+
+```text
+Knowledge
++
+Practical Lab
++
+Report
++
+Security Reasoning
+```
+
+This produces stronger evidence than a course-completion badge alone.
+
+---
+
+# 70. Portfolio Generation
+
+After four months, CyberJocx can generate a structured portfolio from actual activity.
+
+Example:
+
+```text
+AHMED — CYBERSECURITY PORTFOLIO
+
+Skills
+• Web Security
+• Authentication Security
+• SQL Injection
+• Linux
+• API Security
+
+Practical Evidence
+• 42 Challenges
+• 18 Labs
+• 3 CTFs
+• 2 Projects
+
+Projects
+• Secure Authentication API
+• Vulnerable Web App Assessment
+
+Achievements
+• Web Security Foundations
+• First CTF
+• Lab Streak
+
+Certifications
+• CyberJocx Web Security Foundation
+```
+
+The important principle is:
+
+> **Portfolio data should come from platform evidence, not manually claimed skills.**
+
+---
+
+# 71. Four-Month User State
+
+At the end of Month 4, Ahmed should have moved through:
+
+```text
+STRANGER
+   ↓
+REGISTERED USER
+   ↓
+ONBOARDED LEARNER
+   ↓
+ACTIVE LEARNER
+   ↓
+PRACTITIONER
+   ↓
+CTF PARTICIPANT
+   ↓
+PROJECT BUILDER
+   ↓
+SKILL-EVIDENCED LEARNER
+   ↓
+PORTFOLIO OWNER
+```
+
+This is the intended product transformation.
+
+It is not a guarantee of employment or expertise.
+
+It is the product journey CyberJocx is designed to support.
+
+---
+
+# 72. Four-Month System Interaction Map
+
+```text
+                         USER
+                          │
+                          ▼
+                     REGISTRATION
+                          │
+                          ▼
+                       PROFILE
+                          │
+                          ▼
+                      ONBOARDING
+                          │
+                          ▼
+                  INITIAL ASSESSMENT
+                          │
+                          ▼
+                    SKILL GRAPH
+                          │
+                          ▼
+                    ROADMAP ENGINE
+                          │
+              ┌───────────┼───────────┐
+              ▼           ▼           ▼
+           COURSE       QUIZ       PRACTICE
+              │                       │
+              │                ┌──────┴──────┐
+              │                ▼             ▼
+              │           CHALLENGE        LAB
+              │                │             │
+              │                ▼             ▼
+              │             FLAG          INSTANCE
+              │                │             │
+              └────────────────┴──────┬──────┘
+                                       ▼
+                                  SUBMISSION
+                                       │
+                                       ▼
+                                   VALIDATOR
+                                       │
+                         ┌─────────────┼─────────────┐
+                         ▼             ▼             ▼
+                      PROGRESS         XP       SKILL EVIDENCE
+                         │             │             │
+                         └─────────────┼─────────────┘
+                                       ▼
+                                    NEXUS
+                                       │
+                    ┌──────────────────┼──────────────────┐
+                    ▼                  ▼                  ▼
+                  TUTOR              MENTOR             REVIEWER
+                    │                  │                  │
+                    └──────────────────┼──────────────────┘
+                                       ▼
+                                     CTF
+                                       │
+                                       ▼
+                                   PROJECTS
+                                       │
+                                       ▼
+                                   ASSESSMENT
+                                       │
+                                       ▼
+                                   PORTFOLIO
+                                       │
+                                       ▼
+                                 CERTIFICATION
+                                       │
+                                       ▼
+                                   CAREER
+```
+
+---
+
+# 73. Four-Month Product Timeline
+
+```text
+DAY 0
+│
+├── Register
+├── Create Profile
+├── Onboarding
+└── Initial Assessment
+│
+▼
+WEEK 1
+│
+├── Foundation Lessons
+├── Quizzes
+├── Challenges
+├── First Lab
+└── First Skill Evidence
+│
+▼
+MONTH 1
+│
+├── Networking
+├── Linux
+├── Web Fundamentals
+├── Security Fundamentals
+└── Practical Foundation
+│
+▼
+MONTH 2
+│
+├── Specialization
+├── Web Security / Selected Track
+├── CTF Introduction
+├── Community
+└── More Labs
+│
+▼
+MONTH 3
+│
+├── Advanced Practice
+├── NEXUS Mentor
+├── Security Labs
+├── CTF
+└── First Serious Project
+│
+▼
+MONTH 4
+│
+├── Advanced Challenges
+├── Project Completion
+├── Practical Assessment
+├── Skill Evidence
+├── Portfolio
+└── Certification / Career Preparation
+```
+
+---
+
+# 74. What the Developer Must Understand
+
+The developer should **not** think of CyberJocx as:
+
+```text
+A website with courses
+```
+
+The intended architecture is:
+
+```text
+CyberJocx
+=
+Identity
++
+Learning
++
+Practice
++
+Competition
++
+AI
++
+Skills
++
+Projects
++
+Evidence
++
+Community
++
+Portfolio
++
+Career
+```
+
+The user journey is the glue connecting all of these systems.
+
+A new feature should therefore answer:
+
+```text
+Where does this feature appear in the user's journey?
+        ↓
+What problem does it solve?
+        ↓
+What data does it create?
+        ↓
+What skill/progress/evidence does it affect?
+        ↓
+Which module owns it?
+        ↓
+Which API owns it?
+        ↓
+Which database entities store it?
+        ↓
+Does it require a worker?
+        ↓
+Does it require an isolated environment?
+        ↓
+How is it secured?
+```
+
+If those questions cannot be answered, the feature is not architecturally complete yet.
+
+---
+
+# 75. Final Product Loop
+
+The complete four-month CyberJocx journey can be summarized as:
+
+```text
+DISCOVER
+   ↓
+REGISTER
+   ↓
+ONBOARD
+   ↓
+ASSESS
+   ↓
+PERSONALIZE
+   ↓
+LEARN
+   ↓
+PRACTICE
+   ↓
+SOLVE
+   ↓
+COMPETE
+   ↓
+BUILD
+   ↓
+GET REVIEWED
+   ↓
+COLLECT EVIDENCE
+   ↓
+BUILD SKILLS
+   ↓
+BUILD PORTFOLIO
+   ↓
+PROVE CAPABILITY
+   ↓
+PREPARE FOR CAREER
+   ↓
+CONTINUE LEARNING
+   │
+   └──────────────────────────────┐
+                                  │
+                                  ▼
+                              NEXT SKILL
+                                  │
+                                  └──────→ LEARN
+```
+
+This is the intended **four-month product story** and should be treated as a product/architecture reference when designing screens, APIs, database entities, notifications, recommendations, AI behavior, labs, progress tracking, and portfolio features.
