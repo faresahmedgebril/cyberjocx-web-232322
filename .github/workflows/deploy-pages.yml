@@ -33,16 +33,20 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
       - name: Build frontend
         env:
           VITE_BASE_PATH: /cyberjocx-web-232322/
           VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
         run: |
           pnpm build:client
+          test -f dist/public/index.html
           cp dist/public/index.html dist/public/404.html
 
       - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: dist/public
 
