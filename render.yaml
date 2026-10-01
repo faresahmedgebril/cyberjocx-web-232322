@@ -61,6 +61,10 @@ services:
         value: https://services.nvd.nist.gov/rest/json/cves/2.0
       - key: NVD_API_KEY
         sync: false
+      - key: LAB_MANAGER_URL
+        sync: false
+      - key: LAB_MANAGER_TOKEN
+        sync: false
       - key: LOG_LEVEL
         value: info
 
