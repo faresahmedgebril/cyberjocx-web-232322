@@ -21,6 +21,7 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=build /app/drizzle ./drizzle
+COPY --from=build /app/patches ./patches
 RUN pnpm install --prod --frozen-lockfile
 
 EXPOSE 3000
