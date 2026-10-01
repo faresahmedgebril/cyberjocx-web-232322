@@ -319,3 +319,466 @@ The code migration is complete only after these environment-specific actions are
 6. Create the Render Web Service, Worker, and Cron resources from `render.yaml`.
 7. Audit existing media URLs and migrate legacy objects before removing any old bucket.
 8. Replace the MySQL-backed queue with Redis/BullMQ if multiple workers or high job volume are required.
+
+
+---
+
+# 39. Hybrid Lab & Challenge Architecture
+
+CyberJocx should use a **hybrid execution model** rather than forcing every exercise into a full isolated environment.
+
+The rule is:
+
+> **Use the cheapest safe execution model that still provides the required learning experience.**
+
+There are two primary execution modes.
+
+## 39.1 Lightweight Link + Token Challenges
+
+Use this mode for exercises that do not require arbitrary code execution, shell access, network interaction, or exploitation of a live target.
+
+Typical examples:
+
+- Basic security exercises
+- Knowledge-based challenges
+- Simple CTF challenges
+- Static analysis questions
+- Token discovery challenges
+- Guided exercises
+- Beginner reconnaissance exercises
+- Web/content puzzles
+
+Flow:
+
+```text
+User
+ ↓
+Open Challenge
+ ↓
+CyberJocx Challenge URL
+ ↓
+Solve Task
+ ↓
+Find Token / Flag
+ ↓
+Submit Flag
+ ↓
+Backend Validation
+ ↓
+XP + Progress + Skill Evidence
+```
+
+Example:
+
+```text
+https://lab.cyberjocx.com/challenge/<challenge-id>
+```
+
+The challenge URL should not expose the secret flag in frontend JavaScript.
+
+The server should validate submissions.
+
+## 39.2 Isolated Lab Environments
+
+Use isolated environments whenever the exercise requires actual execution, exploitation, shell access, network interaction, or potentially dangerous behavior.
+
+Examples:
+
+- SQL Injection against a real vulnerable application
+- XSS against a target application
+- API security testing
+- SSRF
+- Command Injection
+- Linux privilege escalation
+- Network exploitation
+- Active Directory
+- Malware analysis
+- Reverse engineering
+- Vulnerability research
+- Full penetration-testing scenarios
+
+Flow:
+
+```text
+User
+ ↓
+Start Lab
+ ↓
+Authorization
+ ↓
+Lab Manager
+ ↓
+Create Ephemeral Instance
+ ↓
+Apply Resource + Network Limits
+ ↓
+Return Target URL / IP / Credentials
+ ↓
+User Performs Task
+ ↓
+Submit Flag / Token
+ ↓
+Server-side Validation
+ ↓
+Record Evidence
+ ↓
+Award Progress / XP / Skill Evidence
+ ↓
+Reset / Suspend / Destroy Instance
+```
+
+---
+
+# 40. Hybrid Lab Decision Matrix
+
+| Exercise | Execution Model |
+|---|---|
+| Quiz | No environment |
+| Basic exercise | Link + Token |
+| Static challenge | Link + Token |
+| Simple CTF | Link + Flag |
+| Knowledge challenge | Link + Token |
+| SQL Injection | Isolated Lab |
+| XSS | Isolated Lab |
+| API Security | Isolated Lab |
+| SSRF | Isolated Lab |
+| Command Injection | Isolated Lab |
+| Linux Privilege Escalation | Isolated Lab |
+| Windows / AD | Isolated Environment |
+| Malware Analysis | Isolated Sandbox |
+| Reverse Engineering | Isolated Environment |
+| Network Pentesting | Isolated Environment |
+| Full Pentest Scenario | Isolated Environment |
+
+This keeps infrastructure costs under control while preserving real hands-on practice.
+
+---
+
+# 41. Secure Flag / Token Validation
+
+Never place real challenge secrets directly inside frontend code.
+
+Avoid:
+
+```ts
+const flag = "CYBERJOCX{secret}";
+```
+
+because frontend JavaScript can be inspected by the learner.
+
+Instead:
+
+```text
+Challenge
+   ↓
+Server-side Secret / Validator
+   ↓
+User Submission
+   ↓
+Validation
+   ↓
+Result
+```
+
+For isolated labs, the secret can exist inside the lab environment or be validated by a dedicated server-side validator.
+
+For lightweight challenges, the backend should own the expected answer or a secure representation of it.
+
+---
+
+# 42. Challenge Validation Model
+
+A generic challenge should expose a server-side validation contract:
+
+```text
+Challenge
+├── id
+├── type
+├── difficulty
+├── points
+├── validation_mode
+├── flag_policy
+├── hints
+└── skill_links
+```
+
+Possible validation modes:
+
+```text
+STATIC_FLAG
+SERVER_VALIDATOR
+LAB_FLAG
+AUTOMATED_TEST
+PROJECT_CHECK
+```
+
+The user-facing API should not expose the expected flag.
+
+Submission flow:
+
+```text
+POST /challenge/:id/submit
+          ↓
+Authenticate
+          ↓
+Authorize
+          ↓
+Validate input
+          ↓
+Load challenge
+          ↓
+Execute safe validator
+          ↓
+Record submission
+          ↓
+If correct:
+    Progress
+    XP
+    Skill Evidence
+    Achievement
+          ↓
+Return result
+```
+
+---
+
+# 43. Lab Isolation Requirements
+
+Every executable lab must have a security boundary.
+
+Minimum controls:
+
+- CPU limits
+- Memory limits
+- Disk limits
+- Process limits
+- Time-to-live
+- Network isolation
+- Explicit exposed ports
+- Non-root execution where possible
+- Read-only filesystem where possible
+- Dropped Linux capabilities
+- No host filesystem mounts
+- No Docker socket exposure to learners
+- Instance ownership checks
+- Automatic cleanup
+- Audit logging
+- Abuse/rate controls
+
+The main CyberJocx API must never execute arbitrary learner commands.
+
+Learners interact with the isolated lab, not with the host.
+
+---
+
+# 44. Lab Instance Lifecycle
+
+```text
+REQUESTED
+    ↓
+PROVISIONING
+    ↓
+READY
+    ↓
+RUNNING
+    ↓
+COMPLETED / EXPIRED
+    ↓
+CLEANUP
+    ↓
+DESTROYED
+```
+
+Possible recovery path:
+
+```FAILED_PROVISIONING
+        ↓
+RETRY
+        ↓
+PROVISIONING
+```
+
+Lab instances should have a hard TTL so abandoned environments do not consume resources indefinitely.
+
+---
+
+# 45. Cost Optimization
+
+Do not create a Docker environment for every action.
+
+Use the following strategy:
+
+```text
+Low Complexity
+    ↓
+Link + Token
+
+Medium Complexity
+    ↓
+Shared / lightweight challenge runtime
+
+High Complexity
+    ↓
+Ephemeral isolated container
+
+Very High Complexity
+    ↓
+Dedicated isolated compute
+```
+
+This allows CyberJocx to support a large number of lightweight challenges while reserving compute resources for exercises that actually need them.
+
+Future optimization can include:
+
+- Warm container pools
+- Image caching
+- Snapshot/restore
+- Auto-scaling lab workers
+- Per-track lab pools
+- Dedicated lab nodes
+- Kubernetes when usage justifies it
+
+---
+
+# 46. Unified Challenge Object
+
+Courses, labs and CTFs should not become completely separate systems.
+
+A common challenge model can connect them:
+
+```text
+Learning Node
+     │
+     ├── Lesson
+     ├── Quiz
+     ├── Challenge
+     │     ├── Link + Token
+     │     └── Isolated Lab
+     ├── CTF
+     └── Project
+```
+
+This means the same challenge can be referenced from:
+
+- A course
+- A roadmap
+- A lab
+- A CTF event
+- A skill
+- A project
+- A certification requirement
+
+The content relationship should be data-driven rather than hard-coded into frontend pages.
+
+---
+
+# 47. Example CyberJocx Learning Flow
+
+Example: SQL Injection.
+
+```text
+Track: Junior Pentester
+        ↓
+Module: Web Security
+        ↓
+Lesson: SQL Injection
+        ↓
+Quiz
+        ↓
+Guided Challenge
+        │
+        └── Link + Token
+        ↓
+Practical SQLi Lab
+        │
+        └── Isolated Docker Environment
+        ↓
+SQLi CTF Challenge
+        │
+        └── Flag Submission
+        ↓
+Mini Project
+        │
+        └── Secure Login API
+        ↓
+Assessment
+        ↓
+Skill Evidence:
+    SQL Injection
+    Web Security
+    Authentication Security
+```
+
+This is the intended CyberJocx learning loop.
+
+---
+
+# 48. Recommended Product Rule
+
+The platform should answer one question for every practical activity:
+
+> **Does this activity need a real execution environment?**
+
+If **No**:
+
+```text
+Challenge URL → Solve → Submit Token
+```
+
+If **Yes**:
+
+```text
+Start Lab → Isolated Environment → Solve → Submit Flag
+```
+
+Both models ultimately feed the same systems:
+
+```text
+Submission
+   ↓
+Progress
+   ↓
+Skill Evidence
+   ↓
+XP / Achievement
+   ↓
+Portfolio / Certificate
+```
+
+This keeps the user experience unified even though the infrastructure behind different exercises is different.
+
+---
+
+# 49. Final Lab Architecture
+
+```text
+                    CYBERJOCX PRACTICE ENGINE
+                              │
+                ┌─────────────┴─────────────┐
+                │                           │
+        LIGHTWEIGHT CHALLENGES        ISOLATED LABS
+                │                           │
+        Link + Token/Flag             Lab Manager
+                │                           │
+                │                    Ephemeral Container
+                │                           │
+                │                    Network Isolation
+                │                           │
+                │                    Resource Limits
+                │                           │
+                └─────────────┬─────────────┘
+                              │
+                       Submission API
+                              │
+                       Server Validator
+                              │
+                ┌─────────────┼─────────────┐
+                │             │             │
+             Progress         XP        Skill Evidence
+                │             │             │
+                └─────────────┼─────────────┘
+                              │
+                         Portfolio
+```
+
+This hybrid model is the official target for CyberJocx practice infrastructure.
