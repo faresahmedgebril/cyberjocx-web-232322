@@ -300,6 +300,215 @@ export const jobs = mysqlTable("jobs", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+
+export const challenges = mysqlTable("challenges", {
+  id: int("id").autoincrement().primaryKey(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  type: mysqlEnum("type", ["basic", "static", "ctf", "lab"]).default("basic").notNull(),
+  difficulty: mysqlEnum("difficulty", ["beginner", "intermediate", "advanced"]).default("beginner").notNull(),
+  points: int("points").default(100).notNull(),
+  validationMode: mysqlEnum("validationMode", ["STATIC_FLAG", "SERVER_VALIDATOR", "LAB_FLAG", "AUTOMATED_TEST", "PROJECT_CHECK"]).default("STATIC_FLAG").notNull(),
+  expectedHash: varchar("expectedHash", { length: 128 }),
+  hintText: text("hintText"),
+  skillId: int("skillId"),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const challengeSubmissions = mysqlTable("challengeSubmissions", {
+  id: int("id").autoincrement().primaryKey(),
+  challengeId: int("challengeId").notNull(),
+  userId: int("userId").notNull(),
+  answerHash: varchar("answerHash", { length: 128 }).notNull(),
+  correct: boolean("correct").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const skills = mysqlTable("skills", {
+  id: int("id").autoincrement().primaryKey(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  category: varchar("category", { length: 120 }).notNull(),
+  description: text("description"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const userSkills = mysqlTable("userSkills", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  skillId: int("skillId").notNull(),
+  score: int("score").default(0).notNull(),
+  evidenceCount: int("evidenceCount").default(0).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const skillEvidence = mysqlTable("skillEvidence", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  skillId: int("skillId").notNull(),
+  sourceType: varchar("sourceType", { length: 64 }).notNull(),
+  sourceId: int("sourceId"),
+  result: mysqlEnum("result", ["success", "partial", "failed"]).default("success").notNull(),
+  difficulty: mysqlEnum("difficulty", ["beginner", "intermediate", "advanced"]).default("beginner").notNull(),
+  metadataJson: text("metadataJson"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const labTemplates = mysqlTable("labTemplates", {
+  id: int("id").autoincrement().primaryKey(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  image: varchar("image", { length: 512 }).notNull(),
+  description: text("description").notNull(),
+  cpuLimit: int("cpuLimit").default(1).notNull(),
+  memoryMb: int("memoryMb").default(512).notNull(),
+  diskMb: int("diskMb").default(2048).notNull(),
+  pidLimit: int("pidLimit").default(128).notNull(),
+  ttlSeconds: int("ttlSeconds").default(3600).notNull(),
+  exposedPortsJson: text("exposedPortsJson").notNull(),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const labInstances = mysqlTable("labInstances", {
+  id: int("id").autoincrement().primaryKey(),
+  instanceId: varchar("instanceId", { length: 64 }).notNull().unique(),
+  templateId: int("templateId").notNull(),
+  userId: int("userId").notNull(),
+  challengeId: int("challengeId"),
+  status: mysqlEnum("status", ["REQUESTED", "PROVISIONING", "READY", "RUNNING", "COMPLETED", "EXPIRED", "CLEANUP", "DESTROYED", "FAILED"]).default("REQUESTED").notNull(),
+  targetUrl: text("targetUrl"),
+  containerRef: varchar("containerRef", { length: 255 }),
+  expiresAt: timestamp("expiresAt").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const labFlags = mysqlTable("labFlags", {
+  id: int("id").autoincrement().primaryKey(),
+  labInstanceId: int("labInstanceId").notNull(),
+  flagHash: varchar("flagHash", { length: 128 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const xpTransactions = mysqlTable("xpTransactions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  amount: int("amount").notNull(),
+  sourceType: varchar("sourceType", { length: 64 }).notNull(),
+  sourceId: int("sourceId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const achievements = mysqlTable("achievements", {
+  id: int("id").autoincrement().primaryKey(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const userAchievements = mysqlTable("userAchievements", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  achievementId: int("achievementId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const streaks = mysqlTable("streaks", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  currentDays: int("currentDays").default(0).notNull(),
+  bestDays: int("bestDays").default(0).notNull(),
+  lastActivityDate: varchar("lastActivityDate", { length: 10 }),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const ctfEvents = mysqlTable("ctfEvents", {
+  id: int("id").autoincrement().primaryKey(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  startsAt: timestamp("startsAt"),
+  endsAt: timestamp("endsAt"),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const ctfChallenges = mysqlTable("ctfChallenges", {
+  id: int("id").autoincrement().primaryKey(),
+  eventId: int("eventId").notNull(),
+  challengeId: int("challengeId").notNull(),
+  category: varchar("category", { length: 80 }).notNull(),
+  orderIndex: int("orderIndex").default(0).notNull(),
+});
+
+export const ctfSubmissions = mysqlTable("ctfSubmissions", {
+  id: int("id").autoincrement().primaryKey(),
+  eventId: int("eventId").notNull(),
+  challengeId: int("challengeId").notNull(),
+  userId: int("userId").notNull(),
+  answerHash: varchar("answerHash", { length: 128 }).notNull(),
+  correct: boolean("correct").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const projects = mysqlTable("projects", {
+  id: int("id").autoincrement().primaryKey(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description").notNull(),
+  requirementsJson: text("requirementsJson").notNull(),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const projectSubmissions = mysqlTable("projectSubmissions", {
+  id: int("id").autoincrement().primaryKey(),
+  projectId: int("projectId").notNull(),
+  userId: int("userId").notNull(),
+  repositoryUrl: text("repositoryUrl"),
+  reportUrl: text("reportUrl"),
+  status: mysqlEnum("status", ["submitted", "reviewed", "accepted", "rejected"]).default("submitted").notNull(),
+  score: int("score"),
+  feedback: text("feedback"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const portfolios = mysqlTable("portfolios", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  headline: varchar("headline", { length: 255 }),
+  summary: text("summary"),
+  public: boolean("public").default(true).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const portfolioItems = mysqlTable("portfolioItems", {
+  id: int("id").autoincrement().primaryKey(),
+  portfolioId: int("portfolioId").notNull(),
+  sourceType: varchar("sourceType", { length: 64 }).notNull(),
+  sourceId: int("sourceId").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
+  description: text("description"),
+  orderIndex: int("orderIndex").default(0).notNull(),
+});
+
+export const auditLogs = mysqlTable("auditLogs", {
+  id: int("id").autoincrement().primaryKey(),
+  actorUserId: int("actorUserId"),
+  action: varchar("action", { length: 120 }).notNull(),
+  resourceType: varchar("resourceType", { length: 120 }),
+  resourceId: int("resourceId"),
+  metadataJson: text("metadataJson"),
+  ipAddress: varchar("ipAddress", { length: 64 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Session = typeof sessions.$inferSelect;
@@ -314,3 +523,13 @@ export type TrackQuiz = typeof trackQuizzes.$inferSelect;
 export type Certificate = typeof certificates.$inferSelect;
 export type TrackLevel = typeof trackLevels.$inferSelect;
 export type MalwareFamily = typeof malwareFamilies.$inferSelect;
+
+export type Challenge = typeof challenges.$inferSelect;
+export type ChallengeSubmission = typeof challengeSubmissions.$inferSelect;
+export type Skill = typeof skills.$inferSelect;
+export type UserSkill = typeof userSkills.$inferSelect;
+export type SkillEvidence = typeof skillEvidence.$inferSelect;
+export type LabTemplate = typeof labTemplates.$inferSelect;
+export type LabInstance = typeof labInstances.$inferSelect;
+export type Project = typeof projects.$inferSelect;
+export type Portfolio = typeof portfolios.$inferSelect;
