@@ -69,7 +69,8 @@ export async function submitChallenge(userId: number, challengeId: number, answe
 
   await db.transaction(async tx => {
     await tx.insert(xpTransactions).values({ userId, amount: challenge.points, sourceType: "challenge", sourceId: challenge.id });
-    await tx.update(users).set({ points: challenge.points }).where(eq(users.id, userId));
+    const currentUser = (await tx.select({ points: users.points }).from(users).where(eq(users.id, userId)).limit(1))[0];
+    await tx.update(users).set({ points: (currentUser?.points ?? 0) + challenge.points }).where(eq(users.id, userId));
     if (challenge.skillId) {
       const existing = (await tx.select().from(userSkills).where(and(eq(userSkills.userId, userId), eq(userSkills.skillId, challenge.skillId))).limit(1))[0];
       if (existing) {
