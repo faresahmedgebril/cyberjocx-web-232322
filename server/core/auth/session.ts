@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import type { Request } from "express";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, sql } from "drizzle-orm";
 import { sessions, users } from "../../../drizzle/schema";
 import { getDb, getUserById, upsertUser } from "../../db";
 import { COOKIE_NAME } from "../../config/constants";
@@ -25,7 +25,12 @@ export async function createSession(userId: number, req?: Pick<Request, "headers
   const expiresAt = new Date(Date.now() + ENV.SESSION_TTL_MS);
   const userAgent = req?.headers["user-agent"] ?? null;
   const ipAddress = req?.ip ?? null;
-  await db.insert(sessions).values({ userId, tokenHash: hashToken(token), expiresAt, userAgent, ipAddress });
+  // Use an explicit SQL insert here so nullable session metadata never relies on
+  // MySQL/Drizzle DEFAULT semantics for columns without explicit defaults.
+  await db.execute(sql`
+    INSERT INTO sessions (userId, tokenHash, expiresAt, userAgent, ipAddress)
+    VALUES (${userId}, ${hashToken(token)}, ${expiresAt}, ${userAgent}, ${ipAddress})
+  `);
   return { token, expiresAt };
 }
 
