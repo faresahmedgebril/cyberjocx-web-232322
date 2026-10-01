@@ -5,6 +5,7 @@ import { getDb } from "../../db";
 import { queue } from "../../infrastructure/queue/provider";
 import { labProvider } from "../../infrastructure/labs/provider";
 import { validationError } from "../../core/errors";
+import { awardChallengeCompletion } from "../practice/service";
 
 export async function listLabTemplates() {
   const db = await getDb();
@@ -93,7 +94,10 @@ export async function submitLabFlag(userId: number, instanceId: number, flag: st
   if (!expected) return { correct: false };
   const hash = crypto.createHash("sha256").update(flag.trim(), "utf8").digest("hex");
   const correct = crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(expected.flagHash));
-  if (correct) await db.update(labInstances).set({ status: "COMPLETED" }).where(eq(labInstances.id, instance.id));
+  if (correct) {
+    await db.update(labInstances).set({ status: "COMPLETED" }).where(eq(labInstances.id, instance.id));
+    if (instance.challengeId) await awardChallengeCompletion(userId, instance.challengeId, "lab");
+  }
   return { correct };
 }
 
@@ -104,4 +108,20 @@ export async function destroyLab(labInstanceId: number) {
   if (!instance) return;
   await labProvider.destroy(instance.instanceId);
   await db.update(labInstances).set({ status: "DESTROYED" }).where(eq(labInstances.id, labInstanceId));
+}
+
+export async function cleanupExpiredLabs() {
+  const db = await getDb();
+  if (!db) return 0;
+  const expired = await db.select().from(labInstances).where(and(
+    gt(new Date(), labInstances.expiresAt),
+  ));
+  let cleaned = 0;
+  for (const instance of expired) {
+    if (["DESTROYED", "CLEANUP"].includes(instance.status)) continue;
+    try { await labProvider.destroy(instance.instanceId); } catch {}
+    await db.update(labInstances).set({ status: "DESTROYED" }).where(eq(labInstances.id, instance.id));
+    cleaned += 1;
+  }
+  return cleaned;
 }
