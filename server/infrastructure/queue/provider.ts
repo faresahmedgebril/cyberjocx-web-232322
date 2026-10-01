@@ -3,7 +3,7 @@ import { and, asc, eq, lte } from "drizzle-orm";
 import { jobs } from "../../../drizzle/schema";
 import { getDb } from "../../db";
 
-export type JobName = "nvd-sync" | "notifications";
+export type JobName = "nvd-sync" | "notifications" | "lab-provision" | "lab-cleanup";
 export type Job = { id: string; name: JobName; payload: Record<string, unknown>; createdAt: Date };
 
 export interface QueueProvider {
