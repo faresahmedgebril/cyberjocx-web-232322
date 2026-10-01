@@ -26,7 +26,10 @@ services:
       CRON_SECRET: change-this-development-cron-secret
       LOG_LEVEL: info
     depends_on:
-      worker:
+      mysql:
+        condition: service_healthy
+
+  worker:
     build:
       context: .
       dockerfile: Dockerfile
@@ -41,9 +44,6 @@ services:
       LOG_LEVEL: info
     depends_on:
       app:
-        condition: service_healthy
-
-  mysql:
         condition: service_healthy
 
   mysql:
