@@ -23,7 +23,7 @@ export async function createSession(userId: number, req?: Pick<Request, "headers
   if (!db) throw new Error("Database unavailable");
   const token = crypto.randomBytes(32).toString("base64url");
   const expiresAt = new Date(Date.now() + ENV.SESSION_TTL_MS);
-  await db.insert(sessions).values({ userId, tokenHash: hashToken(token), expiresAt, userAgent: req?.headers["user-agent"]?.slice(0, 512), ipAddress: req?.ip?.slice(0, 64) });
+  await db.insert(sessions).values({ userId, tokenHash: hashToken(token), expiresAt });
   return { token, expiresAt };
 }
 
