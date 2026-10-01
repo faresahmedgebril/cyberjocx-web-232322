@@ -139,6 +139,7 @@ export default function Home() {
         </div>
         <button className="nexus-float" onClick={() => navigate("ai")} aria-label="فتح محادثة NEXUS"><span className="nexus-bot"><Bot size={23} /></span><span className="nexus-float-label">NEXUS<br /><small>اسألني</small></span></button>
       </main>
+      {!isAuthenticated && authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
     </div>
   );
 }
