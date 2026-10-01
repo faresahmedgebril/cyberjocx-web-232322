@@ -45,6 +45,46 @@ export async function getChallenge(id: number) {
   }).from(challenges).where(and(eq(challenges.id, id), eq(challenges.active, true))).limit(1))[0];
 }
 
+export async function awardChallengeCompletion(userId: number, challengeId: number, sourceType = "challenge") {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const challenge = (await db.select().from(challenges).where(eq(challenges.id, challengeId)).limit(1))[0];
+  if (!challenge) return { awardedXp: 0 };
+  const prior = (await db.select({ id: xpTransactions.id }).from(xpTransactions).where(and(
+    eq(xpTransactions.userId, userId),
+    eq(xpTransactions.sourceType, sourceType),
+    eq(xpTransactions.sourceId, challengeId),
+  )).limit(1))[0];
+  if (prior) return { awardedXp: 0 };
+  await db.transaction(async tx => {
+    const currentUser = (await tx.select({ points: users.points }).from(users).where(eq(users.id, userId)).limit(1))[0];
+    await tx.insert(xpTransactions).values({ userId, amount: challenge.points, sourceType, sourceId: challengeId });
+    await tx.update(users).set({ points: (currentUser?.points ?? 0) + challenge.points }).where(eq(users.id, userId));
+    if (challenge.skillId) {
+      const existing = (await tx.select().from(userSkills).where(and(eq(userSkills.userId, userId), eq(userSkills.skillId, challenge.skillId))).limit(1))[0];
+      const delta = Math.max(5, Math.min(20, Math.round(challenge.points / 10)));
+      if (existing) {
+        await tx.update(userSkills).set({
+          score: Math.min(100, existing.score + delta),
+          evidenceCount: existing.evidenceCount + 1,
+        }).where(eq(userSkills.id, existing.id));
+      } else {
+        await tx.insert(userSkills).values({ userId, skillId: challenge.skillId, score: Math.min(100, delta), evidenceCount: 1 });
+      }
+      await tx.insert(skillEvidence).values({
+        userId,
+        skillId: challenge.skillId,
+        sourceType,
+        sourceId: challengeId,
+        result: "success",
+        difficulty: challenge.difficulty,
+        metadataJson: JSON.stringify({ points: challenge.points }),
+      });
+    }
+  });
+  return { awardedXp: challenge.points };
+}
+
 export async function submitChallenge(userId: number, challengeId: number, answer: string) {
   const normalized = answer.trim();
   if (normalized.length < 1 || normalized.length > 512) throw validationError("Submission must be between 1 and 512 characters.");
@@ -64,34 +104,10 @@ export async function submitChallenge(userId: number, challengeId: number, answe
   )).limit(1))[0];
 
   await db.insert(challengeSubmissions).values({ challengeId, userId, answerHash, correct });
-
   if (!correct || priorCorrect) return { correct, completed: Boolean(priorCorrect) || correct, awardedXp: 0 };
 
-  await db.transaction(async tx => {
-    await tx.insert(xpTransactions).values({ userId, amount: challenge.points, sourceType: "challenge", sourceId: challenge.id });
-    const currentUser = (await tx.select({ points: users.points }).from(users).where(eq(users.id, userId)).limit(1))[0];
-    await tx.update(users).set({ points: (currentUser?.points ?? 0) + challenge.points }).where(eq(users.id, userId));
-    if (challenge.skillId) {
-      const existing = (await tx.select().from(userSkills).where(and(eq(userSkills.userId, userId), eq(userSkills.skillId, challenge.skillId))).limit(1))[0];
-      if (existing) {
-        const nextScore = Math.min(100, existing.score + Math.max(5, Math.min(20, challenge.points / 10)));
-        await tx.update(userSkills).set({ score: nextScore, evidenceCount: existing.evidenceCount + 1 }).where(eq(userSkills.id, existing.id));
-      } else {
-        await tx.insert(userSkills).values({ userId, skillId: challenge.skillId, score: Math.min(100, Math.max(5, challenge.points / 10)), evidenceCount: 1 });
-      }
-      await tx.insert(skillEvidence).values({
-        userId,
-        skillId: challenge.skillId,
-        sourceType: "challenge",
-        sourceId: challenge.id,
-        result: "success",
-        difficulty: challenge.difficulty,
-        metadataJson: JSON.stringify({ points: challenge.points }),
-      });
-    }
-  });
-
-  return { correct: true, completed: true, awardedXp: challenge.points };
+  const reward = await awardChallengeCompletion(userId, challengeId, "challenge");
+  return { correct: true, completed: true, awardedXp: reward.awardedXp };
 }
 
 export async function createChallenge(input: {
