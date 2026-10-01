@@ -64,6 +64,13 @@
       "when": 1790871866166,
       "tag": "0011_onboarding_assessment",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "5",
+      "when": 1790871924413,
+      "tag": "0012_xp_idempotency",
+      "breakpoints": true
     }
   ]
 }
