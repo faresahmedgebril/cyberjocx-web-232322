@@ -32,7 +32,7 @@ services:
       dockerfile: Dockerfile
     container_name: cyberjocx-worker
     restart: unless-stopped
-    command: ["sh", "-c", "pnpm db:migrate && node dist/worker.js"]
+    command: ["node", "dist/worker.js"]
     environment:
       NODE_ENV: production
       SERVICE_ROLE: worker
@@ -40,7 +40,7 @@ services:
       NVD_API_URL: https://services.nvd.nist.gov/rest/json/cves/2.0
       LOG_LEVEL: info
     depends_on:
-      mysql:
+      app:
         condition: service_healthy
 
   mysql:
