@@ -1,101 +1,116 @@
-# CyberJocx Temporary Deployment Report
+# CyberJocx Deployment / CI Repair Report
 
-## Deployment status
+## Audit time
+2026-10-01
 
-No external deployment was claimed. The Render dashboard was reachable but redirected to `https://dashboard.render.com/login`, and no authenticated Cloudflare deployment connector was available in this session. No Pages URL, Render URL, database endpoint, secret, or successful external smoke test was invented.
+## Current repository commit
+`b9d5a1902d1a43f8b3f3452680009f1923eaa991`
 
-| Component | Status | Evidence or blocker |
-|---|---|---|
-| Cloudflare Pages | Prepared, not deployed | `pnpm build:client`, output `dist/public`; Cloudflare account/project access unavailable |
-| Render Web Service | Prepared, not deployed | `pnpm build:server`, `pnpm start`, `/health`, `/ready`; Render account requires sign-in |
-| Render MySQL | Procedure documented, not provisioned | Requires a Render private Docker MySQL service and persistent disk |
-| Drizzle migrations | Prepared locally, not applied remotely | Requires actual `DATABASE_URL`; migrations are additive |
-| Render Worker | Prepared, not deployed | `pnpm build:worker`, `pnpm worker`; requires production MySQL |
-| Render Cron | Prepared, not deployed | `render.yaml`; requires actual API URL and shared `CRON_SECRET` |
-| Google OAuth | Code-ready, not externally verified | Requires Google credentials and actual Render callback URL |
-| Storage | Code-ready, not externally verified | Requires S3/R2 endpoint, bucket, and private credentials |
-| AI | Optional and code-ready | Requires server-side `AI_API_KEY` for AI requests |
+## What was checked
 
-## Frontend
+### GitHub Pages
+**Status: PASS**
 
-Cloudflare Pages configuration:
+The latest Pages workflow for commit `1d5c92ab713d5c1dd13ccaeb4766f26aaa2c6d21` completed successfully.
 
-```text
-Build command: pnpm install --frozen-lockfile && pnpm build:client
-Output directory: dist/public
-Public variable: VITE_API_BASE_URL=https://<actual-render-api>.onrender.com
+This confirms the frontend build-and-deploy workflow is currently publishing the static frontend successfully. GitHub Pages deployment is independent from the Docker image build.
+
+### Docker Build
+**Status: FAILED, then repaired**
+
+The Docker workflow for commit `1d5c92ab713d5c1dd13ccaeb4766f26aaa2c6d21` failed in the production image stage.
+
+Exact failure:
+
+```
+ENOENT: no such file or directory, open '/app/patches/wouter@3.7.1.patch'
 ```
 
-The actual Pages `pages.dev` hostname is not known because no Pages project was created in the available session.
+The first repair copied `patches/` into the dependency stage. The next CI run proved that this fixed the first failure: client, server, and worker builds all completed.
 
-## Backend
+However, the production stage then ran:
 
-Render Web Service configuration:
-
-```text
-Build command: pnpm install --frozen-lockfile && pnpm build:server
-Pre-deploy command: pnpm db:migrate
-Start command: pnpm start
-Health check: /health
-Readiness: /ready
+```
+pnpm install --prod --frozen-lockfile
 ```
 
-The actual `onrender.com` hostname is not known because no Render service was created in the available session.
+and failed because the production image did not contain `/app/patches`.
 
-## Database
+### Final repair applied
+The Dockerfile now copies the patch directory into the production image before the production `pnpm install`:
 
-The project remains on Drizzle/MySQL. The application does not expose `DATABASE_URL` through Vite. Render's official MySQL procedure uses a private Docker service based on the Render MySQL example repository and a persistent disk mounted at `/var/lib/mysql`. See the [Render MySQL guide](https://render.com/docs/deploy-mysql). The API and Worker must receive the private connection string through server-side configuration only.
-
-## Worker and Cron
-
-The Worker polls the durable `jobs` table and executes the shared NVD service. The Cron job sends a protected `POST /api/scheduled/nvd-sync` request with `x-cron-secret`. The endpoint enqueues work and returns `202`; it does not run the import synchronously.
-
-## Authentication and cookies
-
-Google OAuth remains application-owned. The callback URL is configurable through `GOOGLE_OAUTH_REDIRECT_URI`, and successful authentication redirects to `APP_WEB_URL`. For the temporary Pages-to-Render topology, configure:
-
-```text
-SESSION_COOKIE_SAMESITE=none
-SESSION_COOKIE_SECURE=true
-APP_WEB_URL=https://<project>.pages.dev
-CORS_ORIGINS=https://<project>.pages.dev
+```dockerfile
+COPY --from=build /app/patches ./patches
+RUN pnpm install --prod --frozen-lockfile
 ```
 
-Cookies remain HttpOnly and server-controlled. Browser JavaScript does not receive session tokens.
+Commit containing this repair:
 
-## Security
+`b9d5a1902d1a43f8b3f3452680009f1923eaa991`
 
-- CORS is an explicit comma-separated allowlist; wildcard origins are not used.
-- Credentialed requests are enabled only for allowed origins.
-- Production state-changing requests require an allowed Origin/Referer.
-- Cross-site session behavior is configurable and enforces Secure cookies for `SameSite=None`.
-- OAuth state is validated before code exchange.
-- Storage credentials, OAuth secrets, AI keys, database credentials, and cron secrets are server-only.
-- File uploads retain MIME, size, and safe-key validation.
-- Runtime bundles contain no retired platform runtime identifiers.
+A new Docker workflow is expected to run automatically from this commit.
 
-## Local verification
+## Why this happened
 
-| Command | Result |
+`package.json` declares a patched dependency:
+
+```json
+"patchedDependencies": {
+  "wouter@3.7.1": "patches/wouter@3.7.1.patch"
+}
+```
+
+Therefore pnpm needs the patch file during every install that uses the lockfile, including the production install. Docker initially copied the patch only for the build/dependency stage, not the final production stage.
+
+## Other observed status signals
+
+Previous Railway status checks showed failures for:
+- `cyberjocx-api`
+- `cyberjocx-worker`
+- `cyberjocx-nvd-sync`
+
+Those are external Railway deployments. The GitHub Actions logs available here prove the Docker image build was failing, which can explain deployments that consume this Dockerfile, but Railway's own deployment logs are required to attribute each Railway failure conclusively.
+
+## Google OAuth
+
+The code review found a deployment configuration dependency rather than a frontend-only Google OAuth bug.
+
+The frontend sends API requests to:
+
+`VITE_API_BASE_URL + /api/...`
+
+If `VITE_API_BASE_URL` is empty on GitHub Pages, authentication requests resolve against the GitHub Pages origin instead of the API server.
+
+Production OAuth also requires the real values for:
+- `APP_WEB_URL`
+- `CORS_ORIGINS`
+- `GOOGLE_CLIENT_ID`
+- `GOOGLE_CLIENT_SECRET`
+- `GOOGLE_OAUTH_REDIRECT_URI`
+
+and the matching Google OAuth authorized origins / redirect URI.
+
+No secret or external OAuth URL was invented or changed automatically.
+
+## Frontend bundle warning
+
+The Docker build completed the application build but emitted Vite warnings for large JavaScript chunks, including a main chunk above 1 MB.
+
+This is a performance warning, not the cause of the Docker failure.
+
+## Resolution summary
+
+| Item | Result |
 |---|---|
-| `pnpm typecheck` | Passed after deployment hardening |
-| `pnpm install --frozen-lockfile` | Passed |
-| `pnpm test` | Passed: 4 files, 9 tests |
-| `pnpm build` | Passed: client/API/worker |
-| `pnpm build:client` | Passed as part of `pnpm build` |
-| `pnpm build:server` | Passed as part of `pnpm build` |
-| `pnpm build:worker` | Passed as part of `pnpm build` |
-| `pnpm exec prettier --check render.yaml` | Passed |
-| Local HTTP smoke test | Passed: `/health` 200, `/ready` 503 without database, CORS preflight 204, unauthenticated cron 403 |
-| `pnpm exec prettier --check render.yaml` | Passed |
-| Wildcard CORS scan | Passed; no wildcard found |
-| Render dashboard access | Blocked by sign-in |
-| Cloudflare deployment access | Not configured |
+| GitHub Pages | PASS |
+| Frontend build | PASS |
+| Server build | PASS |
+| Worker build | PASS |
+| Docker production image | FAILED before final repair |
+| Docker patch handling | REPAIRED |
+| Railway API/Worker/NVD | Requires fresh Railway deployment verification |
+| Google OAuth | Requires real API URL + OAuth deployment configuration |
 
-## Real blockers
+## Next verification
 
-1. A Render account with repository access is required to create the Web Service, private MySQL service, Worker, and Cron.
-2. A Cloudflare account with Pages access is required to create the temporary Pages project and obtain its actual `pages.dev` hostname.
-3. The actual Pages hostname and Render API hostname must be inserted into server-side `APP_WEB_URL`, `CORS_ORIGINS`, `GOOGLE_OAUTH_REDIRECT_URI`, the Cron `API_BASE_URL`, and Pages `VITE_API_BASE_URL`.
-4. Production MySQL, S3/R2, and Google OAuth credentials must be supplied by the deployment owner. AI credentials are required only to enable AI calls.
-5. After those values exist, remote migrations and the complete production smoke-test checklist must be run against the real URLs.
+The next automatic Docker workflow from commit `b9d5a1902d1a43f8b3f3452680009f1923eaa991` must be checked before declaring the Docker repair successful.
