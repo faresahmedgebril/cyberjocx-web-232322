@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import { provisionLab } from "./modules/labs/service";
 import { and, eq } from "drizzle-orm";
 import { cves, getDb, nvdSyncRuns, nvdSyncSettings } from "./db";
 import { ENV } from "./config/env";
@@ -78,14 +79,25 @@ export async function handleNvdSync(req: Request, res: Response) {
 }
 
 export async function runQueuedJobs() {
-  const job = await queue.claim("nvd-sync");
+  const job = await queue.claim();
   if (!job) return false;
   try {
-    await syncRecentNvd();
+    switch (job.name) {
+      case "nvd-sync":
+        await syncRecentNvd();
+        break;
+      case "lab-provision":
+        await provisionLab(Number(job.payload.labInstanceId));
+        break;
+      case "notifications":
+        break;
+      case "lab-cleanup":
+        break;
+    }
     await queue.complete(job.id);
     return true;
   } catch (error) {
-    await queue.fail(job.id, error instanceof Error ? error.message : "NVD sync failed");
+    await queue.fail(job.id, error instanceof Error ? error.message : `${job.name} failed`);
     throw error;
   }
 }
