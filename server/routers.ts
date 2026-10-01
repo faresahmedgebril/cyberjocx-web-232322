@@ -1,3 +1,4 @@
+import { listLabTemplates, startLab, submitLabFlag } from "./modules/labs/service";
 import { listChallenges, getChallenge, submitChallenge, createChallenge } from "./modules/practice/service";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, or, sql } from "drizzle-orm";
@@ -222,6 +223,17 @@ export const appRouter = router({
       const response = await personalizeAI({ userName: ctx.user.name ?? "متعلم", track: roadmap.track.title, currentLevel: roadmap.currentLevel, outline });
       return { roadmap: response.content, model: response.model, usage: { inputTokens: response.inputTokens, outputTokens: response.outputTokens, totalTokens: response.totalTokens } };
     }),
+  }),
+  labs: router({
+    templates: publicProcedure.query(() => listLabTemplates()),
+    start: protectedProcedure.input(z.object({
+      templateId: z.number().int().positive(),
+      challengeId: z.number().int().positive().optional(),
+    })).mutation(({ ctx, input }) => startLab(ctx.user.id, input.templateId, input.challengeId)),
+    submitFlag: protectedProcedure.input(z.object({
+      instanceId: z.number().int().positive(),
+      flag: z.string().min(1).max(512),
+    })).mutation(({ ctx, input }) => submitLabFlag(ctx.user.id, input.instanceId, input.flag)),
   }),
   practice: router({
     list: publicProcedure.input(z.object({
