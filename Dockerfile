@@ -22,7 +22,7 @@ COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=build /app/drizzle ./drizzle
 COPY --from=build /app/patches ./patches
-RUN pnpm install --prod --frozen-lockfile
+COPY --from=deps /app/node_modules ./node_modules
 
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
