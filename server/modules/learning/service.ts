@@ -52,7 +52,7 @@ export async function submitAssessment(userId: number, assessmentId: number, ans
     grouped.set(q.skillId, bucket);
   }
   const overall = Math.round((earned / total) * 100);
-  const skillIds = [...grouped.keys()];
+  const skillIds = Array.from(grouped.keys());
   const skillRows = skillIds.length ? await db.select().from(skills) : [];
   const skillProfile = skillIds.map(skillId => {
     const bucket = grouped.get(skillId)!;
