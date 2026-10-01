@@ -81,3 +81,20 @@ Browser → Cloudflare → Render API → Express → tRPC → Zod → Auth → 
 ```
 
 AI requests use `AIService → AIProvider → configured OpenAI-compatible endpoint`. Profile media uses `StorageProvider → S3/R2-compatible storage`. NVD work uses the scheduled endpoint and worker boundary. See `ARCHITECTURE.md` for the detailed architecture and security model.
+
+
+## Docker
+
+Docker is the canonical local runtime for the project.
+
+~~~bash
+docker compose up --build
+~~~
+
+Open http://localhost:3000. The compose stack includes the API/frontend container, MySQL, and the background worker.
+
+For the public frontend development preview, GitHub Pages is deployed automatically from main:
+
+https://faresahmedgebril.github.io/cyberjocx-web-232322/
+
+The preview is frontend-only. Set the repository variable VITE_API_BASE_URL to the public API URL for API-backed features.
