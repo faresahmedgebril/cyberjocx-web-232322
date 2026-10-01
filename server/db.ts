@@ -43,7 +43,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   if (!db) return;
   const values: InsertUser = { openId: user.openId, points: user.points ?? 640 };
   const updateSet: Record<string, unknown> = { lastSignedIn: new Date() };
-  for (const field of ["name", "email", "loginMethod", "bio", "avatarUrl"] as const) {
+  for (const field of ["name", "email", "loginMethod", "passwordHash", "bio", "avatarUrl"] as const) {
     if (user[field] !== undefined) {
       values[field] = user[field] ?? null;
       updateSet[field] = user[field] ?? null;
