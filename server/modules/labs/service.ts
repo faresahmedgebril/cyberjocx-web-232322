@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { and, eq, lt } from "drizzle-orm";
+import { and, eq, gt, lt } from "drizzle-orm";
 import { labInstances, labTemplates, labFlags } from "../../../drizzle/schema";
 import { getDb } from "../../db";
 import { queue } from "../../infrastructure/queue/provider";
