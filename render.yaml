@@ -1,14 +1,10 @@
-# Render Blueprint for the temporary deployment.
-# Render MySQL is provisioned separately as a private Docker service using
-# https://github.com/render-examples/mysql with a persistent disk mounted at
-# /var/lib/mysql. Set DATABASE_URL from that private service in the API and worker.
+# Docker-based deployment blueprint for CyberJocx.
 services:
   - type: web
     name: cyberjocx-api
-    runtime: node
-    buildCommand: pnpm install --frozen-lockfile && pnpm build:server
-    preDeployCommand: pnpm db:migrate
-    startCommand: pnpm start
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
@@ -70,9 +66,10 @@ services:
 
   - type: worker
     name: cyberjocx-worker
-    runtime: node
-    buildCommand: pnpm install --frozen-lockfile && pnpm build:worker
-    startCommand: pnpm worker
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: node dist/worker.js
     envVars:
       - key: NODE_ENV
         value: production
@@ -89,13 +86,14 @@ services:
 
   - type: cron
     name: cyberjocx-nvd-sync
-    runtime: node
-    schedule: "0 * * * *"
-    buildCommand: pnpm install --frozen-lockfile && pnpm build:server
-    startCommand: >-
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: >-
       node -e "fetch(process.env.API_BASE_URL + '/api/scheduled/nvd-sync',
       {method:'POST', headers:{'x-cron-secret':process.env.CRON_SECRET}})
       .then(async r=>{console.log(r.status, await r.text()); if(!r.ok) process.exit(1)})"
+    schedule: "0 * * * *"
     envVars:
       - key: API_BASE_URL
         sync: false
