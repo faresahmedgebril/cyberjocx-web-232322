@@ -26,7 +26,24 @@ services:
       CRON_SECRET: change-this-development-cron-secret
       LOG_LEVEL: info
     depends_on:
+      worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: cyberjocx-worker
+    restart: unless-stopped
+    command: ["sh", "-c", "pnpm db:migrate && node dist/worker.js"]
+    environment:
+      NODE_ENV: production
+      SERVICE_ROLE: worker
+      DATABASE_URL: mysql://cyberjocx:cyberjocx@mysql:3306/cyberjocx
+      NVD_API_URL: https://services.nvd.nist.gov/rest/json/cves/2.0
+      LOG_LEVEL: info
+    depends_on:
       mysql:
+        condition: service_healthy
+
+  mysql:
         condition: service_healthy
 
   mysql:
