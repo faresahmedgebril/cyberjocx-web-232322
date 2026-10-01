@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, lt } from "drizzle-orm";
 import { labInstances, labTemplates, labFlags } from "../../../drizzle/schema";
 import { getDb } from "../../db";
 import { queue } from "../../infrastructure/queue/provider";
@@ -113,9 +113,7 @@ export async function destroyLab(labInstanceId: number) {
 export async function cleanupExpiredLabs() {
   const db = await getDb();
   if (!db) return 0;
-  const expired = await db.select().from(labInstances).where(and(
-    gt(new Date(), labInstances.expiresAt),
-  ));
+  const expired = await db.select().from(labInstances).where(lt(labInstances.expiresAt, new Date()));
   let cleaned = 0;
   for (const instance of expired) {
     if (["DESTROYED", "CLEANUP"].includes(instance.status)) continue;
