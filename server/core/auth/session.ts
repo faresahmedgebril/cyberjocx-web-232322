@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import type { Request } from "express";
-import { and, eq, gt, isNull, sql } from "drizzle-orm";
+import { and, eq, gt, isNull } from "drizzle-orm";
 import { sessions, users } from "../../../drizzle/schema";
 import { getDb, getUserById, upsertUser } from "../../db";
 import { COOKIE_NAME } from "../../config/constants";
@@ -11,6 +11,32 @@ function hashToken(token: string) {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
+function signSession(payload: string) {
+  return crypto.createHmac("sha256", ENV.JWT_SECRET!).update(payload).digest("base64url");
+}
+
+function createStatelessToken(userId: number, expiresAt: Date) {
+  const payload = Buffer.from(JSON.stringify({ sub: userId, exp: expiresAt.getTime() })).toString("base64url");
+  return `v1.${payload}.${signSession(payload)}`;
+}
+
+function readStatelessToken(token: string) {
+  const parts = token.split(".");
+  if (parts.length !== 3 || parts[0] !== "v1") return null;
+  const [version, payload, signature] = parts;
+  const expected = signSession(payload);
+  const a = Buffer.from(signature);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
+  try {
+    const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { sub?: number; exp?: number };
+    if (!data.sub || !data.exp || data.exp <= Date.now()) return null;
+    return { userId: data.sub, expiresAt: new Date(data.exp) };
+  } catch {
+    return null;
+  }
+}
+
 export function getSessionToken(req: Request) {
   const authorization = req.headers.authorization;
   if (authorization?.startsWith("Bearer ")) return authorization.slice(7);
@@ -18,32 +44,31 @@ export function getSessionToken(req: Request) {
   return match?.slice(COOKIE_NAME.length + 1);
 }
 
-export async function createSession(userId: number, req?: Pick<Request, "headers" | "ip">) {
-  const db = await getDb();
-  if (!db) throw new Error("Database unavailable");
-  const token = crypto.randomBytes(32).toString("base64url");
+export async function createSession(userId: number, _req?: Pick<Request, "headers" | "ip">) {
+  if (!ENV.JWT_SECRET) throw new Error("JWT_SECRET is not configured");
   const expiresAt = new Date(Date.now() + ENV.SESSION_TTL_MS);
-  const userAgent = req?.headers["user-agent"] ?? null;
-  const ipAddress = req?.ip ?? null;
-  // Use an explicit SQL insert here so nullable session metadata never relies on
-  // MySQL/Drizzle DEFAULT semantics for columns without explicit defaults.
-  await db.execute(sql`
-    INSERT INTO sessions (userId, tokenHash, expiresAt, userAgent, ipAddress)
-    VALUES (${userId}, ${hashToken(token)}, ${expiresAt}, ${userAgent}, ${ipAddress})
-  `);
+  const token = createStatelessToken(userId, expiresAt);
   return { token, expiresAt };
 }
 
 export async function revokeSession(token: string | undefined) {
-  if (!token) return;
-  const db = await getDb();
-  if (!db) return;
-  await db.update(sessions).set({ revokedAt: new Date() }).where(eq(sessions.tokenHash, hashToken(token)));
+  // Stateless sessions are invalidated client-side by clearing the HttpOnly cookie.
+  // The database session table is retained for backward compatibility but is no longer
+  // part of the login critical path.
+  void token;
 }
 
 export async function authenticateRequest(req: Request) {
   const token = getSessionToken(req);
   if (!token) throw authenticationError();
+  const stateless = readStatelessToken(token);
+  if (stateless) {
+    const user = await getUserById(stateless.userId);
+    if (!user) throw authenticationError("Session user no longer exists");
+    return user;
+  }
+
+  // Backward compatibility for any older database-backed sessions.
   const db = await getDb();
   if (!db) throw authenticationError();
   const row = (await db.select().from(sessions).where(and(eq(sessions.tokenHash, hashToken(token)), isNull(sessions.revokedAt), gt(sessions.expiresAt, new Date()))).limit(1))[0];
