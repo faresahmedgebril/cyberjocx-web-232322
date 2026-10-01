@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { provisionLab } from "./modules/labs/service";
+import { cleanupExpiredLabs, provisionLab } from "./modules/labs/service";
 import { and, eq } from "drizzle-orm";
 import { cves, getDb, nvdSyncRuns, nvdSyncSettings } from "./db";
 import { ENV } from "./config/env";
@@ -79,6 +79,7 @@ export async function handleNvdSync(req: Request, res: Response) {
 }
 
 export async function runQueuedJobs() {
+  await cleanupExpiredLabs();
   const job = await queue.claim();
   if (!job) return false;
   try {
