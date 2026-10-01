@@ -50,6 +50,13 @@
       "when": 1787833180012,
       "tag": "0006_overjoyed_preak",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1790871601666,
+      "tag": "0010_architecture_domains",
+      "breakpoints": true
     }
   ]
 }
