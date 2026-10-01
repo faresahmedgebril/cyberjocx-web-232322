@@ -1,3 +1,4 @@
+import { listChallenges, getChallenge, submitChallenge, createChallenge } from "./modules/practice/service";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, or, sql } from "drizzle-orm";
 import { askAI, personalizeAI } from "./modules/ai/service";
@@ -222,7 +223,30 @@ export const appRouter = router({
       return { roadmap: response.content, model: response.model, usage: { inputTokens: response.inputTokens, outputTokens: response.outputTokens, totalTokens: response.totalTokens } };
     }),
   }),
+  practice: router({
+    list: publicProcedure.input(z.object({
+      type: z.enum(["basic", "static", "ctf", "lab"]).optional(),
+      difficulty: z.enum(["beginner", "intermediate", "advanced"]).optional(),
+    }).optional()).query(({ input }) => listChallenges(input)),
+    byId: publicProcedure.input(z.object({ id: z.number().int().positive() })).query(({ input }) => getChallenge(input.id)),
+    submit: protectedProcedure.input(z.object({
+      challengeId: z.number().int().positive(),
+      answer: z.string().min(1).max(512),
+    })).mutation(({ ctx, input }) => submitChallenge(ctx.user.id, input.challengeId, input.answer)),
+  }),
   admin: router({
+    createChallenge: adminProcedure.input(z.object({
+      slug: z.string().min(2).max(255),
+      title: z.string().min(2).max(255),
+      description: z.string().min(1).max(10000),
+      type: z.enum(["basic", "static", "ctf", "lab"]),
+      difficulty: z.enum(["beginner", "intermediate", "advanced"]),
+      points: z.number().int().min(1).max(100000),
+      validationMode: z.enum(["STATIC_FLAG", "SERVER_VALIDATOR", "LAB_FLAG", "AUTOMATED_TEST", "PROJECT_CHECK"]),
+      expectedAnswer: z.string().max(512).optional(),
+      hintText: z.string().max(2000).optional(),
+      skillId: z.number().int().positive().optional(),
+    })).mutation(({ input }) => createChallenge(input)),
     content: adminProcedure.query(async () => {
       const db = await getDb();
       if (!db) return { courses: [], tools: [], cves: [] };
