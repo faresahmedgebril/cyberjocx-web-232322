@@ -1,3 +1,4 @@
+import { getOnboarding, saveOnboarding, listAssessments, getAssessment, submitAssessment, latestAssessment } from "./modules/learning/service";
 import { listCtfEvents, getCtfEvent, submitCtfFlag } from "./modules/ctf/service";
 import { getPortfolio, ensurePortfolio } from "./modules/portfolio/service";
 import { listLabTemplates, startLab, submitLabFlag } from "./modules/labs/service";
@@ -225,6 +226,22 @@ export const appRouter = router({
       const response = await personalizeAI({ userName: ctx.user.name ?? "متعلم", track: roadmap.track.title, currentLevel: roadmap.currentLevel, outline });
       return { roadmap: response.content, model: response.model, usage: { inputTokens: response.inputTokens, outputTokens: response.outputTokens, totalTokens: response.totalTokens } };
     }),
+  }),
+  learning: router({
+    onboarding: protectedProcedure.query(({ ctx }) => getOnboarding(ctx.user.id)),
+    saveOnboarding: protectedProcedure.input(z.object({
+      level: z.string().min(2).max(32),
+      interests: z.array(z.string()).min(1).max(10),
+      goal: z.string().min(2).max(80),
+      studyTime: z.string().min(2).max(32),
+    })).mutation(({ ctx, input }) => saveOnboarding(ctx.user.id, input)),
+    assessments: publicProcedure.query(() => listAssessments()),
+    assessment: publicProcedure.input(z.object({ id: z.number().int().positive() })).query(({ input }) => getAssessment(input.id)),
+    submitAssessment: protectedProcedure.input(z.object({
+      assessmentId: z.number().int().positive(),
+      answers: z.array(z.number().int()).max(200),
+    })).mutation(({ ctx, input }) => submitAssessment(ctx.user.id, input.assessmentId, input.answers)),
+    latestAssessment: protectedProcedure.query(({ ctx }) => latestAssessment(ctx.user.id)),
   }),
   ctf: router({
     events: publicProcedure.query(() => listCtfEvents()),
