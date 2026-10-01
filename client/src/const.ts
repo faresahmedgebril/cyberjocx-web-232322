@@ -5,5 +5,5 @@ export { COOKIE_NAME, ONE_YEAR_MS } from "@shared/const";
 import { apiUrl } from "@/features/api/config";
 
 export const startLogin = () => {
-  window.location.assign(apiUrl("/api/auth/google/login"));
+  window.dispatchEvent(new CustomEvent("cyberjocx-auth"));
 };
