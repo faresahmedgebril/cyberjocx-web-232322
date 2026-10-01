@@ -301,6 +301,44 @@ export const jobs = mysqlTable("jobs", {
 });
 
 
+export const onboardingProfiles = mysqlTable("onboardingProfiles", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique(),
+  level: varchar("level", { length: 32 }).notNull(),
+  interestsJson: text("interestsJson").notNull(),
+  goal: varchar("goal", { length: 80 }).notNull(),
+  studyTime: varchar("studyTime", { length: 32 }).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export const assessments = mysqlTable("assessments", {
+  id: int("id").autoincrement().primaryKey(),
+  slug: varchar("slug", { length: 255 }).notNull().unique(),
+  title: varchar("title", { length: 255 }).notNull(),
+  active: boolean("active").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const assessmentQuestions = mysqlTable("assessmentQuestions", {
+  id: int("id").autoincrement().primaryKey(),
+  assessmentId: int("assessmentId").notNull(),
+  skillId: int("skillId").notNull(),
+  prompt: text("prompt").notNull(),
+  optionsJson: text("optionsJson").notNull(),
+  answerIndex: int("answerIndex").notNull(),
+  weight: int("weight").default(10).notNull(),
+  orderIndex: int("orderIndex").default(0).notNull(),
+});
+
+export const assessmentAttempts = mysqlTable("assessmentAttempts", {
+  id: int("id").autoincrement().primaryKey(),
+  assessmentId: int("assessmentId").notNull(),
+  userId: int("userId").notNull(),
+  score: int("score").notNull(),
+  skillProfileJson: text("skillProfileJson").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export const challenges = mysqlTable("challenges", {
   id: int("id").autoincrement().primaryKey(),
   slug: varchar("slug", { length: 255 }).notNull().unique(),
@@ -533,3 +571,7 @@ export type LabTemplate = typeof labTemplates.$inferSelect;
 export type LabInstance = typeof labInstances.$inferSelect;
 export type Project = typeof projects.$inferSelect;
 export type Portfolio = typeof portfolios.$inferSelect;
+
+export type OnboardingProfile = typeof onboardingProfiles.$inferSelect;
+export type Assessment = typeof assessments.$inferSelect;
+export type AssessmentAttempt = typeof assessmentAttempts.$inferSelect;
