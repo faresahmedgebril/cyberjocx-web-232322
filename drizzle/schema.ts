@@ -1,4 +1,4 @@
-import { boolean, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, int, mysqlEnum, mysqlTable, text, timestamp, unique, varchar } from "drizzle-orm/mysql-core";
 
 export const users = mysqlTable("users", {
   id: int("id").autoincrement().primaryKey(),
@@ -439,7 +439,7 @@ export const xpTransactions = mysqlTable("xpTransactions", {
   sourceType: varchar("sourceType", { length: 64 }).notNull(),
   sourceId: int("sourceId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
+  }, (table) => ({ rewardSourceUnique: unique("xpTransactions_user_source_unique").on(table.userId, table.sourceType, table.sourceId) }));
 
 export const achievements = mysqlTable("achievements", {
   id: int("id").autoincrement().primaryKey(),
