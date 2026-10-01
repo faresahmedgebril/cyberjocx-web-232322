@@ -1,3 +1,5 @@
+import { listCtfEvents, getCtfEvent, submitCtfFlag } from "./modules/ctf/service";
+import { getPortfolio, ensurePortfolio } from "./modules/portfolio/service";
 import { listLabTemplates, startLab, submitLabFlag } from "./modules/labs/service";
 import { listChallenges, getChallenge, submitChallenge, createChallenge } from "./modules/practice/service";
 import { TRPCError } from "@trpc/server";
@@ -224,6 +226,15 @@ export const appRouter = router({
       return { roadmap: response.content, model: response.model, usage: { inputTokens: response.inputTokens, outputTokens: response.outputTokens, totalTokens: response.totalTokens } };
     }),
   }),
+  ctf: router({
+    events: publicProcedure.query(() => listCtfEvents()),
+    event: publicProcedure.input(z.object({ eventId: z.number().int().positive() })).query(({ input }) => getCtfEvent(input.eventId)),
+    submit: protectedProcedure.input(z.object({
+      eventId: z.number().int().positive(),
+      challengeId: z.number().int().positive(),
+      flag: z.string().min(1).max(512),
+    })).mutation(({ ctx, input }) => submitCtfFlag(ctx.user.id, input.eventId, input.challengeId, input.flag)),
+  }),
   labs: router({
     templates: publicProcedure.query(() => listLabTemplates()),
     start: protectedProcedure.input(z.object({
@@ -234,6 +245,10 @@ export const appRouter = router({
       instanceId: z.number().int().positive(),
       flag: z.string().min(1).max(512),
     })).mutation(({ ctx, input }) => submitLabFlag(ctx.user.id, input.instanceId, input.flag)),
+  }),
+  portfolio: router({
+    me: protectedProcedure.query(({ ctx }) => getPortfolio(ctx.user.id)),
+    ensure: protectedProcedure.mutation(({ ctx }) => ensurePortfolio(ctx.user.id)),
   }),
   practice: router({
     list: publicProcedure.input(z.object({
