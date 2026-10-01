@@ -57,6 +57,13 @@
       "when": 1790871601666,
       "tag": "0010_architecture_domains",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "5",
+      "when": 1790871866166,
+      "tag": "0011_onboarding_assessment",
+      "breakpoints": true
     }
   ]
 }
