@@ -39,7 +39,7 @@ jobs:
       - name: Build frontend
         env:
           VITE_BASE_PATH: /cyberjocx-web-232322/
-          VITE_API_BASE_URL: ${{ vars.VITE_API_BASE_URL }}
+          VITE_API_BASE_URL: https://cyberjocx-api-production.up.railway.app
         run: |
           pnpm build:client
           test -f dist/public/index.html
