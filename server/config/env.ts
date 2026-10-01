@@ -62,12 +62,15 @@ const raw = parsed.data;
 if (raw.NODE_ENV === "production") {
   const required = raw.SERVICE_ROLE === "worker"
     ? ["DATABASE_URL"] as const
-    : ["DATABASE_URL", "JWT_SECRET", "APP_WEB_URL", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "GOOGLE_OAUTH_REDIRECT_URI", "STORAGE_BUCKET", "STORAGE_ACCESS_KEY", "STORAGE_SECRET_KEY", "CRON_SECRET"] as const;
+    : ["DATABASE_URL", "JWT_SECRET", "APP_WEB_URL"] as const;
   const missing = required.filter(key => !raw[key]);
   if (missing.length) throw new Error(`Missing required production environment variables: ${missing.join(", ")}`);
   if (raw.SERVICE_ROLE === "api") {
     if (raw.CORS_ORIGINS === "http://localhost:3000") throw new Error("CORS_ORIGINS must be configured for the production frontend");
     if (raw.SESSION_COOKIE_SAMESITE === "none" && !raw.SESSION_COOKIE_SECURE) throw new Error("SESSION_COOKIE_SECURE must be true when SESSION_COOKIE_SAMESITE=none");
+    if (!raw.GOOGLE_CLIENT_ID || !raw.GOOGLE_CLIENT_SECRET) console.warn("[config] Google OAuth is disabled until GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are configured.");
+    if (raw.STORAGE_PROVIDER === "s3" && (!raw.STORAGE_BUCKET || !raw.STORAGE_ACCESS_KEY || !raw.STORAGE_SECRET_KEY)) console.warn("[config] S3 uploads are disabled until STORAGE_BUCKET, STORAGE_ACCESS_KEY and STORAGE_SECRET_KEY are configured.");
+    if (!raw.CRON_SECRET) console.warn("[config] CRON_SECRET is not configured; protected cron endpoints will be unavailable.");
   }
 }
 
