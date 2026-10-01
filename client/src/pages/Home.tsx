@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
@@ -21,6 +21,7 @@ export default function Home() {
   const { user, loading, error: authError, isAuthenticated, logout } = useAuth();
   const [section, setSection] = useState<Section>("dashboard");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
   const [courseSearch, setCourseSearch] = useState("");
   const [cveSearch, setCveSearch] = useState("");
   const [severity, setSeverity] = useState<"all" | "critical" | "high" | "medium" | "low">("all");
@@ -36,6 +37,12 @@ export default function Home() {
   const [malwareCategory, setMalwareCategory] = useState("all");
   const [postText, setPostText] = useState("");
   const [aiInput, setAiInput] = useState("");
+  useEffect(() => {
+    const openAuth = () => setAuthOpen(true);
+    window.addEventListener("cyberjocx-auth", openAuth);
+    return () => window.removeEventListener("cyberjocx-auth", openAuth);
+  }, []);
+
   const [aiMessages, setAiMessages] = useState<{ role: "assistant" | "user"; content: string }[]>([
     { role: "assistant", content: "أنا NEXUS. اطرح سؤالًا عن مسار التعلم أو تحليل ثغرة أو أداة دفاعية، وسأبني لك إجابة قابلة للتنفيذ داخل نطاق مصرح به." },
   ]);
@@ -267,4 +274,57 @@ function AdminView() {
   const field = (key: string, label: string, placeholder: string) => <label className="admin-field"><span>{label}</span><input value={form[key] ?? ""} onChange={event => update(key, event.target.value)} placeholder={placeholder} /></label>;
   const stats = adminStats.data ?? { users: 1284, courses: 24, cves: 8492, tools: 64, posts: 382 };
   return <section className="admin-layout"><div className="admin-hero panel-card"><div className="section-tag">// ROOT ACCESS GRANTED</div><h2>Control the knowledge layer.</h2><p>إدارة المحتوى ومراجعة نبض المنصة من نقطة تحكم واحدة.</p><div className="admin-actions"><button className={`primary-button ${mode === "course" ? "" : "secondary-button"}`} onClick={() => setMode("course")}><BookOpen size={16} /> COURSE NODE</button><button className={`primary-button ${mode === "tool" ? "" : "secondary-button"}`} onClick={() => setMode("tool")}><Wrench size={16} /> TOOL NODE</button><button className={`primary-button ${mode === "cve" ? "" : "secondary-button"}`} onClick={() => setMode("cve")}><Bug size={16} /> CVE SIGNAL</button></div></div><div className="admin-metrics"><div className="admin-metric panel-card"><Users size={18} /><strong>{stats.users.toLocaleString()}</strong><span>REGISTERED OPERATORS</span></div><div className="admin-metric panel-card"><BookOpen size={18} /><strong>{stats.courses}</strong><span>COURSE NODES</span></div><div className="admin-metric panel-card"><Bug size={18} /><strong>{stats.cves.toLocaleString()}</strong><span>CVE SIGNALS</span></div><div className="admin-metric panel-card"><Wrench size={18} /><strong>{stats.tools}</strong><span>TOOL REPOSITORY</span></div></div><div className="admin-editor panel-card"><div className="card-head"><div><div className="section-tag">// WRITE TO KNOWLEDGE LAYER</div><h3>Publish {mode === "course" ? "course" : mode === "tool" ? "tool" : "CVE"} node</h3></div><span className="status-chip"><span className="pulse-dot" /> VALIDATED</span></div><div className="admin-form-grid">{mode === "course" && <>{field("title", "TITLE", "Threat Hunting Protocol")} {field("slug", "SLUG", "threat-hunting-protocol")} {field("category", "CATEGORY", "THREAT INTEL")} {field("instructor", "INSTRUCTOR", "NEXUS LAB")} {field("lessons", "LESSONS", "12")} {field("durationMinutes", "DURATION MINUTES", "360")}</>}{mode === "tool" && <>{field("name", "NAME", "Nmap")} {field("category", "CATEGORY", "RECON")} {field("commands", "COMMANDS", "nmap -sV --script safe target")} {field("downloadUrl", "REPOSITORY URL", "https://...")}</>}{mode === "cve" && <>{field("cveNumber", "CVE NUMBER", "CVE-2026-0000")} {field("title", "TITLE", "Critical signal title")} {field("severity", "SEVERITY", "critical")} {field("cvss", "CVSS", "9.8")} {field("affected", "AFFECTED PRODUCT", "Product / version")} {field("publishedDate", "PUBLISHED DATE", "2026-08-23")}</>}<label className="admin-field full"><span>DESCRIPTION</span><textarea value={form.description ?? ""} onChange={event => update("description", event.target.value)} placeholder="اكتب ملخصًا دقيقًا وقابلًا للتدقيق..." /></label></div><button className="primary-button" onClick={submit} disabled={createCourse.isPending || createTool.isPending || createCve.isPending}><Send size={15} /> PUBLISH TO MATRIX</button></div><div className="admin-table panel-card"><div className="card-head"><div><div className="section-tag">// CONTENT REGISTRY</div><h3>Current knowledge nodes</h3></div><span className="status-chip"><span className="pulse-dot" /> {adminContent.isLoading ? "SYNCING" : "LIVE"}</span></div><div className="registry-grid"><div><span className="registry-label">COURSES</span>{!adminContent.data?.courses.length && <div className="registry-empty">NO COURSE NODES</div>}{adminContent.data?.courses.map(item => <div className="registry-row" key={item.id}><strong>{item.title}</strong><span>{item.category}</span><button onClick={() => deleteCourse.mutate({ id: item.id })}><X size={13} /></button></div>)}</div><div><span className="registry-label">TOOLS</span>{adminContent.data?.tools.map(item => <div className="registry-row" key={item.id}><strong>{item.name}</strong><span>{item.category}</span><button onClick={() => deleteTool.mutate({ id: item.id })}><X size={13} /></button></div>)}</div><div><span className="registry-label">CVE SIGNALS</span>{adminContent.data?.cves.map(item => <div className="registry-row" key={item.id}><strong>{item.cveNumber}</strong><span>{item.severity}</span><button onClick={() => deleteCve.mutate({ id: item.id })}><X size={13} /></button></div>)}</div></div></div><div className="admin-table panel-card"><div className="card-head"><div><div className="section-tag">// RECENT ADMIN ACTIVITY</div><h3>Audit stream</h3></div><span className="status-chip"><span className="pulse-dot" /> MONITORING</span></div>{["Knowledge layer synchronized", "High-risk CVE notification pipeline ready", "Tool repository link verified", "Community signal review queue updated"].map((item, index) => <div className="audit-row" key={item}><span>0{index + 1}</span><strong>{item}</strong><em>{index + 2}m ago</em><Check size={15} /></div>)}</div></section>;
+}
+
+
+function AuthModal({ onClose }: { onClose: () => void }) {
+  const [mode, setMode] = useState<"login" | "register">("login");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setMessage("");
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || "https://cyberjocx-api-production.up.railway.app"}/api/auth/${mode}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(mode === "register" ? { name, email, password } : { email, password }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.message || "Authentication failed.");
+      window.location.reload();
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Authentication failed.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return <div className="modal-backdrop auth-backdrop" onClick={onClose}>
+    <div className="auth-modal panel-card" onClick={event => event.stopPropagation()}>
+      <button className="modal-close" onClick={onClose}><X size={16} /></button>
+      <div className="section-tag">// IDENTITY LAYER</div>
+      <h2>{mode === "login" ? "دخول إلى CyberJocx" : "إنشاء حساب جديد"}</h2>
+      <p>{mode === "login" ? "سجّل الدخول بالبريد الإلكتروني وكلمة المرور." : "أنشئ حسابك ببريدك الإلكتروني وكلمة مرور خاصة بك."}</p>
+      <form onSubmit={submit} className="auth-form">
+        {mode === "register" && <input className="auth-input" value={name} onChange={e => setName(e.target.value)} placeholder="الاسم" minLength={2} maxLength={120} required />}
+        <input className="auth-input" value={email} onChange={e => setEmail(e.target.value)} placeholder="البريد الإلكتروني" type="email" required />
+        <input className="auth-input" value={password} onChange={e => setPassword(e.target.value)} placeholder="كلمة المرور (8 أحرف على الأقل)" type="password" minLength={8} maxLength={128} required />
+        {message && <div className="auth-error">{message}</div>}
+        <button className="primary-button auth-submit" disabled={busy}>{busy ? "جارٍ التحقق..." : mode === "login" ? "دخول" : "إنشاء الحساب"}</button>
+      </form>
+      <button className="auth-switch" onClick={() => { setMode(mode === "login" ? "register" : "login"); setMessage(""); }}>
+        {mode === "login" ? "ليس لديك حساب؟ إنشاء حساب" : "لديك حساب بالفعل؟ تسجيل الدخول"}
+      </button>
+      <button className="auth-google" onClick={() => { window.location.assign((import.meta.env.VITE_API_BASE_URL || "https://cyberjocx-api-production.up.railway.app") + "/api/auth/google/login"); }}>
+        متابعة باستخدام Google (اختياري)
+      </button>
+    </div>
+  </div>;
 }
