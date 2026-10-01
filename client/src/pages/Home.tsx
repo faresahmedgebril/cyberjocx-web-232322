@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
@@ -285,7 +286,7 @@ function AuthModal({ onClose }: { onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
 
-  const submit = async (event: React.FormEvent) => {
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
     setBusy(true);
     setMessage("");
