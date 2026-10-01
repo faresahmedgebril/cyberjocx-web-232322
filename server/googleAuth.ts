@@ -36,7 +36,6 @@ export function registerGoogleAuthRoutes(app: Express) {
     try {
       const { clientId } = requireGoogleConfig();
       const state = crypto.randomBytes(32).toString("base64url");
-      const secure = req.protocol === "https" || String(req.headers["x-forwarded-proto"] ?? "").includes("https");
       res.cookie(OAUTH_STATE_COOKIE, state, { ...getSessionCookieOptions(req), sameSite: "lax", maxAge: 10 * 60 * 1000 });
       const url = new URL(GOOGLE_AUTHORIZE_URL);
       url.searchParams.set("client_id", clientId);
@@ -76,7 +75,17 @@ export function registerGoogleAuthRoutes(app: Express) {
       res.setHeader("Set-Cookie", sessionCookie(token, secure));
       res.redirect(302, ENV.APP_WEB_URL ?? "/");
     } catch (error) {
-      console.error("[Google OAuth] callback failed", error instanceof Error ? error.message : "unknown error");
+      const e = error as any;
+      console.error("[Google OAuth] callback failed", {
+        name: e?.name,
+        message: e?.message,
+        code: e?.code,
+        errno: e?.errno,
+        sqlState: e?.sqlState,
+        sqlMessage: e?.sqlMessage,
+        cause: e?.cause?.message ?? e?.cause,
+        stack: e?.stack,
+      });
       res.redirect(302, `${ENV.APP_WEB_URL ?? ""}/?authError=google`);
     }
   });
