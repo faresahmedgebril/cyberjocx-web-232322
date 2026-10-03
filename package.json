@@ -17,7 +17,9 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:push": "pnpm db:generate && pnpm db:migrate"
+    "db:push": "pnpm db:generate && pnpm db:migrate",
+    "build:cron": "esbuild server/cron.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "cron:nvd": "NODE_ENV=production SERVICE_ROLE=cron node dist/cron.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",
