@@ -62,7 +62,7 @@ if (!parsed.success) {
 
 const raw = parsed.data;
 if (raw.NODE_ENV === "production") {
-  const required = raw.SERVICE_ROLE === "worker"
+  const required = raw.SERVICE_ROLE === "worker" || raw.SERVICE_ROLE === "cron"
     ? ["DATABASE_URL"] as const
     : ["DATABASE_URL", "JWT_SECRET", "APP_WEB_URL"] as const;
   const missing = required.filter(key => !raw[key]);
