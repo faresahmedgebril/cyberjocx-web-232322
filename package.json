@@ -5,7 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "NODE_ENV=development tsx watch server/_core/index.ts",
-    "build": "pnpm build:client && pnpm build:server && pnpm build:worker",
+    "build": "pnpm build:client && pnpm build:server && pnpm build:worker && pnpm build:cron",
     "build:client": "vite build",
     "build:server": "esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "build:worker": "esbuild server/worker.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
