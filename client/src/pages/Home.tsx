@@ -9,6 +9,7 @@ import {
   Activity, ArrowLeft, ArrowUpRight, BookOpen, Bot, Boxes, BrainCircuit, Bug, Check, ChevronLeft, CircleUserRound, Code2, Cpu, Database, FileCode2, Filter, Gauge, Heart, LayoutDashboard, Library, LockKeyhole, LogOut, Menu, MessageSquare, Network, Plus, Radio, Search, Send, ShieldAlert, ShoppingBag, ShoppingCart, Sparkles, Terminal, UserPlus, Users, Wrench, X, Zap,
 } from "lucide-react";
 import { toast } from "sonner";
+import FigmaDashboard from "@/components/FigmaDashboard";
 
 type Section = "dashboard" | "profile" | "learning" | "tracks" | "cves" | "malware" | "tools" | "community" | "market" | "ai" | "admin";
 
@@ -99,9 +100,13 @@ export default function Home() {
   if (user?.role === "admin") navItems.push({ id: "admin", label: "غرفة المدير", meta: "A" });
 
   const navigate = (target: Section) => { setSection(target); setMobileOpen(false); };
+  const figmaTargets: Record<string, Section> = { dashboard: "dashboard", profile: "profile", learning: "learning", tracks: "tracks", cves: "cves", malware: "malware", tools: "tools", community: "community", market: "market", ai: "ai" };
+  const handleFigmaNavigate = (target: string) => { const destination = figmaTargets[target]; if (destination) navigate(destination); else toast.info(`${target} module is not available yet.`); };
   const titleMap: Record<Section, string> = { dashboard: "CYBERJOCX", profile: "YOUR PROFILE", learning: "مسارات التعلّم", tracks: "مساراتك التعليمية", cves: "مركز الثغرات CVE", malware: "مركز Malware", tools: "دليل الأدوات", community: "المجتمع", market: "مكتبة CyberJocx", ai: "NEXUS", admin: "إدارة المنصة" };
 
   if (loading) return <div className="boot-screen"><div className="boot-panel"><div className="boot-line">[BOOT] initializing identity layer...</div><div className="boot-line">[BOOT] mounting cyberjocx interface...</div><div className="skeleton-heading" /><div className="skeleton-grid"><i /><i /><i /></div><div className="boot-cursor">█</div></div></div>;
+
+  if (section === "dashboard") return <><FigmaDashboard stats={{ points: stats.points, coursesCompleted: stats.coursesCompleted, activeCourses: stats.activeCourses, cvesTracked: stats.cvesTracked || cves.length }} learningCourses={courses.map((course: any) => ({ id: course.id, title: course.title, category: course.category, level: course.level, progress: course.progress }))} userName={user?.name ?? "GHOST_OPERATOR"} onNavigate={handleFigmaNavigate} onOpenAuth={() => isAuthenticated ? navigate("profile") : setAuthOpen(true)} />{authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}</>;
 
   return (
     <div className="app-shell">
