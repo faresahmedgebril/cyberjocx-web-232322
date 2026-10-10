@@ -5,6 +5,8 @@ on:
       - integrate-figma-design
     paths:
       - .github/workflows/extract-figma.yml
+      - client/src/components/FigmaDashboard.tsx
+      - client/src/pages/Home.tsx
 permissions:
   contents: write
 jobs:
