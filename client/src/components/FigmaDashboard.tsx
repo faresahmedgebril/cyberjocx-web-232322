@@ -133,7 +133,7 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
   return <div className={`figma-dashboard ${bright ? "bright" : ""}`}>
     <header className="topbar">
       <div className="brand">
-        <img src="/assets/cyber-hacker.jpg" alt="CyberJocx" />
+        <img src={`${import.meta.env.BASE_URL}assets/cyber-hacker.jpg`} alt="CyberJocx" />
         <strong>Cyber<span>Jocx</span></strong>
         <b>DASHBOARD</b>
       </div>
@@ -166,7 +166,7 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
           <Panel className="welcome-card">
             <img
               className="welcome-image"
-              src="/assets/dashboard-welcome.jpg"
+              src={`${import.meta.env.BASE_URL}assets/dashboard-welcome.jpg`}
               alt={`Welcome back, ${userName || "operator"}. Keep learning. Keep hacking. Keep growing.`}
             />
           </Panel>
