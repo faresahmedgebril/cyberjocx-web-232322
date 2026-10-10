@@ -29,24 +29,33 @@ export async function syncRecentNvd() {
   try {
     const end = new Date();
     const start = new Date(end.getTime() - NVD_LOOKBACK_HOURS * 60 * 60 * 1000);
-    const url = new URL(ENV.NVD_API_URL);
-    url.searchParams.set("pubStartDate", start.toISOString());
-    url.searchParams.set("pubEndDate", end.toISOString());
-    url.searchParams.set("resultsPerPage", String(NVD_BATCH_SIZE));
-    const response = await fetchWithRetry(url);
-    const payload = await response.json() as {
-      vulnerabilities?: Array<{
-        cve?: {
-          id?: string;
-          descriptions?: Array<{ lang?: string; value?: string }>;
-          published?: string;
-          metrics?: Record<string, Array<{ cvssData?: { baseScore?: number; baseSeverity?: string } }>>;
-          configurations?: Array<{ nodes?: Array<{ cpeMatch?: Array<{ criteria?: string }> }> }>;
-        };
-      }>;
-    };
+    const baseUrl = new URL(ENV.NVD_API_URL);
+    baseUrl.searchParams.set("pubStartDate", start.toISOString());
+    baseUrl.searchParams.set("pubEndDate", end.toISOString());
+    baseUrl.searchParams.set("resultsPerPage", String(NVD_BATCH_SIZE));
     let imported = 0;
-    for (const item of payload.vulnerabilities ?? []) {
+    let startIndex = 0;
+    let totalResults = Number.POSITIVE_INFINITY;
+    while (startIndex < totalResults) {
+      const pageUrl = new URL(baseUrl);
+      pageUrl.searchParams.set("startIndex", String(startIndex));
+      const response = await fetchWithRetry(pageUrl);
+      const payload = await response.json() as {
+        totalResults?: number;
+        vulnerabilities?: Array<{
+          cve?: {
+            id?: string;
+            descriptions?: Array<{ lang?: string; value?: string }>;
+            published?: string;
+            metrics?: Record<string, Array<{ cvssData?: { baseScore?: number; baseSeverity?: string } }>>;
+            configurations?: Array<{ nodes?: Array<{ cpeMatch?: Array<{ criteria?: string }> }> }>;
+          };
+        }>;
+      };
+      const vulnerabilities = payload.vulnerabilities ?? [];
+      totalResults = Number.isFinite(payload.totalResults) ? Number(payload.totalResults) : startIndex + vulnerabilities.length;
+      if (vulnerabilities.length === 0) break;
+      for (const item of vulnerabilities) {
       const cve = item.cve;
       if (!cve?.id || !cve.published) continue;
       const metric = cve.metrics?.cvssMetricV40?.[0] ?? cve.metrics?.cvssMetricV31?.[0] ?? cve.metrics?.cvssMetricV30?.[0];
@@ -54,8 +63,12 @@ export async function syncRecentNvd() {
       const severity = (["critical", "high", "medium", "low"].includes(rawSeverity) ? rawSeverity : "medium") as "critical" | "high" | "medium" | "low";
       const affected = cve.configurations?.flatMap(config => config.nodes?.flatMap(node => node.cpeMatch?.map(match => match.criteria).filter(Boolean) ?? []) ?? []).slice(0, 4).join(", ") || "See NVD configuration details";
       const description = cve.descriptions?.find(value => value.lang === "en")?.value ?? cve.descriptions?.[0]?.value ?? "No description provided by NVD.";
-      await db.insert(cves).values({ cveNumber: cve.id, title: cve.id, description, severity, cvss: String(metric?.cvssData?.baseScore ?? 0), publishedDate: cve.published, affected, sourceUrl: `https://nvd.nist.gov/vuln/detail/${cve.id}` }).onDuplicateKeyUpdate({ set: { description, severity, cvss: String(metric?.cvssData?.baseScore ?? 0), publishedDate: cve.published, affected, sourceUrl: `https://nvd.nist.gov/vuln/detail/${cve.id}` } });
+      const title = description.length > 160 ? `${description.slice(0, 157).trimEnd()}...` : description;
+      await db.insert(cves).values({ cveNumber: cve.id, title, description, severity, cvss: String(metric?.cvssData?.baseScore ?? 0), publishedDate: cve.published, affected, sourceUrl: `https://nvd.nist.gov/vuln/detail/${cve.id}` }).onDuplicateKeyUpdate({ set: { title, description, severity, cvss: String(metric?.cvssData?.baseScore ?? 0), publishedDate: cve.published, affected, sourceUrl: `https://nvd.nist.gov/vuln/detail/${cve.id}` } });
       imported += 1;
+      }
+      startIndex += vulnerabilities.length;
+      if (vulnerabilities.length < NVD_BATCH_SIZE) break;
     }
     const completedAt = new Date();
     if (runId) await db.update(nvdSyncRuns).set({ status: "success", completedAt, importedCount: imported }).where(eq(nvdSyncRuns.id, runId));
