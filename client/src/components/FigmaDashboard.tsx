@@ -151,7 +151,7 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
 
     <aside className="sidebar">
       <nav aria-label="Dashboard navigation">
-        {navigation.map((item) => <button key={item.label} className={`nav-item ${activeNav === item.label ? "active" : ""}`} onClick={() => { setActiveNav(item.label); const targets: Record<string, string> = { Home: "dashboard", Profile: "profile", Courses: "learning", "Tracks / Roadmaps": "tracks", CVE: "cves", Malware: "malware", Tools: "tools", Community: "community", Marketplace: "market", Machines: "machines", Challenges: "challenges", Leaderboard: "leaderboard", Settings: "settings" }; if (item.label === "Home" || item.label in targets) onNavigate(targets[item.label]); else notify(`${item.label} selected`); }}><Icon name={item.icon} size={23} /><span>{item.label}</span></button>)}
+        {navigation.map((item) => <button key={item.label} className={`nav-item ${activeNav === item.label ? "active" : ""}`} onClick={() => { const targets: Record<string, string> = { Home: "dashboard", Profile: "profile", Courses: "learning", "Tracks / Roadmaps": "tracks", CVE: "cves", Malware: "malware", Tools: "tools", Community: "community", Marketplace: "market" }; const target = targets[item.label]; if (!target) { notify(`${item.label} module is not available yet`); return; } setActiveNav(item.label); onNavigate(target); }}><Icon name={item.icon} size={23} /><span>{item.label}</span></button>)}
       </nav>
       <div className="sidebar-brand" role="button" tabIndex={0} onClick={() => onNavigate("dashboard")}>
         <img src="/assets/cyber-hacker.jpg" alt="Hooded CyberJocx character" />
