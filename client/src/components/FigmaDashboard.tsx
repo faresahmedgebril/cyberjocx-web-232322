@@ -130,7 +130,7 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
     window.setTimeout(() => setToast(""), 1800)
   }
 
-  return <div className={`app ${bright ? "bright" : ""}`}>
+  return <div className={`figma-dashboard ${bright ? "bright" : ""}`}>
     <header className="topbar">
       <div className="brand">
         <img src="/assets/cyber-hacker.jpg" alt="CyberJocx" />
