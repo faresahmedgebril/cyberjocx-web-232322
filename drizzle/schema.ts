@@ -8,7 +8,7 @@ export const users = mysqlTable("users", {
   loginMethod: varchar("loginMethod", { length: 64 }),
   passwordHash: varchar("passwordHash", { length: 255 }),
   role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
-  points: int("points").default(640).notNull(),
+  points: int("points").default(0).notNull(),
   isVip: boolean("isVip").default(false).notNull(),
   bio: text("bio"),
   avatarUrl: text("avatarUrl"),
