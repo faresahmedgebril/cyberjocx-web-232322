@@ -154,7 +154,7 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
         {navigation.map((item) => <button key={item.label} className={`nav-item ${activeNav === item.label ? "active" : ""}`} onClick={() => { const targets: Record<string, string> = { Home: "dashboard", Profile: "profile", Courses: "learning", "Tracks / Roadmaps": "tracks", CVE: "cves", Malware: "malware", Tools: "tools", Community: "community", Marketplace: "market" }; const target = targets[item.label]; if (!target) { notify(`${item.label} module is not available yet`); return; } setActiveNav(item.label); onNavigate(target); }}><Icon name={item.icon} size={23} /><span>{item.label}</span></button>)}
       </nav>
       <div className="sidebar-brand" role="button" tabIndex={0} onClick={() => onNavigate("dashboard")}>
-        <img src="/assets/cyber-hacker.jpg" alt="Hooded CyberJocx character" />
+        <img src={`${import.meta.env.BASE_URL}assets/cyber-hacker.jpg`} alt="Hooded CyberJocx character" />
         <strong>Cyber<span>Jocx</span></strong>
         <small>Secure Your Mind</small>
       </div>
