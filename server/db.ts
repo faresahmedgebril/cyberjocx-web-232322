@@ -41,7 +41,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) throw new Error("User openId is required for upsert");
   const db = await getDb();
   if (!db) return;
-  const values: InsertUser = { openId: user.openId, points: user.points ?? 640 };
+  const values: InsertUser = { openId: user.openId, points: user.points ?? 0 };
   const updateSet: Record<string, unknown> = { lastSignedIn: new Date() };
   for (const field of ["name", "email", "loginMethod", "passwordHash", "bio", "avatarUrl"] as const) {
     if (user[field] !== undefined) {
@@ -249,7 +249,7 @@ export async function ensureCart(userId: number) {
 
 export async function getDashboardStats(userId: number) {
   const db = await getDb();
-  if (!db) return { points: 640, coursesCompleted: 0, activeCourses: 0, cvesTracked: 0, followers: 0 };
+  if (!db) return { points: 0, coursesCompleted: 0, activeCourses: 0, cvesTracked: 0, followers: 0 };
   const user = await getUserById(userId);
   const [completed, active, cveCount, followerCount] = await Promise.all([
     db.select({ count: sql<number>`count(*)` }).from(courseProgress).where(and(eq(courseProgress.userId, userId), eq(courseProgress.completed, true))),
@@ -257,7 +257,7 @@ export async function getDashboardStats(userId: number) {
     db.select({ count: sql<number>`count(*)` }).from(cves),
     db.select({ count: sql<number>`count(*)` }).from(follows).where(eq(follows.followingId, userId)),
   ]);
-  return { points: user?.points ?? 640, coursesCompleted: Number(completed[0]?.count ?? 0), activeCourses: Number(active[0]?.count ?? 0), cvesTracked: Number(cveCount[0]?.count ?? 0), followers: Number(followerCount[0]?.count ?? 0) };
+  return { points: user?.points ?? 0, coursesCompleted: Number(completed[0]?.count ?? 0), activeCourses: Number(active[0]?.count ?? 0), cvesTracked: Number(cveCount[0]?.count ?? 0), followers: Number(followerCount[0]?.count ?? 0) };
 }
 
 export { books, cartItems, carts, certificates, courseProgress, courses, cves, friendRequests, follows, malwareFamilies, notifications, nvdSyncRuns, nvdSyncSettings, postLikes, posts, quizAttempts, quizQuestions, roadmapCourses, roadmaps, tools, trackCourses, trackLevelModules, trackLevels, trackQuizzes, tracks, userTrackLevels, users };
