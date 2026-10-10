@@ -83,7 +83,7 @@ export default function Home() {
   const tools = toolsQuery.data ?? [];
   const cartCount = cartQuery.data?.reduce((total, item) => total + item.quantity, 0) ?? 0;
   const unreadCount = notificationsQuery.data?.filter(item => !item.isRead).length ?? 0;
-  const stats = dashboard.data ?? { points: 640, coursesCompleted: 3, activeCourses: 2, cvesTracked: cves.length, followers: 128 };
+  const stats = { points: isAuthenticated ? (dashboard.data?.points ?? 0) : 0, coursesCompleted: dashboard.data?.coursesCompleted ?? 0, activeCourses: dashboard.data?.activeCourses ?? 0, cvesTracked: dashboard.data?.cvesTracked ?? cves.length, followers: dashboard.data?.followers ?? 0 };
   const syncError = authError || coursesQuery.error || cvesQuery.error || toolsQuery.error || postsQuery.error || booksQuery.error || roadmapsQuery.error || tracksQuery.error;
 
   const navItems: { id: Section; label: string; meta?: string }[] = [
@@ -106,7 +106,7 @@ export default function Home() {
 
   if (loading) return <div className="boot-screen"><div className="boot-panel"><div className="boot-line">[BOOT] initializing identity layer...</div><div className="boot-line">[BOOT] mounting cyberjocx interface...</div><div className="skeleton-heading" /><div className="skeleton-grid"><i /><i /><i /></div><div className="boot-cursor">█</div></div></div>;
 
-  if (String(section) === "dashboard") return <><FigmaDashboard stats={{ points: stats.points, coursesCompleted: stats.coursesCompleted, activeCourses: stats.activeCourses, cvesTracked: stats.cvesTracked || cves.length }} learningCourses={courses.map((course: any) => ({ id: course.id, title: course.title, category: course.category, level: course.level, progress: course.progress }))} userName={user?.name ?? "GHOST_OPERATOR"} onNavigate={handleFigmaNavigate} onOpenAuth={() => isAuthenticated ? navigate("profile") : setAuthOpen(true)} />{authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}</>;
+  if (String(section) === "dashboard") return <><FigmaDashboard stats={{ points: stats.points, coursesCompleted: stats.coursesCompleted, activeCourses: stats.activeCourses, cvesTracked: stats.cvesTracked || cves.length }} learningCourses={courses.map((course: any) => ({ id: course.id, title: course.title, category: course.category, level: course.level, progress: course.progress }))} userName={user?.name?.trim() || (isAuthenticated ? "GHOST_OPERATOR" : "Guest")} onNavigate={handleFigmaNavigate} onOpenAuth={() => isAuthenticated ? navigate("profile") : setAuthOpen(true)} />{authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}</>;
 
   return (
     <div className="app-shell">
