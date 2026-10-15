@@ -167,8 +167,12 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
             <img
               className="welcome-image"
               src={`${import.meta.env.BASE_URL}assets/dashboard-welcome.jpg`}
-              alt={`Welcome back, ${userName || "operator"}. Keep learning. Keep hacking. Keep growing.`}
+              alt="CyberJocx neon cyberpunk learning city"
             />
+            <div className="welcome-copy">
+              <h1>Welcome back,<br /><span>{userName || "Operator"}</span></h1>
+              <p>Keep learning. Keep hacking. Keep growing.</p>
+            </div>
           </Panel>
 
           <div className="stats-grid">
