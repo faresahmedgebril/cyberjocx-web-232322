@@ -16,7 +16,9 @@ export async function saveOnboarding(userId: number, input: { level: string; int
     return existing.id;
   }
   const result = await db.insert(onboardingProfiles).values({ userId, level: input.level, interestsJson: JSON.stringify(input.interests), goal: input.goal, studyTime: input.studyTime }).returning({ id: onboardingProfiles.id });
-  return result[0]?.id;
+  const profileId = result[0]?.id;
+  if (profileId === undefined) throw new Error("Failed to create onboarding profile");
+  return profileId;
 }
 
 export async function listAssessments() {
