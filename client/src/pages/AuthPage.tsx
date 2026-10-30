@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useLocation } from "wouter";
 import {
-  ArrowLeft, ArrowRight, ChartNoAxesColumnIncreasing, Eye, EyeOff, Github,
+  ArrowLeft, ArrowRight, BarChart3, Eye, EyeOff, Github,
   KeyRound, LoaderCircle, LockKeyhole, Mail, ShieldCheck, UserRound, Zap,
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -39,9 +39,8 @@ export default function AuthPage() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice>(() => {
     const reason = new URLSearchParams(window.location.search).get("authError");
-    if (reason === "github-not-configured") {
-      return { kind: "error", text: "تسجيل GitHub غير مفعّل على السيرفر حتى الآن. استخدم البريد أو Google." };
-    }
+    if (reason === "github-not-configured") return { kind: "error", text: "تسجيل GitHub غير مفعّل على السيرفر حتى الآن. استخدم البريد أو Google." };
+    if (reason === "google-not-configured") return { kind: "error", text: "تسجيل Google غير مفعّل على السيرفر حتى الآن. استخدم البريد أو GitHub." };
     return reason ? { kind: "error", text: "تعذر إكمال تسجيل الدخول الخارجي. جرّب مرة أخرى أو استخدم البريد وكلمة المرور." } : null;
   });
 

@@ -15,7 +15,7 @@
     <script type="module">
       const redirectPath = new URLSearchParams(window.location.search).get("__route");
       if (redirectPath) {
-        const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+        const base = "%BASE_URL%".replace(/\/$/, "");
         const route = redirectPath.startsWith("/") ? redirectPath : "/" + redirectPath;
         window.history.replaceState(null, "", base + route);
       }
