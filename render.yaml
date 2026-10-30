@@ -1,9 +1,9 @@
-# Render Free: one web service hosts the frontend, API and embedded queue worker.
-# Hourly NVD sync is triggered by .github/workflows/nvd-sync.yml because free
-# Render instances do not include standalone Background Worker or Cron services.
+# Render Free: a Static Site for the Vite frontend and one Web Service for API + embedded queue worker.
+# Hourly NVD sync is triggered by .github/workflows/nvd-sync.yml because Render Free
+# does not provide free standalone Background Worker or Cron instances.
 services:
   - type: web
-    name: cyberjocx-api
+    name: cyberjocx-api-232322
     runtime: node
     plan: free
     region: frankfurt
@@ -24,6 +24,10 @@ services:
         value: "true"
       - key: DATABASE_URL
         sync: false
+      - key: APP_WEB_URL
+        value: https://cyberjocx-web-232322.onrender.com
+      - key: CORS_ORIGINS
+        value: https://cyberjocx-web-232322.onrender.com
       - key: JWT_SECRET
         generateValue: true
       - key: CRON_SECRET
@@ -40,3 +44,13 @@ services:
         value: https://services.nvd.nist.gov/rest/json/cves/2.0
       - key: LOG_LEVEL
         value: info
+
+  - type: web
+    name: cyberjocx-web-232322
+    runtime: static
+    branch: deploy/render-neon-free
+    buildCommand: corepack enable && pnpm install --no-frozen-lockfile --prod=false && pnpm build:client
+    staticPublishPath: ./dist/public
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://cyberjocx-api-232322.onrender.com
