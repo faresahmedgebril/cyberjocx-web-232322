@@ -1,6 +1,6 @@
 # Render Free: one web service hosts the frontend, API and embedded queue worker.
-# Hourly NVD sync is triggered by .github/workflows/nvd-sync.yml because Render
-# does not offer free Background Worker or Cron service instances.
+# Hourly NVD sync is triggered by .github/workflows/nvd-sync.yml because free
+# Render instances do not include standalone Background Worker or Cron services.
 services:
   - type: web
     name: cyberjocx-api
@@ -14,16 +14,16 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: "22"
       - key: SERVICE_ROLE
         value: api
+      - key: PORT
+        value: "10000"
       - key: TRUST_PROXY
         value: "true"
       - key: DATABASE_URL
         sync: false
-      - key: APP_WEB_URL
-        value: https://cyberjocx-api.onrender.com
-      - key: CORS_ORIGINS
-        value: https://cyberjocx-api.onrender.com
       - key: JWT_SECRET
         generateValue: true
       - key: CRON_SECRET
@@ -32,49 +32,11 @@ services:
         value: lax
       - key: SESSION_COOKIE_SECURE
         value: "true"
-      - key: STORAGE_PROVIDER
-        value: s3
-      - key: STORAGE_ENDPOINT
-        sync: false
-      - key: STORAGE_REGION
-        value: auto
-      - key: STORAGE_BUCKET
-        sync: false
-      - key: STORAGE_ACCESS_KEY
-        sync: false
-      - key: STORAGE_SECRET_KEY
-        sync: false
-      - key: STORAGE_PUBLIC_BASE_URL
-        sync: false
-      - key: GOOGLE_CLIENT_ID
-        sync: false
-      - key: GOOGLE_CLIENT_SECRET
-        sync: false
-      - key: GOOGLE_OAUTH_REDIRECT_URI
-        sync: false
-      - key: GITHUB_CLIENT_ID
-        sync: false
-      - key: GITHUB_CLIENT_SECRET
-        sync: false
-      - key: GITHUB_OAUTH_REDIRECT_URI
-        sync: false
-      - key: RESEND_API_KEY
-        sync: false
-      - key: AUTH_EMAIL_FROM
-        sync: false
-      - key: AI_API_KEY
-        sync: false
       - key: AI_BASE_URL
         value: https://api.openai.com/v1
       - key: AI_MODEL
         value: gpt-4o-mini
       - key: NVD_API_URL
         value: https://services.nvd.nist.gov/rest/json/cves/2.0
-      - key: NVD_API_KEY
-        sync: false
-      - key: LAB_MANAGER_URL
-        sync: false
-      - key: LAB_MANAGER_TOKEN
-        sync: false
       - key: LOG_LEVEL
         value: info
