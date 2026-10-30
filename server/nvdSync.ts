@@ -23,9 +23,9 @@ export async function syncRecentNvd() {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const startedAt = new Date();
-  const run = await db.insert(nvdSyncRuns).values({ status: "running", startedAt });
-  const runId = Number(run[0]?.insertId ?? 0);
-  await db.insert(nvdSyncSettings).values({ id: 1, lastStatus: "running", lastStartedAt: startedAt }).onDuplicateKeyUpdate({ set: { lastStatus: "running", lastStartedAt: startedAt } });
+  const run = await db.insert(nvdSyncRuns).values({ status: "running", startedAt }).returning({ id: nvdSyncRuns.id });
+  const runId = run[0]?.id ?? 0;
+  await db.insert(nvdSyncSettings).values({ id: 1, lastStatus: "running", lastStartedAt: startedAt }).onConflictDoUpdate({ target: nvdSyncSettings.id, set: { lastStatus: "running", lastStartedAt: startedAt } });
   try {
     const end = new Date();
     const start = new Date(end.getTime() - NVD_LOOKBACK_HOURS * 60 * 60 * 1000);
@@ -64,7 +64,7 @@ export async function syncRecentNvd() {
       const affected = cve.configurations?.flatMap(config => config.nodes?.flatMap(node => node.cpeMatch?.map(match => match.criteria).filter(Boolean) ?? []) ?? []).slice(0, 4).join(", ") || "See NVD configuration details";
       const description = cve.descriptions?.find(value => value.lang === "en")?.value ?? cve.descriptions?.[0]?.value ?? "No description provided by NVD.";
       const title = description.length > 160 ? `${description.slice(0, 157).trimEnd()}...` : description;
-      await db.insert(cves).values({ cveNumber: cve.id, title, description, severity, cvss: String(metric?.cvssData?.baseScore ?? 0), publishedDate: cve.published, affected, sourceUrl: `https://nvd.nist.gov/vuln/detail/${cve.id}` }).onDuplicateKeyUpdate({ set: { title, description, severity, cvss: String(metric?.cvssData?.baseScore ?? 0), publishedDate: cve.published, affected, sourceUrl: `https://nvd.nist.gov/vuln/detail/${cve.id}` } });
+      await db.insert(cves).values({ cveNumber: cve.id, title, description, severity, cvss: String(metric?.cvssData?.baseScore ?? 0), publishedDate: cve.published, affected, sourceUrl: `https://nvd.nist.gov/vuln/detail/${cve.id}` }).onConflictDoUpdate({ target: cves.cveNumber, set: { title, description, severity, cvss: String(metric?.cvssData?.baseScore ?? 0), publishedDate: cve.published, affected, sourceUrl: `https://nvd.nist.gov/vuln/detail/${cve.id}` } });
       imported += 1;
       }
       startIndex += vulnerabilities.length;
@@ -92,7 +92,6 @@ export async function handleNvdSync(req: Request, res: Response) {
 }
 
 export async function runQueuedJobs() {
-  await cleanupExpiredLabs();
   const job = await queue.claim();
   if (!job) return false;
   try {
