@@ -14,6 +14,7 @@ import { HEALTH_PATH, READY_PATH } from "../config/constants";
 import { corsMiddleware, rateLimit, validateStateChangingOrigin } from "../core/security/middleware";
 import { logger } from "../core/logger";
 import { closeDatabase } from "../infrastructure/database/client";
+import { startEmbeddedWorker } from "../worker";
 
 export function createApp() {
   const app = express();
@@ -46,11 +47,12 @@ export async function startServer() {
   if (ENV.NODE_ENV === "development") await setupVite(app, server);
   else serveStatic(app);
   server.listen(ENV.PORT, () => logger.info("HTTP server started", { port: ENV.PORT, environment: ENV.NODE_ENV }));
+  const stopWorker = startEmbeddedWorker();
   const shutdown = (signal: string) => {
     logger.info("Graceful shutdown requested", { signal });
     server.close(async error => {
       if (error) { logger.error("HTTP shutdown failed", { error: error.message }); process.exitCode = 1; }
-      try { await closeDatabase(); }
+      try { await stopWorker(); await closeDatabase(); }
       catch (closeError) { logger.error("Database shutdown failed", { error: closeError instanceof Error ? closeError.message : String(closeError) }); process.exitCode = 1; }
       process.exit();
     });
