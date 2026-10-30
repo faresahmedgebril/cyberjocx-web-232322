@@ -13,7 +13,7 @@ The first Render deploy runs the generated PostgreSQL schema migrations from `dr
 ## 2. Create the Render service
 
 1. Connect the GitHub repository to Render.
-2. Choose **New > Blueprint** and select this repository.
+2. Choose **New > Blueprint** and select this repository, using the `deploy/render-neon-free` branch until the PostgreSQL migration is approved.
 3. Render reads `render.yaml` and creates the `cyberjocx-api` Free Web Service.
 4. When prompted, provide the Neon pooled connection string as `DATABASE_URL`.
 5. The blueprint generates `JWT_SECRET` and `CRON_SECRET` automatically.
