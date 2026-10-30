@@ -1,84 +1,64 @@
 import "dotenv/config";
 import { logger } from "./core/logger";
 import { closeDatabase } from "./infrastructure/database/client";
-import { runQueuedJobs, syncRecentNvd } from "./nvdSync";
+import { runQueuedJobs } from "./nvdSync";
+import { cleanupExpiredLabs } from "./modules/labs/service";
 
 const JOB_POLL_INTERVAL_MS = 5_000;
-const NVD_SYNC_INTERVAL_MS = 60 * 60 * 1_000;
+const LAB_CLEANUP_INTERVAL_MS = 60_000;
 
-let stopping = false;
-let nvdSyncTimer: NodeJS.Timeout | undefined;
-let activeNvdSync: Promise<void> | null = null;
+export function startEmbeddedWorker() {
+  let stopping = false;
+  let timer: NodeJS.Timeout | undefined;
+  let activeRun: Promise<void> | null = null;
+  let lastCleanupAt = 0;
 
-function scheduleNvdSync() {
-  if (stopping) return;
-
-  nvdSyncTimer = setTimeout(() => {
-    nvdSyncTimer = undefined;
+  const scheduleNext = () => {
     if (stopping) return;
+    timer = setTimeout(() => {
+      activeRun = (async () => {
+        try {
+          await runQueuedJobs();
 
-    const startedAt = Date.now();
-    activeNvdSync = (async () => {
-      try {
-        const result = await syncRecentNvd();
-        logger.info("Scheduled NVD sync completed", {
-          job: "nvd-sync",
-          imported: result.imported,
-          durationMs: Date.now() - startedAt,
-        });
-      } catch (error) {
-        logger.error("Scheduled NVD sync failed", {
-          job: "nvd-sync",
-          error: error instanceof Error ? error.message : String(error),
-          durationMs: Date.now() - startedAt,
-        });
-      }
-    })().finally(() => {
-      activeNvdSync = null;
-      scheduleNvdSync();
-    });
-  }, NVD_SYNC_INTERVAL_MS);
-
-  logger.info("Scheduled NVD sync registered", {
-    intervalMs: NVD_SYNC_INTERVAL_MS,
-  });
-}
-
-async function main() {
-  logger.info("Worker started");
-  scheduleNvdSync();
-
-  while (!stopping) {
-    try {
-      await runQueuedJobs();
-    } catch (error) {
-      logger.error("Worker job failed", {
-        error: error instanceof Error ? error.message : String(error),
+          if (Date.now() - lastCleanupAt >= LAB_CLEANUP_INTERVAL_MS) {
+            const cleaned = await cleanupExpiredLabs();
+            lastCleanupAt = Date.now();
+            if (cleaned > 0) logger.info("Expired labs cleaned", { cleaned });
+          }
+        } catch (error) {
+          logger.error("Embedded worker job failed", {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      })().finally(() => {
+        activeRun = null;
+        scheduleNext();
       });
-    }
-    if (!stopping) {
-      await new Promise(resolve => setTimeout(resolve, JOB_POLL_INTERVAL_MS));
-    }
-  }
+    }, JOB_POLL_INTERVAL_MS);
+  };
 
-  if (nvdSyncTimer) clearTimeout(nvdSyncTimer);
-  if (activeNvdSync) await activeNvdSync;
-  await closeDatabase();
-}
-
-async function stop(signal: string) {
-  if (stopping) return;
-  stopping = true;
-  if (nvdSyncTimer) clearTimeout(nvdSyncTimer);
-  logger.info("Worker stopping", { signal });
-}
-
-process.once("SIGTERM", () => { void stop("SIGTERM"); });
-process.once("SIGINT", () => { void stop("SIGINT"); });
-
-main().catch(error => {
-  logger.error("Worker failed", {
-    error: error instanceof Error ? error.message : String(error),
+  logger.info("Embedded background worker started", {
+    pollIntervalMs: JOB_POLL_INTERVAL_MS,
+    cleanupIntervalMs: LAB_CLEANUP_INTERVAL_MS,
   });
-  process.exit(1);
-});
+  scheduleNext();
+
+  return async function stopEmbeddedWorker() {
+    if (stopping) return;
+    stopping = true;
+    if (timer) clearTimeout(timer);
+    if (activeRun) await activeRun;
+    logger.info("Embedded background worker stopped");
+  };
+}
+
+if (import.meta.url === "file://" + process.argv[1]) {
+  const stop = startEmbeddedWorker();
+  const shutdown = async (signal: string) => {
+    logger.info("Worker stopping", { signal });
+    await stop();
+    await closeDatabase();
+  };
+  process.once("SIGTERM", () => { void shutdown("SIGTERM"); });
+  process.once("SIGINT", () => { void shutdown("SIGINT"); });
+}
