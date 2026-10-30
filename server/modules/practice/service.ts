@@ -138,6 +138,6 @@ export async function createChallenge(input: {
     hintText: input.hintText ?? null,
     skillId: input.skillId ?? null,
     active: true,
-  });
-  return { id: Number(result[0].insertId) };
+  }).returning({ id: challenges.id });
+  return { id: result[0]?.id };
 }
