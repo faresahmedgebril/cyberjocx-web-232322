@@ -8,11 +8,12 @@ WORKDIR /app
 FROM base AS deps
 COPY package.json pnpm-lock.yaml ./
 COPY patches ./patches
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --no-frozen-lockfile
 
 FROM deps AS build
 COPY . .
 RUN pnpm build
+RUN pnpm db:generate
 
 FROM base AS production
 ENV NODE_ENV=production
@@ -20,11 +21,12 @@ WORKDIR /app
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/pnpm-lock.yaml ./pnpm-lock.yaml
-COPY --from=build /app/drizzle ./drizzle
+COPY --from=build /app/drizzle/schema.ts ./drizzle/schema.ts
+COPY --from=build /app/drizzle-postgres ./drizzle-postgres
 COPY --from=build /app/drizzle.config.ts ./drizzle.config.ts
 COPY --from=build /app/patches ./patches
 COPY --from=deps /app/node_modules ./node_modules
 
-EXPOSE 3000
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+EXPOSE 10000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||10000)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["sh", "-c", "pnpm db:migrate && node dist/index.js"]
