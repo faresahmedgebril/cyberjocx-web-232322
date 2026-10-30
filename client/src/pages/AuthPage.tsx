@@ -130,8 +130,11 @@ export default function AuthPage() {
 
       setPassword("");
       setConfirmPassword("");
+      setPassword("");
+      setConfirmPassword("");
+      setView("login");
+      navigate("/login");
       setNotice({ kind: "success", text: "تم تغيير كلمة المرور. سجّل الدخول بكلمة المرور الجديدة." });
-      changeView("login");
     } catch (error) {
       showError(error instanceof Error ? error.message : "حدث خطأ غير متوقع.");
     } finally {
@@ -177,7 +180,7 @@ export default function AuthPage() {
       </div>
 
       <section className="story-panel" aria-label="CyberJocx introduction">
-        <div className="story-image" />
+        <div className="story-image" style={{ backgroundImage: "url(" + (import.meta.env.BASE_URL || "/") + "assets/cyber-login-reference.jpeg)" }} />
         <div className="scanline" />
         <div className="story-glow glow-one" />
         <div className="story-glow glow-two" />

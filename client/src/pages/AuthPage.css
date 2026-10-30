@@ -22,7 +22,6 @@
 .story-panel { position: relative; min-height: 100vh; overflow: hidden; background: #03051d; }
 .story-image {
   position: absolute; inset: 0;
-  background-image: url("/assets/cyber-login-reference.jpeg");
   background-size: auto 100%; background-position: left center; background-repeat: no-repeat;
 }
 .story-panel::after {

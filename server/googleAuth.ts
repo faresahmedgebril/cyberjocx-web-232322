@@ -46,7 +46,7 @@ export function registerGoogleAuthRoutes(app: Express) {
       url.searchParams.set("prompt", "select_account");
       res.redirect(302, url.toString());
     } catch {
-      res.status(503).send("Google sign-in is not configured yet.");
+      res.redirect(302, (ENV.APP_WEB_URL ? ENV.APP_WEB_URL.replace(/\/+$/, "") : "") + "/login?authError=google-not-configured");
     }
   });
 
@@ -86,7 +86,7 @@ export function registerGoogleAuthRoutes(app: Express) {
         cause: e?.cause?.message ?? e?.cause,
         stack: e?.stack,
       });
-      res.redirect(302, `${ENV.APP_WEB_URL ?? ""}/?authError=google`);
+      res.redirect(302, (ENV.APP_WEB_URL ? ENV.APP_WEB_URL.replace(/\/+$/, "") : "") + "/login?authError=google");
     }
   });
 }
