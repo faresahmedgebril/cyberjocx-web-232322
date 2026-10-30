@@ -27,7 +27,7 @@ jobs:
       - name: Enable Corepack
         run: corepack enable
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
+        run: pnpm install --no-frozen-lockfile --prod=false
       - name: Persist updated pnpm lockfile
         if: github.event_name == 'push'
         run: |
