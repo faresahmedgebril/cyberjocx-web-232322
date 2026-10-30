@@ -129,8 +129,6 @@ export default function AuthPage() {
 
       setPassword("");
       setConfirmPassword("");
-      setPassword("");
-      setConfirmPassword("");
       setView("login");
       navigate("/login");
       setNotice({ kind: "success", text: "تم تغيير كلمة المرور. سجّل الدخول بكلمة المرور الجديدة." });
@@ -370,7 +368,7 @@ export default function AuthPage() {
             <i />
             <span><Zap />Stronger Security</span>
             <i />
-            <span><ChartNoAxesColumnIncreasing />A Safer Tomorrow</span>
+            <span><BarChart3 />A Safer Tomorrow</span>
           </footer>
         </form>
       </section>

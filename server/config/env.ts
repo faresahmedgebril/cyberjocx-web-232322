@@ -23,6 +23,11 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   GOOGLE_OAUTH_REDIRECT_URI: z.string().url().optional(),
+  GITHUB_CLIENT_ID: z.string().optional(),
+  GITHUB_CLIENT_SECRET: z.string().optional(),
+  GITHUB_OAUTH_REDIRECT_URI: z.string().url().optional(),
+  RESEND_API_KEY: z.string().optional(),
+  AUTH_EMAIL_FROM: z.string().optional(),
   STORAGE_PROVIDER: z.enum(["s3", "r2"]).default("s3"),
   STORAGE_ENDPOINT: z.string().url().optional(),
   STORAGE_REGION: z.string().default("auto"),
@@ -71,6 +76,8 @@ if (raw.NODE_ENV === "production") {
     if (raw.CORS_ORIGINS === "http://localhost:3000") throw new Error("CORS_ORIGINS must be configured for the production frontend");
     if (raw.SESSION_COOKIE_SAMESITE === "none" && !raw.SESSION_COOKIE_SECURE) throw new Error("SESSION_COOKIE_SECURE must be true when SESSION_COOKIE_SAMESITE=none");
     if (!raw.GOOGLE_CLIENT_ID || !raw.GOOGLE_CLIENT_SECRET) console.warn("[config] Google OAuth is disabled until GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are configured.");
+    if (!raw.GITHUB_CLIENT_ID || !raw.GITHUB_CLIENT_SECRET) console.warn("[config] GitHub OAuth is disabled until GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET are configured.");
+    if (!raw.RESEND_API_KEY || !raw.AUTH_EMAIL_FROM) console.warn("[config] Password reset emails are disabled until RESEND_API_KEY and AUTH_EMAIL_FROM are configured.");
     if (raw.STORAGE_PROVIDER === "s3" && (!raw.STORAGE_BUCKET || !raw.STORAGE_ACCESS_KEY || !raw.STORAGE_SECRET_KEY)) console.warn("[config] S3 uploads are disabled until STORAGE_BUCKET, STORAGE_ACCESS_KEY and STORAGE_SECRET_KEY are configured.");
     if (!raw.CRON_SECRET) console.warn("[config] CRON_SECRET is not configured; protected cron endpoints will be unavailable.");
   }

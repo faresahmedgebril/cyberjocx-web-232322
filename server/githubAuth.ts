@@ -8,13 +8,13 @@ import { getSessionCookieOptions } from "./_core/cookies";
 const STATE_COOKIE = "cyberjocx_github_oauth_state";
 const AUTHORIZE_URL = "https://github.com/login/oauth/authorize";
 const TOKEN_URL = "https://github.com/login/oauth/access_token";
-const CLIENT_ID = process.env.GITHUB_CLIENT_ID;
-const CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
+const CLIENT_ID = ENV.GITHUB_CLIENT_ID;
+const CLIENT_SECRET = ENV.GITHUB_CLIENT_SECRET;
 
 function secureRequest(req: Request) {
   return req.secure || String(req.headers["x-forwarded-proto"] ?? "").split(",").some(value => value.trim().toLowerCase() === "https");
 }
-export function getGitHubCallbackUrl(req: Pick<Request, "protocol" | "get" | "headers">, configuredRedirect = process.env.GITHUB_OAUTH_REDIRECT_URI) {
+export function getGitHubCallbackUrl(req: Pick<Request, "protocol" | "get" | "headers">, configuredRedirect = ENV.GITHUB_OAUTH_REDIRECT_URI) {
   if (configuredRedirect) return configuredRedirect;
   const protocol = String(req.headers["x-forwarded-proto"] ?? req.protocol).split(",")[0].trim();
   const host = String(req.headers["x-forwarded-host"] ?? req.get("host") ?? "").split(",")[0].trim();
