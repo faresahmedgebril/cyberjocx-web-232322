@@ -7,7 +7,7 @@ services:
     runtime: node
     plan: free
     region: frankfurt
-    branch: main
+    branch: deploy/render-neon-free
     buildCommand: corepack enable && pnpm install --no-frozen-lockfile --prod=false && pnpm build && pnpm db:generate
     startCommand: pnpm db:migrate && pnpm start
     healthCheckPath: /health
