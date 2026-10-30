@@ -139,5 +139,7 @@ export async function createChallenge(input: {
     skillId: input.skillId ?? null,
     active: true,
   }).returning({ id: challenges.id });
-  return { id: result[0]?.id };
+  const challengeId = result[0]?.id;
+  if (challengeId === undefined) throw new Error("Failed to create challenge");
+  return { id: challengeId };
 }
