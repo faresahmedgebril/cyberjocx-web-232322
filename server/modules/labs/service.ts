@@ -45,8 +45,9 @@ export async function startLab(userId: number, templateId: number, challengeId?:
     challengeId: challengeId ?? null,
     status: "REQUESTED",
     expiresAt,
-  });
-  const id = Number(result[0].insertId);
+  }).returning({ id: labInstances.id });
+  const id = result[0]?.id;
+  if (id === undefined) throw new Error("Failed to create lab instance");
   await queue.enqueue("lab-provision", { labInstanceId: id, instanceId });
   return { id, instanceId, status: "REQUESTED" as const, expiresAt };
 }
