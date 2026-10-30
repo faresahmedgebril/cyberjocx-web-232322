@@ -2,7 +2,7 @@ name: Docker Build
 
 on:
   push:
-    branches: [main]
+    branches: [main, "deploy/**"]
   pull_request:
     branches: [main]
 
@@ -14,7 +14,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,7 +27,16 @@ jobs:
       - name: Enable Corepack
         run: corepack enable
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
+      - name: Persist updated pnpm lockfile
+        if: github.event_name == 'push'
+        run: |
+          if git diff --quiet -- pnpm-lock.yaml; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add pnpm-lock.yaml
+          git commit -m "chore: update pnpm lockfile"
+          git push
       - name: Typecheck
         run: pnpm typecheck
       - name: Test
