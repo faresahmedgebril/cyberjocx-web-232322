@@ -54,7 +54,7 @@ export function registerGoogleAuthRoutes(app: Express) {
     const code = typeof req.query.code === "string" ? req.query.code : undefined;
     const state = typeof req.query.state === "string" ? req.query.state : undefined;
     const cookieState = parseCookieHeader(req.headers.cookie ?? "")[OAUTH_STATE_COOKIE];
-    if (!code || !state || !cookieState || !crypto.timingSafeEqual(Buffer.from(state), Buffer.from(cookieState))) {
+    if (!code || !state || !cookieState || Buffer.byteLength(state) !== Buffer.byteLength(cookieState) || !crypto.timingSafeEqual(Buffer.from(state), Buffer.from(cookieState))) {
       res.status(403).send("Google sign-in verification failed. Please try again.");
       return;
     }

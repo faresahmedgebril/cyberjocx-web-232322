@@ -6,6 +6,7 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { handleNvdSync } from "../nvdSync";
 import { registerGoogleAuthRoutes } from "../googleAuth";
+import { registerGitHubAuthRoutes } from "../githubAuth";
 import { registerPasswordAuthRoutes } from "../passwordAuth";
 import { setupVite, serveStatic } from "./vite";
 import { ENV } from "../config/env";
@@ -29,6 +30,8 @@ export function createApp() {
   });
   app.use("/api/auth/google", rateLimit(ENV.AUTH_RATE_LIMIT), (_req, _res, next) => next());
   registerGoogleAuthRoutes(app);
+  app.use("/api/auth/github", rateLimit(ENV.AUTH_RATE_LIMIT), (_req, _res, next) => next());
+  registerGitHubAuthRoutes(app);
   app.use("/api/auth", rateLimit(ENV.AUTH_RATE_LIMIT));
   registerPasswordAuthRoutes(app);
   app.post("/api/scheduled/nvd-sync", rateLimit(10), handleNvdSync);
@@ -57,4 +60,4 @@ export async function startServer() {
   return server;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) startServer().catch(error => { logger.error("Server startup failed", { error: error instanceof Error ? error.message : String(error) }); process.exit(1); });
+if (import.meta.url === \`file://\${process.argv[1]}\`) startServer().catch(error => { logger.error("Server startup failed", { error: error instanceof Error ? error.message : String(error) }); process.exit(1); });

@@ -34,9 +34,9 @@ function fail(res: Response, status: number, message: string) { res.status(statu
 async function sendResetEmail(email: string, resetUrl: string) {
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
-    headers: { Authorization: "Bearer " + ENV.RESEND_API_KEY, "Content-Type": "application/json" },
+    headers: { Authorization: "Bearer " + process.env.RESEND_API_KEY, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: ENV.AUTH_EMAIL_FROM, to: [email], subject: "Reset your CyberJocx password",
+      from: process.env.AUTH_EMAIL_FROM, to: [email], subject: "Reset your CyberJocx password",
       html: "<div style=\"font-family:Arial,sans-serif;background:#05091c;color:#eaf1ff;padding:32px;border-radius:12px\"><h2 style=\"color:#a95cff\">CyberJocx</h2><p>We received a request to reset your password.</p><p><a href=\"" + resetUrl + "\" style=\"display:inline-block;background:linear-gradient(90deg,#078bff,#8a16ff);padding:13px 22px;border-radius:8px;color:white;text-decoration:none\">Reset password</a></p><p>This link expires in 30 minutes. Ignore this email if you did not request it.</p></div>",
     }),
   });
