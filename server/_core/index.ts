@@ -60,4 +60,4 @@ export async function startServer() {
   return server;
 }
 
-if (import.meta.url === \`file://\${process.argv[1]}\`) startServer().catch(error => { logger.error("Server startup failed", { error: error instanceof Error ? error.message : String(error) }); process.exit(1); });
+if (import.meta.url === "file://" + process.argv[1]) startServer().catch(error => { logger.error("Server startup failed", { error: error instanceof Error ? error.message : String(error) }); process.exit(1); });
