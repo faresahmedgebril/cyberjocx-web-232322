@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { cleanupExpiredLabs, provisionLab } from "./modules/labs/service";
+import { provisionLab } from "./modules/labs/service";
 import { and, eq } from "drizzle-orm";
 import { cves, getDb, nvdSyncRuns, nvdSyncSettings } from "./db";
 import { ENV } from "./config/env";
