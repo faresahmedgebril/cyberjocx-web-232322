@@ -1,107 +1,56 @@
-# Docker-based deployment blueprint for CyberJocx.
+# Render Free: a Static Site for the Vite frontend and one Web Service for API + embedded queue worker.
+# Hourly NVD sync is triggered by .github/workflows/nvd-sync.yml because Render Free
+# does not provide free standalone Background Worker or Cron instances.
 services:
   - type: web
-    name: cyberjocx-api
-    runtime: docker
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
+    name: cyberjocx-api-232322
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: deploy/render-neon-free
+    buildCommand: corepack enable && pnpm install --no-frozen-lockfile --prod=false && pnpm build && pnpm db:generate
+    startCommand: pnpm db:migrate && pnpm start
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: "22"
       - key: SERVICE_ROLE
         value: api
       - key: PORT
-        value: 10000
+        value: "10000"
       - key: TRUST_PROXY
         value: "true"
       - key: DATABASE_URL
         sync: false
       - key: APP_WEB_URL
-        sync: false
+        value: https://cyberjocx-web-232322.onrender.com
       - key: CORS_ORIGINS
-        sync: false
+        value: https://cyberjocx-web-232322.onrender.com
       - key: JWT_SECRET
         generateValue: true
-      - key: SESSION_COOKIE_SAMESITE
-        value: none
-      - key: SESSION_COOKIE_SECURE
-        value: "true"
-      - key: SESSION_COOKIE_DOMAIN
-        sync: false
-      - key: GOOGLE_CLIENT_ID
-        sync: false
-      - key: GOOGLE_CLIENT_SECRET
-        sync: false
-      - key: GOOGLE_OAUTH_REDIRECT_URI
-        sync: false
       - key: CRON_SECRET
         generateValue: true
-      - key: STORAGE_PROVIDER
-        value: s3
-      - key: STORAGE_ENDPOINT
-        sync: false
-      - key: STORAGE_REGION
-        value: auto
-      - key: STORAGE_BUCKET
-        sync: false
-      - key: STORAGE_ACCESS_KEY
-        sync: false
-      - key: STORAGE_SECRET_KEY
-        sync: false
-      - key: STORAGE_PUBLIC_BASE_URL
-        sync: false
-      - key: AI_API_KEY
-        sync: false
+      - key: SESSION_COOKIE_SAMESITE
+        value: lax
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
       - key: AI_BASE_URL
         value: https://api.openai.com/v1
       - key: AI_MODEL
         value: gpt-4o-mini
       - key: NVD_API_URL
         value: https://services.nvd.nist.gov/rest/json/cves/2.0
-      - key: NVD_API_KEY
-        sync: false
-      - key: LAB_MANAGER_URL
-        sync: false
-      - key: LAB_MANAGER_TOKEN
-        sync: false
       - key: LOG_LEVEL
         value: info
 
-  - type: worker
-    name: cyberjocx-worker
-    runtime: docker
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
-    dockerCommand: node dist/worker.js
+  - type: web
+    name: cyberjocx-web-232322
+    runtime: static
+    branch: deploy/render-neon-free
+    buildCommand: corepack enable && pnpm install --no-frozen-lockfile --prod=false && pnpm build:client
+    staticPublishPath: ./dist/public
     envVars:
-      - key: NODE_ENV
-        value: production
-      - key: SERVICE_ROLE
-        value: worker
-      - key: DATABASE_URL
-        sync: false
-      - key: NVD_API_URL
-        value: https://services.nvd.nist.gov/rest/json/cves/2.0
-      - key: NVD_API_KEY
-        sync: false
-      - key: LOG_LEVEL
-        value: info
-
-  - type: cron
-    name: cyberjocx-nvd-sync
-    runtime: docker
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
-    dockerCommand: >-
-      node -e "fetch(process.env.API_BASE_URL + '/api/scheduled/nvd-sync',
-      {method:'POST', headers:{'x-cron-secret':process.env.CRON_SECRET}})
-      .then(async r=>{console.log(r.status, await r.text()); if(!r.ok) process.exit(1)})"
-    schedule: "0 * * * *"
-    envVars:
-      - key: API_BASE_URL
-        sync: false
-      - key: SERVICE_ROLE
-        value: cron
-      - key: CRON_SECRET
-        sync: false
+      - key: VITE_API_BASE_URL
+        value: https://cyberjocx-api-232322.onrender.com

@@ -35,8 +35,9 @@ export class DatabaseQueue implements QueueProvider {
       const claimedAt = new Date();
       const result = await db.update(jobs)
         .set({ status: "running", startedAt: claimedAt, attempts: row.attempts + 1 })
-        .where(and(eq(jobs.id, row.id), eq(jobs.status, "queued")));
-      if (Number(result[0]?.affectedRows ?? 0) !== 1) continue;
+        .where(and(eq(jobs.id, row.id), eq(jobs.status, "queued")))
+        .returning({ id: jobs.id });
+      if (result.length !== 1) continue;
       let payload: Record<string, unknown>;
       try {
         payload = JSON.parse(row.payloadJson) as Record<string, unknown>;

@@ -1,7 +1,24 @@
-import { boolean, int, mysqlEnum, mysqlTable, text, timestamp, unique, varchar } from "drizzle-orm/mysql-core";
+import { boolean, integer, pgEnum, pgTable, serial, text, timestamp, unique, varchar } from "drizzle-orm/pg-core";
 
-export const users = mysqlTable("users", {
-  id: int("id").autoincrement().primaryKey(),
+export const usersRolePgEnum = pgEnum("users_role_enum", ["user", "admin"]);
+export const usersMemberRankPgEnum = pgEnum("users_memberRank_enum", ["learner", "contributor", "analyst", "mentor", "elite"]);
+export const coursesLevelPgEnum = pgEnum("courses_level_enum", ["beginner", "intermediate", "advanced"]);
+export const cvesSeverityPgEnum = pgEnum("cves_severity_enum", ["critical", "high", "medium", "low"]);
+export const trackLevelsLevelKeyPgEnum = pgEnum("trackLevels_levelKey_enum", ["beginner", "junior", "mid", "senior", "professional"]);
+export const friendRequestsStatusPgEnum = pgEnum("friendRequests_status_enum", ["pending", "accepted", "declined"]);
+export const malwareFamiliesSeverityPgEnum = pgEnum("malwareFamilies_severity_enum", ["critical", "high", "medium", "low"]);
+export const notificationsTypePgEnum = pgEnum("notifications_type_enum", ["cve", "content", "system"]);
+export const jobsStatusPgEnum = pgEnum("jobs_status_enum", ["queued", "running", "completed", "failed"]);
+export const challengesTypePgEnum = pgEnum("challenges_type_enum", ["basic", "static", "ctf", "lab"]);
+export const challengesDifficultyPgEnum = pgEnum("challenges_difficulty_enum", ["beginner", "intermediate", "advanced"]);
+export const challengesValidationModePgEnum = pgEnum("challenges_validationMode_enum", ["STATIC_FLAG", "SERVER_VALIDATOR", "LAB_FLAG", "AUTOMATED_TEST", "PROJECT_CHECK"]);
+export const skillEvidenceResultPgEnum = pgEnum("skillEvidence_result_enum", ["success", "partial", "failed"]);
+export const skillEvidenceDifficultyPgEnum = pgEnum("skillEvidence_difficulty_enum", ["beginner", "intermediate", "advanced"]);
+export const labInstancesStatusPgEnum = pgEnum("labInstances_status_enum", ["REQUESTED", "PROVISIONING", "READY", "RUNNING", "COMPLETED", "EXPIRED", "CLEANUP", "DESTROYED", "FAILED"]);
+export const projectSubmissionsStatusPgEnum = pgEnum("projectSubmissions_status_enum", ["submitted", "reviewed", "accepted", "rejected"]);
+
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
   openId: varchar("openId", { length: 64 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
@@ -9,24 +26,24 @@ export const users = mysqlTable("users", {
   passwordHash: varchar("passwordHash", { length: 255 }),
   passwordResetTokenHash: varchar("passwordResetTokenHash", { length: 128 }),
   passwordResetExpiresAt: timestamp("passwordResetExpiresAt"),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
-  points: int("points").default(0).notNull(),
+  role: usersRolePgEnum("role").default("user").notNull(),
+  points: integer("points").default(0).notNull(),
   isVip: boolean("isVip").default(false).notNull(),
   bio: text("bio"),
   avatarUrl: text("avatarUrl"),
   bannerUrl: text("bannerUrl"),
   phone: varchar("phone", { length: 32 }),
   linkedinUrl: text("linkedinUrl"),
-  memberRank: mysqlEnum("memberRank", ["learner", "contributor", "analyst", "mentor", "elite"]).default("learner").notNull(),
-  primaryTrackId: int("primaryTrackId"),
+  memberRank: usersMemberRankPgEnum("memberRank").default("learner").notNull(),
+  primaryTrackId: integer("primaryTrackId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
 
-export const sessions = mysqlTable("sessions", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
+export const sessions = pgTable("sessions", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
   tokenHash: varchar("tokenHash", { length: 128 }).notNull().unique(),
   expiresAt: timestamp("expiresAt").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -35,54 +52,54 @@ export const sessions = mysqlTable("sessions", {
   ipAddress: varchar("ipAddress", { length: 64 }),
 });
 
-export const courses = mysqlTable("courses", {
-  id: int("id").autoincrement().primaryKey(),
+export const courses = pgTable("courses", {
+  id: serial("id").primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   description: text("description").notNull(),
   category: varchar("category", { length: 100 }).notNull(),
-  level: mysqlEnum("level", ["beginner", "intermediate", "advanced"]).default("beginner").notNull(),
+  level: coursesLevelPgEnum("level").default("beginner").notNull(),
   instructor: varchar("instructor", { length: 255 }).notNull(),
-  lessons: int("lessons").default(8).notNull(),
-  durationMinutes: int("durationMinutes").default(240).notNull(),
-  requiredPoints: int("requiredPoints").default(0).notNull(),
+  lessons: integer("lessons").default(8).notNull(),
+  durationMinutes: integer("durationMinutes").default(240).notNull(),
+  requiredPoints: integer("requiredPoints").default(0).notNull(),
   coverUrl: text("coverUrl"),
   courseUrl: text("courseUrl"),
   isPublished: boolean("isPublished").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
 });
 
-export const roadmaps = mysqlTable("roadmaps", {
-  id: int("id").autoincrement().primaryKey(),
+export const roadmaps = pgTable("roadmaps", {
+  id: serial("id").primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description").notNull(),
   focus: varchar("focus", { length: 120 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const roadmapCourses = mysqlTable("roadmapCourses", {
-  id: int("id").autoincrement().primaryKey(),
-  roadmapId: int("roadmapId").notNull(),
-  courseId: int("courseId").notNull(),
-  orderIndex: int("orderIndex").default(0).notNull(),
+export const roadmapCourses = pgTable("roadmapCourses", {
+  id: serial("id").primaryKey(),
+  roadmapId: integer("roadmapId").notNull(),
+  courseId: integer("courseId").notNull(),
+  orderIndex: integer("orderIndex").default(0).notNull(),
 });
 
-export const courseProgress = mysqlTable("courseProgress", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  courseId: int("courseId").notNull(),
-  progress: int("progress").default(0).notNull(),
+export const courseProgress = pgTable("courseProgress", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  courseId: integer("courseId").notNull(),
+  progress: integer("progress").default(0).notNull(),
   completed: boolean("completed").default(false).notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
 });
 
-export const cves = mysqlTable("cves", {
-  id: int("id").autoincrement().primaryKey(),
+export const cves = pgTable("cves", {
+  id: serial("id").primaryKey(),
   cveNumber: varchar("cveNumber", { length: 32 }).notNull().unique(),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description").notNull(),
-  severity: mysqlEnum("severity", ["critical", "high", "medium", "low"]).notNull(),
+  severity: cvesSeverityPgEnum("severity").notNull(),
   cvss: varchar("cvss", { length: 8 }).notNull(),
   publishedDate: varchar("publishedDate", { length: 32 }).notNull(),
   affected: varchar("affected", { length: 255 }).notNull(),
@@ -90,8 +107,8 @@ export const cves = mysqlTable("cves", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const tools = mysqlTable("tools", {
-  id: int("id").autoincrement().primaryKey(),
+export const tools = pgTable("tools", {
+  id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   category: varchar("category", { length: 100 }).notNull(),
   description: text("description").notNull(),
@@ -100,8 +117,8 @@ export const tools = mysqlTable("tools", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const tracks = mysqlTable("tracks", {
-  id: int("id").autoincrement().primaryKey(),
+export const tracks = pgTable("tracks", {
+  id: serial("id").primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   description: text("description").notNull(),
@@ -109,192 +126,192 @@ export const tracks = mysqlTable("tracks", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const trackCourses = mysqlTable("trackCourses", {
-  id: int("id").autoincrement().primaryKey(),
-  trackId: int("trackId").notNull(),
-  courseId: int("courseId").notNull(),
-  orderIndex: int("orderIndex").default(0).notNull(),
+export const trackCourses = pgTable("trackCourses", {
+  id: serial("id").primaryKey(),
+  trackId: integer("trackId").notNull(),
+  courseId: integer("courseId").notNull(),
+  orderIndex: integer("orderIndex").default(0).notNull(),
 });
 
-export const trackTools = mysqlTable("trackTools", {
-  id: int("id").autoincrement().primaryKey(),
-  trackId: int("trackId").notNull(),
-  toolId: int("toolId").notNull(),
+export const trackTools = pgTable("trackTools", {
+  id: serial("id").primaryKey(),
+  trackId: integer("trackId").notNull(),
+  toolId: integer("toolId").notNull(),
 });
 
-export const trackLevels = mysqlTable("trackLevels", {
-  id: int("id").autoincrement().primaryKey(),
-  trackId: int("trackId").notNull(),
-  levelKey: mysqlEnum("levelKey", ["beginner", "junior", "mid", "senior", "professional"]).notNull(),
+export const trackLevels = pgTable("trackLevels", {
+  id: serial("id").primaryKey(),
+  trackId: integer("trackId").notNull(),
+  levelKey: trackLevelsLevelKeyPgEnum("levelKey").notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description").notNull(),
   requirements: text("requirements").notNull(),
   certificateName: varchar("certificateName", { length: 255 }).notNull(),
-  orderIndex: int("orderIndex").notNull(),
+  orderIndex: integer("orderIndex").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const trackLevelModules = mysqlTable("trackLevelModules", {
-  id: int("id").autoincrement().primaryKey(),
-  trackLevelId: int("trackLevelId").notNull(),
+export const trackLevelModules = pgTable("trackLevelModules", {
+  id: serial("id").primaryKey(),
+  trackLevelId: integer("trackLevelId").notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description").notNull(),
   actionItems: text("actionItems").notNull(),
   videoUrl: text("videoUrl"),
-  orderIndex: int("orderIndex").notNull(),
+  orderIndex: integer("orderIndex").notNull(),
 });
 
-export const userTrackLevels = mysqlTable("userTrackLevels", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  trackId: int("trackId").notNull(),
-  currentLevel: int("currentLevel").default(1).notNull(),
+export const userTrackLevels = pgTable("userTrackLevels", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  trackId: integer("trackId").notNull(),
+  currentLevel: integer("currentLevel").default(1).notNull(),
   completedLevelsJson: text("completedLevelsJson").notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
 });
 
-export const posts = mysqlTable("posts", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
+export const posts = pgTable("posts", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
   content: text("content").notNull(),
   imageUrl: text("imageUrl"),
-  likesCount: int("likesCount").default(0).notNull(),
+  likesCount: integer("likesCount").default(0).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const postLikes = mysqlTable("postLikes", {
-  id: int("id").autoincrement().primaryKey(),
-  postId: int("postId").notNull(),
-  userId: int("userId").notNull(),
+export const postLikes = pgTable("postLikes", {
+  id: serial("id").primaryKey(),
+  postId: integer("postId").notNull(),
+  userId: integer("userId").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const follows = mysqlTable("follows", {
-  id: int("id").autoincrement().primaryKey(),
-  followerId: int("followerId").notNull(),
-  followingId: int("followingId").notNull(),
+export const follows = pgTable("follows", {
+  id: serial("id").primaryKey(),
+  followerId: integer("followerId").notNull(),
+  followingId: integer("followingId").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const friendRequests = mysqlTable("friendRequests", {
-  id: int("id").autoincrement().primaryKey(),
-  senderId: int("senderId").notNull(),
-  recipientId: int("recipientId").notNull(),
-  status: mysqlEnum("status", ["pending", "accepted", "declined"]).default("pending").notNull(),
+export const friendRequests = pgTable("friendRequests", {
+  id: serial("id").primaryKey(),
+  senderId: integer("senderId").notNull(),
+  recipientId: integer("recipientId").notNull(),
+  status: friendRequestsStatusPgEnum("status").default("pending").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
 });
 
-export const malwareFamilies = mysqlTable("malwareFamilies", {
-  id: int("id").autoincrement().primaryKey(),
+export const malwareFamilies = pgTable("malwareFamilies", {
+  id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull().unique(),
   category: varchar("category", { length: 100 }).notNull(),
-  severity: mysqlEnum("severity", ["critical", "high", "medium", "low"]).notNull(),
+  severity: malwareFamiliesSeverityPgEnum("severity").notNull(),
   description: text("description").notNull(),
   targets: text("targets").notNull(),
   mitreTechniques: text("mitreTechniques").notNull(),
   sourceUrl: text("sourceUrl"),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
 });
 
-export const books = mysqlTable("books", {
-  id: int("id").autoincrement().primaryKey(),
+export const books = pgTable("books", {
+  id: serial("id").primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
   author: varchar("author", { length: 255 }).notNull(),
   category: varchar("category", { length: 100 }).notNull(),
   description: text("description").notNull(),
-  pricePoints: int("pricePoints").default(100).notNull(),
+  pricePoints: integer("pricePoints").default(100).notNull(),
   coverUrl: text("coverUrl"),
   downloadUrl: text("downloadUrl"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const carts = mysqlTable("carts", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().unique(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+export const carts = pgTable("carts", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull().unique(),
+  updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
 });
 
-export const cartItems = mysqlTable("cartItems", {
-  id: int("id").autoincrement().primaryKey(),
-  cartId: int("cartId").notNull(),
-  bookId: int("bookId").notNull(),
-  quantity: int("quantity").default(1).notNull(),
+export const cartItems = pgTable("cartItems", {
+  id: serial("id").primaryKey(),
+  cartId: integer("cartId").notNull(),
+  bookId: integer("bookId").notNull(),
+  quantity: integer("quantity").default(1).notNull(),
 });
 
-export const notifications = mysqlTable("notifications", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId"),
-  type: mysqlEnum("type", ["cve", "content", "system"]).default("system").notNull(),
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId"),
+  type: notificationsTypePgEnum("type").default("system").notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   message: text("message").notNull(),
   isRead: boolean("isRead").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const trackQuizzes = mysqlTable("trackQuizzes", {
-  id: int("id").autoincrement().primaryKey(),
-  trackId: int("trackId").notNull(),
-  trackLevelId: int("trackLevelId"),
+export const trackQuizzes = pgTable("trackQuizzes", {
+  id: serial("id").primaryKey(),
+  trackId: integer("trackId").notNull(),
+  trackLevelId: integer("trackLevelId"),
   title: varchar("title", { length: 255 }).notNull(),
-  passingScore: int("passingScore").default(70).notNull(),
+  passingScore: integer("passingScore").default(70).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const quizQuestions = mysqlTable("quizQuestions", {
-  id: int("id").autoincrement().primaryKey(),
-  quizId: int("quizId").notNull(),
+export const quizQuestions = pgTable("quizQuestions", {
+  id: serial("id").primaryKey(),
+  quizId: integer("quizId").notNull(),
   prompt: text("prompt").notNull(),
   optionsJson: text("optionsJson").notNull(),
-  answerIndex: int("answerIndex").notNull(),
-  orderIndex: int("orderIndex").default(0).notNull(),
+  answerIndex: integer("answerIndex").notNull(),
+  orderIndex: integer("orderIndex").default(0).notNull(),
 });
 
-export const quizAttempts = mysqlTable("quizAttempts", {
-  id: int("id").autoincrement().primaryKey(),
-  quizId: int("quizId").notNull(),
-  userId: int("userId").notNull(),
-  score: int("score").notNull(),
+export const quizAttempts = pgTable("quizAttempts", {
+  id: serial("id").primaryKey(),
+  quizId: integer("quizId").notNull(),
+  userId: integer("userId").notNull(),
+  score: integer("score").notNull(),
   passed: boolean("passed").default(false).notNull(),
   answersJson: text("answersJson").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const certificates = mysqlTable("certificates", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  trackId: int("trackId").notNull(),
-  trackLevelId: int("trackLevelId"),
+export const certificates = pgTable("certificates", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  trackId: integer("trackId").notNull(),
+  trackLevelId: integer("trackLevelId"),
   certificateCode: varchar("certificateCode", { length: 64 }).notNull().unique(),
   issuedAt: timestamp("issuedAt").defaultNow().notNull(),
 });
 
-export const nvdSyncSettings = mysqlTable("nvdSyncSettings", {
-  id: int("id").autoincrement().primaryKey(),
+export const nvdSyncSettings = pgTable("nvdSyncSettings", {
+  id: serial("id").primaryKey(),
   scheduleCronTaskUid: varchar("scheduleCronTaskUid", { length: 65 }),
   lastStartedAt: timestamp("lastStartedAt"),
   lastCompletedAt: timestamp("lastCompletedAt"),
   lastStatus: varchar("lastStatus", { length: 32 }).default("never").notNull(),
-  lastImported: int("lastImported").default(0).notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  lastImported: integer("lastImported").default(0).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
 });
 
-export const nvdSyncRuns = mysqlTable("nvdSyncRuns", {
-  id: int("id").autoincrement().primaryKey(),
+export const nvdSyncRuns = pgTable("nvdSyncRuns", {
+  id: serial("id").primaryKey(),
   startedAt: timestamp("startedAt").defaultNow().notNull(),
   completedAt: timestamp("completedAt"),
   status: varchar("status", { length: 32 }).notNull(),
-  importedCount: int("importedCount").default(0).notNull(),
+  importedCount: integer("importedCount").default(0).notNull(),
   errorMessage: text("errorMessage"),
 });
 
-export const jobs = mysqlTable("jobs", {
-  id: int("id").autoincrement().primaryKey(),
+export const jobs = pgTable("jobs", {
+  id: serial("id").primaryKey(),
   jobId: varchar("jobId", { length: 64 }).notNull().unique(),
   name: varchar("name", { length: 64 }).notNull(),
   payloadJson: text("payloadJson").notNull(),
-  status: mysqlEnum("status", ["queued", "running", "completed", "failed"]).default("queued").notNull(),
-  attempts: int("attempts").default(0).notNull(),
+  status: jobsStatusPgEnum("status").default("queued").notNull(),
+  attempts: integer("attempts").default(0).notNull(),
   availableAt: timestamp("availableAt").defaultNow().notNull(),
   startedAt: timestamp("startedAt"),
   completedAt: timestamp("completedAt"),
@@ -303,72 +320,72 @@ export const jobs = mysqlTable("jobs", {
 });
 
 
-export const onboardingProfiles = mysqlTable("onboardingProfiles", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().unique(),
+export const onboardingProfiles = pgTable("onboardingProfiles", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull().unique(),
   level: varchar("level", { length: 32 }).notNull(),
   interestsJson: text("interestsJson").notNull(),
   goal: varchar("goal", { length: 80 }).notNull(),
   studyTime: varchar("studyTime", { length: 32 }).notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
 });
 
-export const assessments = mysqlTable("assessments", {
-  id: int("id").autoincrement().primaryKey(),
+export const assessments = pgTable("assessments", {
+  id: serial("id").primaryKey(),
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   title: varchar("title", { length: 255 }).notNull(),
   active: boolean("active").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const assessmentQuestions = mysqlTable("assessmentQuestions", {
-  id: int("id").autoincrement().primaryKey(),
-  assessmentId: int("assessmentId").notNull(),
-  skillId: int("skillId").notNull(),
+export const assessmentQuestions = pgTable("assessmentQuestions", {
+  id: serial("id").primaryKey(),
+  assessmentId: integer("assessmentId").notNull(),
+  skillId: integer("skillId").notNull(),
   prompt: text("prompt").notNull(),
   optionsJson: text("optionsJson").notNull(),
-  answerIndex: int("answerIndex").notNull(),
-  weight: int("weight").default(10).notNull(),
-  orderIndex: int("orderIndex").default(0).notNull(),
+  answerIndex: integer("answerIndex").notNull(),
+  weight: integer("weight").default(10).notNull(),
+  orderIndex: integer("orderIndex").default(0).notNull(),
 });
 
-export const assessmentAttempts = mysqlTable("assessmentAttempts", {
-  id: int("id").autoincrement().primaryKey(),
-  assessmentId: int("assessmentId").notNull(),
-  userId: int("userId").notNull(),
-  score: int("score").notNull(),
+export const assessmentAttempts = pgTable("assessmentAttempts", {
+  id: serial("id").primaryKey(),
+  assessmentId: integer("assessmentId").notNull(),
+  userId: integer("userId").notNull(),
+  score: integer("score").notNull(),
   skillProfileJson: text("skillProfileJson").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const challenges = mysqlTable("challenges", {
-  id: int("id").autoincrement().primaryKey(),
+export const challenges = pgTable("challenges", {
+  id: serial("id").primaryKey(),
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description").notNull(),
-  type: mysqlEnum("type", ["basic", "static", "ctf", "lab"]).default("basic").notNull(),
-  difficulty: mysqlEnum("difficulty", ["beginner", "intermediate", "advanced"]).default("beginner").notNull(),
-  points: int("points").default(100).notNull(),
-  validationMode: mysqlEnum("validationMode", ["STATIC_FLAG", "SERVER_VALIDATOR", "LAB_FLAG", "AUTOMATED_TEST", "PROJECT_CHECK"]).default("STATIC_FLAG").notNull(),
+  type: challengesTypePgEnum("type").default("basic").notNull(),
+  difficulty: challengesDifficultyPgEnum("difficulty").default("beginner").notNull(),
+  points: integer("points").default(100).notNull(),
+  validationMode: challengesValidationModePgEnum("validationMode").default("STATIC_FLAG").notNull(),
   expectedHash: varchar("expectedHash", { length: 128 }),
   hintText: text("hintText"),
-  skillId: int("skillId"),
+  skillId: integer("skillId"),
   active: boolean("active").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
 });
 
-export const challengeSubmissions = mysqlTable("challengeSubmissions", {
-  id: int("id").autoincrement().primaryKey(),
-  challengeId: int("challengeId").notNull(),
-  userId: int("userId").notNull(),
+export const challengeSubmissions = pgTable("challengeSubmissions", {
+  id: serial("id").primaryKey(),
+  challengeId: integer("challengeId").notNull(),
+  userId: integer("userId").notNull(),
   answerHash: varchar("answerHash", { length: 128 }).notNull(),
   correct: boolean("correct").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const skills = mysqlTable("skills", {
-  id: int("id").autoincrement().primaryKey(),
+export const skills = pgTable("skills", {
+  id: serial("id").primaryKey(),
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   name: varchar("name", { length: 255 }).notNull(),
   category: varchar("category", { length: 120 }).notNull(),
@@ -376,99 +393,99 @@ export const skills = mysqlTable("skills", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const userSkills = mysqlTable("userSkills", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  skillId: int("skillId").notNull(),
-  score: int("score").default(0).notNull(),
-  evidenceCount: int("evidenceCount").default(0).notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+export const userSkills = pgTable("userSkills", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  skillId: integer("skillId").notNull(),
+  score: integer("score").default(0).notNull(),
+  evidenceCount: integer("evidenceCount").default(0).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
 });
 
-export const skillEvidence = mysqlTable("skillEvidence", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  skillId: int("skillId").notNull(),
+export const skillEvidence = pgTable("skillEvidence", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  skillId: integer("skillId").notNull(),
   sourceType: varchar("sourceType", { length: 64 }).notNull(),
-  sourceId: int("sourceId"),
-  result: mysqlEnum("result", ["success", "partial", "failed"]).default("success").notNull(),
-  difficulty: mysqlEnum("difficulty", ["beginner", "intermediate", "advanced"]).default("beginner").notNull(),
+  sourceId: integer("sourceId"),
+  result: skillEvidenceResultPgEnum("result").default("success").notNull(),
+  difficulty: skillEvidenceDifficultyPgEnum("difficulty").default("beginner").notNull(),
   metadataJson: text("metadataJson"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const labTemplates = mysqlTable("labTemplates", {
-  id: int("id").autoincrement().primaryKey(),
+export const labTemplates = pgTable("labTemplates", {
+  id: serial("id").primaryKey(),
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   name: varchar("name", { length: 255 }).notNull(),
   image: varchar("image", { length: 512 }).notNull(),
   description: text("description").notNull(),
-  cpuLimit: int("cpuLimit").default(1).notNull(),
-  memoryMb: int("memoryMb").default(512).notNull(),
-  diskMb: int("diskMb").default(2048).notNull(),
-  pidLimit: int("pidLimit").default(128).notNull(),
-  ttlSeconds: int("ttlSeconds").default(3600).notNull(),
+  cpuLimit: integer("cpuLimit").default(1).notNull(),
+  memoryMb: integer("memoryMb").default(512).notNull(),
+  diskMb: integer("diskMb").default(2048).notNull(),
+  pidLimit: integer("pidLimit").default(128).notNull(),
+  ttlSeconds: integer("ttlSeconds").default(3600).notNull(),
   exposedPortsJson: text("exposedPortsJson").notNull(),
   active: boolean("active").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const labInstances = mysqlTable("labInstances", {
-  id: int("id").autoincrement().primaryKey(),
+export const labInstances = pgTable("labInstances", {
+  id: serial("id").primaryKey(),
   instanceId: varchar("instanceId", { length: 64 }).notNull().unique(),
-  templateId: int("templateId").notNull(),
-  userId: int("userId").notNull(),
-  challengeId: int("challengeId"),
-  status: mysqlEnum("status", ["REQUESTED", "PROVISIONING", "READY", "RUNNING", "COMPLETED", "EXPIRED", "CLEANUP", "DESTROYED", "FAILED"]).default("REQUESTED").notNull(),
+  templateId: integer("templateId").notNull(),
+  userId: integer("userId").notNull(),
+  challengeId: integer("challengeId"),
+  status: labInstancesStatusPgEnum("status").default("REQUESTED").notNull(),
   targetUrl: text("targetUrl"),
   containerRef: varchar("containerRef", { length: 255 }),
   expiresAt: timestamp("expiresAt").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
 });
 
-export const labFlags = mysqlTable("labFlags", {
-  id: int("id").autoincrement().primaryKey(),
-  labInstanceId: int("labInstanceId").notNull(),
+export const labFlags = pgTable("labFlags", {
+  id: serial("id").primaryKey(),
+  labInstanceId: integer("labInstanceId").notNull(),
   flagHash: varchar("flagHash", { length: 128 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const xpTransactions = mysqlTable("xpTransactions", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  amount: int("amount").notNull(),
+export const xpTransactions = pgTable("xpTransactions", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  amount: integer("amount").notNull(),
   sourceType: varchar("sourceType", { length: 64 }).notNull(),
-  sourceId: int("sourceId"),
+  sourceId: integer("sourceId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   }, (table) => ({ rewardSourceUnique: unique("xpTransactions_user_source_unique").on(table.userId, table.sourceType, table.sourceId) }));
 
-export const achievements = mysqlTable("achievements", {
-  id: int("id").autoincrement().primaryKey(),
+export const achievements = pgTable("achievements", {
+  id: serial("id").primaryKey(),
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   name: varchar("name", { length: 255 }).notNull(),
   description: text("description").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const userAchievements = mysqlTable("userAchievements", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  achievementId: int("achievementId").notNull(),
+export const userAchievements = pgTable("userAchievements", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  achievementId: integer("achievementId").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const streaks = mysqlTable("streaks", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().unique(),
-  currentDays: int("currentDays").default(0).notNull(),
-  bestDays: int("bestDays").default(0).notNull(),
+export const streaks = pgTable("streaks", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull().unique(),
+  currentDays: integer("currentDays").default(0).notNull(),
+  bestDays: integer("bestDays").default(0).notNull(),
   lastActivityDate: varchar("lastActivityDate", { length: 10 }),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
 });
 
-export const ctfEvents = mysqlTable("ctfEvents", {
-  id: int("id").autoincrement().primaryKey(),
+export const ctfEvents = pgTable("ctfEvents", {
+  id: serial("id").primaryKey(),
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description").notNull(),
@@ -478,26 +495,26 @@ export const ctfEvents = mysqlTable("ctfEvents", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const ctfChallenges = mysqlTable("ctfChallenges", {
-  id: int("id").autoincrement().primaryKey(),
-  eventId: int("eventId").notNull(),
-  challengeId: int("challengeId").notNull(),
+export const ctfChallenges = pgTable("ctfChallenges", {
+  id: serial("id").primaryKey(),
+  eventId: integer("eventId").notNull(),
+  challengeId: integer("challengeId").notNull(),
   category: varchar("category", { length: 80 }).notNull(),
-  orderIndex: int("orderIndex").default(0).notNull(),
+  orderIndex: integer("orderIndex").default(0).notNull(),
 });
 
-export const ctfSubmissions = mysqlTable("ctfSubmissions", {
-  id: int("id").autoincrement().primaryKey(),
-  eventId: int("eventId").notNull(),
-  challengeId: int("challengeId").notNull(),
-  userId: int("userId").notNull(),
+export const ctfSubmissions = pgTable("ctfSubmissions", {
+  id: serial("id").primaryKey(),
+  eventId: integer("eventId").notNull(),
+  challengeId: integer("challengeId").notNull(),
+  userId: integer("userId").notNull(),
   answerHash: varchar("answerHash", { length: 128 }).notNull(),
   correct: boolean("correct").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const projects = mysqlTable("projects", {
-  id: int("id").autoincrement().primaryKey(),
+export const projects = pgTable("projects", {
+  id: serial("id").primaryKey(),
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description").notNull(),
@@ -506,44 +523,44 @@ export const projects = mysqlTable("projects", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const projectSubmissions = mysqlTable("projectSubmissions", {
-  id: int("id").autoincrement().primaryKey(),
-  projectId: int("projectId").notNull(),
-  userId: int("userId").notNull(),
+export const projectSubmissions = pgTable("projectSubmissions", {
+  id: serial("id").primaryKey(),
+  projectId: integer("projectId").notNull(),
+  userId: integer("userId").notNull(),
   repositoryUrl: text("repositoryUrl"),
   reportUrl: text("reportUrl"),
-  status: mysqlEnum("status", ["submitted", "reviewed", "accepted", "rejected"]).default("submitted").notNull(),
-  score: int("score"),
+  status: projectSubmissionsStatusPgEnum("status").default("submitted").notNull(),
+  score: integer("score"),
   feedback: text("feedback"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
-export const portfolios = mysqlTable("portfolios", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().unique(),
+export const portfolios = pgTable("portfolios", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull().unique(),
   slug: varchar("slug", { length: 255 }).notNull().unique(),
   headline: varchar("headline", { length: 255 }),
   summary: text("summary"),
   public: boolean("public").default(true).notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
 });
 
-export const portfolioItems = mysqlTable("portfolioItems", {
-  id: int("id").autoincrement().primaryKey(),
-  portfolioId: int("portfolioId").notNull(),
+export const portfolioItems = pgTable("portfolioItems", {
+  id: serial("id").primaryKey(),
+  portfolioId: integer("portfolioId").notNull(),
   sourceType: varchar("sourceType", { length: 64 }).notNull(),
-  sourceId: int("sourceId").notNull(),
+  sourceId: integer("sourceId").notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   description: text("description"),
-  orderIndex: int("orderIndex").default(0).notNull(),
+  orderIndex: integer("orderIndex").default(0).notNull(),
 });
 
-export const auditLogs = mysqlTable("auditLogs", {
-  id: int("id").autoincrement().primaryKey(),
-  actorUserId: int("actorUserId"),
+export const auditLogs = pgTable("auditLogs", {
+  id: serial("id").primaryKey(),
+  actorUserId: integer("actorUserId"),
   action: varchar("action", { length: 120 }).notNull(),
   resourceType: varchar("resourceType", { length: 120 }),
-  resourceId: int("resourceId"),
+  resourceId: integer("resourceId"),
   metadataJson: text("metadataJson"),
   ipAddress: varchar("ipAddress", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
