@@ -46,7 +46,7 @@ export function registerGoogleAuthRoutes(app: Express) {
       url.searchParams.set("prompt", "select_account");
       res.redirect(302, url.toString());
     } catch {
-      res.status(503).send("Google sign-in is not configured yet.");
+      res.redirect(302, (ENV.APP_WEB_URL ? ENV.APP_WEB_URL.replace(/\/+$/, "") : "") + "/login?authError=google-not-configured");
     }
   });
 
@@ -54,7 +54,7 @@ export function registerGoogleAuthRoutes(app: Express) {
     const code = typeof req.query.code === "string" ? req.query.code : undefined;
     const state = typeof req.query.state === "string" ? req.query.state : undefined;
     const cookieState = parseCookieHeader(req.headers.cookie ?? "")[OAUTH_STATE_COOKIE];
-    if (!code || !state || !cookieState || !crypto.timingSafeEqual(Buffer.from(state), Buffer.from(cookieState))) {
+    if (!code || !state || !cookieState || Buffer.byteLength(state) !== Buffer.byteLength(cookieState) || !crypto.timingSafeEqual(Buffer.from(state), Buffer.from(cookieState))) {
       res.status(403).send("Google sign-in verification failed. Please try again.");
       return;
     }
@@ -86,7 +86,7 @@ export function registerGoogleAuthRoutes(app: Express) {
         cause: e?.cause?.message ?? e?.cause,
         stack: e?.stack,
       });
-      res.redirect(302, `${ENV.APP_WEB_URL ?? ""}/?authError=google`);
+      res.redirect(302, (ENV.APP_WEB_URL ? ENV.APP_WEB_URL.replace(/\/+$/, "") : "") + "/login?authError=google");
     }
   });
 }

@@ -7,8 +7,8 @@
     "dev": "NODE_ENV=development tsx watch server/_core/index.ts",
     "build": "pnpm build:client && pnpm build:server && pnpm build:worker && pnpm build:cron",
     "build:client": "vite build",
-    "build:server": "esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
-    "build:worker": "esbuild server/worker.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build:server": "esbuild ./server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build:worker": "esbuild ./server/worker.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "NODE_ENV=production node dist/index.js",
     "worker": "NODE_ENV=production node dist/worker.js",
     "typecheck": "tsc --noEmit",
@@ -18,7 +18,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "pnpm db:generate && pnpm db:migrate",
-    "build:cron": "esbuild server/cron.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build:cron": "esbuild ./server/cron.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "cron:nvd": "NODE_ENV=production SERVICE_ROLE=cron node dist/cron.js"
   },
   "dependencies": {

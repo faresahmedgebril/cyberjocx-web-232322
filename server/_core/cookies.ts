@@ -8,11 +8,12 @@ function isSecureRequest(req: Request) {
 }
 
 export function getSessionCookieOptions(req: Request): Pick<CookieOptions, "domain" | "httpOnly" | "path" | "sameSite" | "secure"> {
+  const secure = ENV.SESSION_COOKIE_SECURE || isSecureRequest(req);
   return {
     domain: ENV.SESSION_COOKIE_DOMAIN,
     httpOnly: true,
     path: "/",
-    sameSite: ENV.SESSION_COOKIE_SAMESITE,
-    secure: ENV.SESSION_COOKIE_SECURE || isSecureRequest(req),
+    sameSite: secure ? "none" : ENV.SESSION_COOKIE_SAMESITE,
+    secure,
   };
 }

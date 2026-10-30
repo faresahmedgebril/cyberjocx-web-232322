@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CyberJocx</title>
+    <script>
+      (function () {
+        var path = window.location.pathname;
+        var base = path.indexOf("/cyberjocx-web-232322/") === 0 ? "/cyberjocx-web-232322" : "";
+        var route = path.slice(base.length) || "/";
+        var suffix = (window.location.search || "") + (window.location.hash || "");
+        window.location.replace(base + "/?__route=" + encodeURIComponent(route + suffix));
+      })();
+    </script>
+  </head>
+  <body></body>
+</html>

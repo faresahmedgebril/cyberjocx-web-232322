@@ -71,6 +71,13 @@
       "when": 1790871924413,
       "tag": "0012_xp_idempotency",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1793364502822,
+      "tag": "0013_password_reset_fields",
+      "breakpoints": true
     }
   ]
 }
