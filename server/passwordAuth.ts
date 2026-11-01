@@ -1,6 +1,5 @@
 import type { Express, Request, Response } from "express";
-import { createHash, randomBytes, timingSafeEqual, scrypt } from "node:crypto";
-import { promisify } from "node:util";
+import { createHash, randomBytes, timingSafeEqual, pbkdf2, scrypt } from "node:crypto";
 import { and, eq, isNull } from "drizzle-orm";
 import { sessions, users } from "./../drizzle/schema";
 import { getDb, upsertUser } from "./db";
@@ -10,24 +9,26 @@ import { sessionCookie, createSession } from "./core/auth/session";
 const MIN_PASSWORD_LENGTH = 8;
 const RESET_TTL_MS = 30 * 60 * 1000;
 const GENERIC_RESET_MESSAGE = "If the address is registered, a password reset link will arrive shortly.";
-function normalizeEmail(email: string) { return email.trim().toLowerCase(); }
-const scryptAsync = promisify(scrypt);
 const PBKDF2_ITERATIONS = 600_000;
 
-async function derivePbkdf2(password: string, salt: Uint8Array, iterations: number, length: number) {
-  const keyMaterial = await globalThis.crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(password),
-    "PBKDF2",
-    false,
-    ["deriveBits"],
-  );
-  const bits = await globalThis.crypto.subtle.deriveBits(
-    { name: "PBKDF2", hash: "SHA-256", salt, iterations },
-    keyMaterial,
-    length * 8,
-  );
-  return Buffer.from(bits);
+function normalizeEmail(email: string) { return email.trim().toLowerCase(); }
+
+function derivePbkdf2(password: string, salt: Uint8Array, iterations: number, length: number): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    pbkdf2(password, Buffer.from(salt), iterations, length, "sha256", (error, derived) => {
+      if (error) reject(error);
+      else resolve(derived);
+    });
+  });
+}
+
+function deriveScrypt(password: string, salt: Uint8Array, length: number): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    scrypt(password, Buffer.from(salt), length, (error, derived) => {
+      if (error) reject(error);
+      else resolve(derived);
+    });
+  });
 }
 
 async function hashPassword(password: string) {
@@ -35,15 +36,18 @@ async function hashPassword(password: string) {
   const derived = await derivePbkdf2(password, salt, PBKDF2_ITERATIONS, 32);
   return "pbkdf2-sha256$" + PBKDF2_ITERATIONS + "$" + salt.toString("base64url") + "$" + derived.toString("base64url");
 }
+
 function hashResetToken(token: string) { return createHash("sha256").update(token).digest("hex"); }
+
 async function verifyPassword(password: string, stored: string) {
   const [scheme, roundsOrSalt, saltOrHash, hashText] = stored.split("$");
   try {
     if (scheme === "pbkdf2-sha256" && roundsOrSalt && saltOrHash && hashText) {
       const rounds = Number(roundsOrSalt);
-      if (!Number.isInteger(rounds) || rounds < 600_000 || rounds > 2_000_000) return false;
+      if (!Number.isInteger(rounds) || rounds < PBKDF2_ITERATIONS || rounds > 2_000_000) return false;
       const salt = Buffer.from(saltOrHash, "base64url");
       const expected = Buffer.from(hashText, "base64url");
+      if (salt.length < 16 || expected.length !== 32) return false;
       const actual = await derivePbkdf2(password, salt, rounds, expected.length);
       return actual.length === expected.length && timingSafeEqual(actual, expected);
     }
@@ -52,12 +56,14 @@ async function verifyPassword(password: string, stored: string) {
     if (scheme === "scrypt" && roundsOrSalt && saltOrHash && !hashText) {
       const salt = Buffer.from(roundsOrSalt, "base64url");
       const expected = Buffer.from(saltOrHash, "base64url");
-      const actual = await scryptAsync(password, salt, expected.length);
+      if (salt.length < 16 || expected.length < 16) return false;
+      const actual = await deriveScrypt(password, salt, expected.length);
       return actual.length === expected.length && timingSafeEqual(actual, expected);
     }
     return false;
   } catch { return false; }
 }
+
 function secureRequest(req: Request) {
   return req.secure || String(req.headers["x-forwarded-proto"] ?? "").split(",").some(value => value.trim().toLowerCase() === "https");
 }
