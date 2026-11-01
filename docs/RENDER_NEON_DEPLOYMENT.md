@@ -22,7 +22,8 @@ The application connects using the pooled URL. Drizzle Kit reads `DATABASE_URL_U
 2. Choose **New > Blueprint** and select this repository, using the `main` branch after the PostgreSQL migration branch is merged.
 3. Render reads `render.yaml` and creates the API Web Service and frontend Static Site.
 4. When prompted, provide the Neon pooled connection string as `DATABASE_URL` and the direct/unpooled connection string as `DATABASE_URL_UNPOOLED`.
-5. The API Blueprint generates `JWT_SECRET` and `CRON_SECRET` automatically.
+5. Set `OWNER_OPEN_ID` to `email:<your-login-email-in-lowercase>` so the first account created with that email receives the admin role. Do not share the email password or OAuth secrets.
+6. The API Blueprint generates `JWT_SECRET` and `CRON_SECRET` automatically.
 
 The Blueprint expects these default Render service URLs:
 - API: `https://cyberjocx-api-232322.onrender.com`
@@ -60,7 +61,7 @@ Google and GitHub callback URLs are derived from the incoming HTTPS API host unl
 
 This deploy creates an **empty PostgreSQL schema** in Neon. It does not copy rows from the old Railway MySQL volume.
 
-The original Railway MySQL service and its `mysql-volume` must be kept untouched until a verified MySQL dump is obtained and imported. The previous Railway environment was offline when this branch was prepared, so no export or row-count verification was possible. Do not delete the old Railway project, service, or volume. Once the old database is reachable again, export it and perform the MySQL-to-PostgreSQL data migration separately, then verify row counts and critical user records before switching production traffic.
+The user confirmed this was a single-owner MVP with no other users to preserve. The previous Railway API, worker, MySQL service, and MySQL volume were decommissioned by request. No legacy rows are imported; the new Neon database is intentionally a clean start.
 
 ## Free-tier limitations
 
