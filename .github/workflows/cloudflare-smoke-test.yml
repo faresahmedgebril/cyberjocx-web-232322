@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Wait for Cloudflare Worker deployment
+      - name: Wait for fixed Cloudflare Worker deployment
         env:
           BASE_URL: https://cyberjocx-api.gebrilfares972.workers.dev
         run: |
