@@ -39,7 +39,6 @@ jobs:
       - name: Build frontend
         env:
           VITE_BASE_PATH: /cyberjocx-web-232322/
-          VITE_API_BASE_URL: https://cyberjocx-api.gebrilfares972.workers.dev
         run: |
           pnpm build:client
           test -f dist/public/index.html
