@@ -10,17 +10,18 @@ Render Free does not offer separately hosted Background Worker or Cron instances
 ## 1. Create the Neon database
 
 1. Create a Neon project in the Frankfurt region (or the nearest region available to the Render service).
-2. Copy the **pooled PostgreSQL connection string** from Neon.
-3. Keep the connection string private. Do not commit it to GitHub or paste it into source files.
+2. Copy both PostgreSQL connection strings from Neon: the **pooled** URL and the **direct/unpooled** URL.
+3. Keep both connection strings private. Do not commit them to GitHub or paste them into source files.
+4. Set the pooled URL as `DATABASE_URL` for normal API queries and the direct URL as `DATABASE_URL_UNPOOLED` for Drizzle migrations.
 
-The first API deployment applies the generated PostgreSQL migrations from `drizzle-postgres/`. Render generates these during the API build from `drizzle/schema.ts`.
+The application connects using the pooled URL. Drizzle Kit reads `DATABASE_URL_UNPOOLED` first because schema migrations must use a direct connection; it falls back to `DATABASE_URL` only for environments where the direct URL is not supplied. The first API deployment applies the generated PostgreSQL migrations from `drizzle-postgres/`. Render generates these during the API build from `drizzle/schema.ts`.
 
 ## 2. Create the Render services
 
 1. Connect the GitHub repository to Render.
 2. Choose **New > Blueprint** and select this repository, using the `deploy/render-neon-free` branch until the PostgreSQL migration is approved.
 3. Render reads `render.yaml` and creates the API Web Service and frontend Static Site.
-4. When prompted, provide the Neon pooled connection string as `DATABASE_URL`.
+4. When prompted, provide the Neon pooled connection string as `DATABASE_URL` and the direct/unpooled connection string as `DATABASE_URL_UNPOOLED`.
 5. The API Blueprint generates `JWT_SECRET` and `CRON_SECRET` automatically.
 
 The Blueprint expects these default Render service URLs:
