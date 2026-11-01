@@ -1,4 +1,5 @@
 name: Cloudflare login API smoke test
+# Re-run after the main-branch frontend release
 
 on:
   push:
