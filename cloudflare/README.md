@@ -20,7 +20,7 @@ From the repository root:
 
 ```bash
 pnpm install
-pnpm exec wrangler dev --config cloudflare/wrangler.jsonc
+pnpm dlx wrangler dev --config cloudflare/wrangler.jsonc
 ```
 
 The repository already depends on `pg`; the Worker uses its Node.js compatibility implementation with Hyperdrive. For local development, configure a local Hyperdrive connection string using Wrangler's documented local binding override. Never commit database credentials.
