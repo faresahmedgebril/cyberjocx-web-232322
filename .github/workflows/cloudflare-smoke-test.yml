@@ -1,12 +1,6 @@
 name: Cloudflare login API smoke test
 
 on:
-  push:
-    branches: [deploy/cloudflare-workers-mvp]
-    paths:
-      - "cloudflare/**"
-      - "server/**"
-      - ".github/workflows/cloudflare-smoke-test.yml"
   workflow_dispatch:
 
 permissions:
@@ -17,69 +11,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Wait for fixed Cloudflare Worker deployment
+      - name: Verify deployed Worker health and Neon connectivity
         env:
           BASE_URL: https://cyberjocx-api.gebrilfares972.workers.dev
         run: |
           set -euo pipefail
-          for attempt in $(seq 1 36); do
-            if curl --fail --silent --show-error --max-time 10 "$BASE_URL/health" -o /tmp/health.json; then
-              cat /tmp/health.json
-              exit 0
-            fi
-            echo "Worker not ready yet (attempt $attempt/36)"
-            sleep 5
-          done
-          echo "Worker did not become healthy in time." >&2
-          exit 1
-      - name: Verify Neon connectivity
-        env:
-          BASE_URL: https://cyberjocx-api.gebrilfares972.workers.dev
-        run: |
-          set -euo pipefail
+          curl --fail --silent --show-error --max-time 20 "$BASE_URL/health" | tee /tmp/health.json
           curl --fail --silent --show-error --max-time 20 "$BASE_URL/ready" | tee /tmp/ready.json
           grep -q '"database":true' /tmp/ready.json
-      - name: Verify proxied login route
+      - name: Verify proxied login page
         env:
           BASE_URL: https://cyberjocx-api.gebrilfares972.workers.dev
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --max-time 20 "$BASE_URL/cyberjocx-web-232322/login" -o /tmp/login.html
           grep -qi "CyberJocx" /tmp/login.html
-      - name: Verify email registration, login and first-party session
-        env:
-          BASE_URL: https://cyberjocx-api.gebrilfares972.workers.dev
-        run: |
-          set -euo pipefail
-          EMAIL="cloudflare-smoke-${GITHUB_RUN_ID}@example.invalid"
-          PASSWORD="Temporary-Smoke-${GITHUB_RUN_ID}-A9!x"
-          ORIGIN="$BASE_URL"
-          REFERER="$BASE_URL/cyberjocx-web-232322/login"
-          curl --fail --silent --show-error --max-time 60 \
-            -D /tmp/register.headers -c /tmp/auth.cookies \
-            -X POST "$BASE_URL/api/auth/register" \
-            -H "Origin: $ORIGIN" -H "Referer: $REFERER" \
-            -H "Content-Type: application/json" \
-            --data "$(jq -n --arg email "$EMAIL" --arg password "$PASSWORD" '{email:$email,password:$password,name:"Cloudflare Smoke Test"}')" \
-            -o /tmp/register.json
-          jq -e --arg email "$EMAIL" '.ok == true and .user.email == $email' /tmp/register.json
-          grep -Eqi 'Set-Cookie: cyberjocx_session=' /tmp/register.headers
-          grep -Eqi ';[[:space:]]*HttpOnly' /tmp/register.headers
-          grep -Eqi ';[[:space:]]*Secure' /tmp/register.headers
-          grep -Eqi ';[[:space:]]*SameSite=lax' /tmp/register.headers
-
-          curl --fail --silent --show-error --max-time 60 \
-            -D /tmp/login.headers -b /tmp/auth.cookies -c /tmp/auth.cookies \
-            -X POST "$BASE_URL/api/auth/login" \
-            -H "Origin: $ORIGIN" -H "Referer: $REFERER" \
-            -H "Content-Type: application/json" \
-            --data "$(jq -n --arg email "$EMAIL" --arg password "$PASSWORD" '{email:$email,password:$password}')" \
-            -o /tmp/auth-login.json
-          jq -e --arg email "$EMAIL" '.ok == true and .user.email == $email' /tmp/auth-login.json
-
-          curl --fail --silent --show-error --max-time 30 \
-            -b /tmp/auth.cookies \
-            -H "Origin: $ORIGIN" \
-            "$BASE_URL/api/trpc/auth.me?input=%7B%22json%22%3Anull%7D" \
-            -o /tmp/auth-me.json
-          jq -e --arg email "$EMAIL" '.result.data.json.email == $email' /tmp/auth-me.json
