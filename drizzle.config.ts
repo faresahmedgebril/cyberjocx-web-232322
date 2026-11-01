@@ -6,7 +6,7 @@ export default defineConfig({
   dialect: "postgresql",
   dbCredentials: {
     // drizzle-kit generate reads the schema without connecting. The placeholder
-    // keeps local/CI generation possible before a Neon DATABASE_URL is configured.
-    url: process.env.DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5432/cyberjocx",
+    // keeps local/CI generation possible before a Neon connection is configured.
+    url: process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL ?? "postgresql://postgres:postgres@localhost:5432/cyberjocx",
   },
 });
