@@ -10,6 +10,7 @@ Object.assign(process.env, {
   NODE_ENV: "production",
   SERVICE_ROLE: "api",
   PORT: "3000",
+  DB_POOL_MAX: "2",
   DATABASE_URL: env.HYPERDRIVE.connectionString,
   APP_WEB_URL: env.APP_WEB_URL,
   API_BASE_URL: env.API_BASE_URL,
@@ -19,16 +20,24 @@ Object.assign(process.env, {
   TRUST_PROXY: "true",
   AUTH_RATE_LIMIT: env.AUTH_RATE_LIMIT || "20",
   PUBLIC_API_RATE_LIMIT: env.PUBLIC_API_RATE_LIMIT || "300",
-  CRON_SECRET: env.CRON_SECRET || "",
-  RESEND_API_KEY: env.RESEND_API_KEY || "",
-  AUTH_EMAIL_FROM: env.AUTH_EMAIL_FROM || "",
-  GOOGLE_CLIENT_ID: env.GOOGLE_CLIENT_ID || "",
-  GOOGLE_CLIENT_SECRET: env.GOOGLE_CLIENT_SECRET || "",
-  GOOGLE_OAUTH_REDIRECT_URI: env.GOOGLE_OAUTH_REDIRECT_URI || "",
-  GITHUB_CLIENT_ID: env.GITHUB_CLIENT_ID || "",
-  GITHUB_CLIENT_SECRET: env.GITHUB_CLIENT_SECRET || "",
-  GITHUB_OAUTH_REDIRECT_URI: env.GITHUB_OAUTH_REDIRECT_URI || "",
 });
+
+// Only set optional bindings when a real value exists. Empty strings would fail
+// zod constraints such as CRON_SECRET's minimum length during app startup.
+const optionalEnvironment: Record<string, string | undefined> = {
+  CRON_SECRET: env.CRON_SECRET,
+  RESEND_API_KEY: env.RESEND_API_KEY,
+  AUTH_EMAIL_FROM: env.AUTH_EMAIL_FROM,
+  GOOGLE_CLIENT_ID: env.GOOGLE_CLIENT_ID,
+  GOOGLE_CLIENT_SECRET: env.GOOGLE_CLIENT_SECRET,
+  GOOGLE_OAUTH_REDIRECT_URI: env.GOOGLE_OAUTH_REDIRECT_URI,
+  GITHUB_CLIENT_ID: env.GITHUB_CLIENT_ID,
+  GITHUB_CLIENT_SECRET: env.GITHUB_CLIENT_SECRET,
+  GITHUB_OAUTH_REDIRECT_URI: env.GITHUB_OAUTH_REDIRECT_URI,
+};
+for (const [key, value] of Object.entries(optionalEnvironment)) {
+  if (value) process.env[key] = value;
+}
 
 const { createApp } = await import("../server/_core/app");
 const app = createApp();
