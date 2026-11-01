@@ -11,7 +11,6 @@ Object.assign(process.env, {
   SERVICE_ROLE: "api",
   PORT: "3000",
   DATABASE_URL: env.HYPERDRIVE.connectionString,
-  JWT_SECRET: env.JWT_SECRET,
   APP_WEB_URL: env.APP_WEB_URL,
   API_BASE_URL: env.API_BASE_URL,
   CORS_ORIGINS: env.CORS_ORIGINS,
