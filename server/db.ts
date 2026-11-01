@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, like, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { ENV } from "./_core/env";
 import { getDatabase } from "./infrastructure/database/client";
 import {
@@ -57,7 +57,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     updateSet.role = "admin";
   }
   values.lastSignedIn = new Date();
-  await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+  await db.insert(users).values(values).onConflictDoUpdate({ target: users.openId, set: updateSet });
 }
 
 export async function getUserByOpenId(openId: string) {
@@ -108,7 +108,7 @@ export async function listCourses(search?: string) {
   const db = await getDb();
   if (!db) return [];
   const condition = search
-    ? and(eq(courses.isPublished, true), or(like(courses.title, `%${search}%`), like(courses.category, `%${search}%`)))
+    ? and(eq(courses.isPublished, true), or(ilike(courses.title, `%${search}%`), ilike(courses.category, `%${search}%`)))
     : eq(courses.isPublished, true);
   return db.select().from(courses).where(condition).orderBy(desc(courses.createdAt));
 }
@@ -117,7 +117,7 @@ export async function listCves(search?: string, severity?: "critical" | "high" |
   const db = await getDb();
   if (!db) return [];
   const filters = [];
-  if (search) filters.push(or(like(cves.cveNumber, `%${search}%`), like(cves.title, `%${search}%`), like(cves.affected, `%${search}%`)));
+  if (search) filters.push(or(ilike(cves.cveNumber, `%${search}%`), ilike(cves.title, `%${search}%`), ilike(cves.affected, `%${search}%`)));
   if (severity) filters.push(eq(cves.severity, severity));
   return db.select().from(cves).where(filters.length ? and(...filters) : undefined).orderBy(desc(cves.createdAt));
 }
@@ -126,7 +126,7 @@ export async function listCvesPaginated(search?: string, severity?: "critical" |
   const db = await getDb();
   if (!db) return { items: [], total: 0, page, pageSize, totalPages: 0 };
   const filters = [];
-  if (search) filters.push(or(like(cves.cveNumber, `%${search}%`), like(cves.title, `%${search}%`), like(cves.affected, `%${search}%`), like(cves.description, `%${search}%`)));
+  if (search) filters.push(or(ilike(cves.cveNumber, `%${search}%`), ilike(cves.title, `%${search}%`), ilike(cves.affected, `%${search}%`), ilike(cves.description, `%${search}%`)));
   if (severity) filters.push(eq(cves.severity, severity));
   const where = filters.length ? and(...filters) : undefined;
   const countRows = await db.select({ count: sql<number>`count(*)` }).from(cves).where(where);
@@ -140,7 +140,7 @@ export async function listTools(search?: string, category?: string, sort: "name"
   const db = await getDb();
   if (!db) return [];
   const filters = [];
-  if (search) filters.push(or(like(tools.name, `%${search}%`), like(tools.description, `%${search}%`)));
+  if (search) filters.push(or(ilike(tools.name, `%${search}%`), ilike(tools.description, `%${search}%`)));
   if (category && category !== "all") filters.push(eq(tools.category, category));
   const ordering = sort === "category" ? asc(tools.category) : sort === "recent" ? desc(tools.createdAt) : asc(tools.name);
   return db.select().from(tools).where(filters.length ? and(...filters) : undefined).orderBy(ordering);
@@ -150,7 +150,7 @@ export async function listBooksAdvanced(search?: string, category?: string, maxP
   const db = await getDb();
   if (!db) return [];
   const filters = [];
-  if (search) filters.push(or(like(books.title, `%${search}%`), like(books.author, `%${search}%`), like(books.description, `%${search}%`)));
+  if (search) filters.push(or(ilike(books.title, `%${search}%`), ilike(books.author, `%${search}%`), ilike(books.description, `%${search}%`)));
   if (category && category !== "all") filters.push(eq(books.category, category));
   if (maxPoints !== undefined) filters.push(sql`${books.pricePoints} <= ${maxPoints}`);
   const ordering = sort === "title" ? asc(books.title) : sort === "price" ? asc(books.pricePoints) : desc(books.createdAt);
@@ -194,7 +194,7 @@ export async function listMalware(search?: string, category?: string) {
   const db = await getDb();
   if (!db) return [];
   const filters = [];
-  if (search) filters.push(or(like(malwareFamilies.name, `%${search}%`), like(malwareFamilies.description, `%${search}%`), like(malwareFamilies.mitreTechniques, `%${search}%`)));
+  if (search) filters.push(or(ilike(malwareFamilies.name, `%${search}%`), ilike(malwareFamilies.description, `%${search}%`), ilike(malwareFamilies.mitreTechniques, `%${search}%`)));
   if (category && category !== "all") filters.push(eq(malwareFamilies.category, category));
   return db.select().from(malwareFamilies).where(filters.length ? and(...filters) : undefined).orderBy(desc(malwareFamilies.updatedAt));
 }

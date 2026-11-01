@@ -1,0 +1,46 @@
+name: Export PostgreSQL Schema
+
+on:
+  push:
+    branches: [deploy/render-neon-free]
+    paths:
+      - "drizzle/schema.ts"
+      - "drizzle.config.ts"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/export-postgres-schema.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  export-schema:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Enable Corepack
+        run: corepack enable
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile --prod=false
+      - name: Generate PostgreSQL migrations
+        run: pnpm db:generate
+      - name: Commit generated migrations
+        run: |
+          if [ -z "$(git status --porcelain drizzle-postgres)" ]; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add drizzle-postgres
+          git commit -m "chore: add generated PostgreSQL baseline [skip ci]"
+          git push
+      - name: Upload generated schema
+        uses: actions/upload-artifact@v4
+        with:
+          name: cyberjocx-postgres-schema
+          path: drizzle-postgres/
+          if-no-files-found: error
+          retention-days: 7

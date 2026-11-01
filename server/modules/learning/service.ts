@@ -15,8 +15,10 @@ export async function saveOnboarding(userId: number, input: { level: string; int
     await db.update(onboardingProfiles).set({ level: input.level, interestsJson: JSON.stringify(input.interests), goal: input.goal, studyTime: input.studyTime }).where(eq(onboardingProfiles.id, existing.id));
     return existing.id;
   }
-  const result = await db.insert(onboardingProfiles).values({ userId, level: input.level, interestsJson: JSON.stringify(input.interests), goal: input.goal, studyTime: input.studyTime });
-  return Number(result[0].insertId);
+  const result = await db.insert(onboardingProfiles).values({ userId, level: input.level, interestsJson: JSON.stringify(input.interests), goal: input.goal, studyTime: input.studyTime }).returning({ id: onboardingProfiles.id });
+  const profileId = result[0]?.id;
+  if (profileId === undefined) throw new Error("Failed to create onboarding profile");
+  return profileId;
 }
 
 export async function listAssessments() {

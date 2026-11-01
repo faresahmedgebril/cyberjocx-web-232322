@@ -42,7 +42,7 @@ const envSchema = z.object({
   AI_MAX_TOKENS: z.coerce.number().int().positive().default(1200),
   AI_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
   CRON_SECRET: z.string().min(16).optional(),
-  CORS_ORIGINS: z.string().default("http://localhost:3000"),
+  CORS_ORIGINS: z.string().default(""),
   AUTH_RATE_LIMIT: z.coerce.number().int().positive().default(20),
   AI_RATE_LIMIT: z.coerce.number().int().positive().default(20),
   PUBLIC_API_RATE_LIMIT: z.coerce.number().int().positive().default(300),
@@ -66,26 +66,33 @@ if (!parsed.success) {
 }
 
 const raw = parsed.data;
+const appWebUrl = raw.APP_WEB_URL ?? process.env.RENDER_EXTERNAL_URL;
+const corsOrigins = Array.from(new Set([
+  ...raw.CORS_ORIGINS.split(",").map(value => value.trim()).filter(Boolean),
+  ...(appWebUrl ? [appWebUrl] : []),
+]));
+
 if (raw.NODE_ENV === "production") {
-  const required = raw.SERVICE_ROLE === "worker" || raw.SERVICE_ROLE === "cron"
-    ? ["DATABASE_URL"] as const
-    : ["DATABASE_URL", "JWT_SECRET", "APP_WEB_URL"] as const;
-  const missing = required.filter(key => !raw[key]);
+  const missing: string[] = [];
+  if (!raw.DATABASE_URL) missing.push("DATABASE_URL");
+  if (raw.SERVICE_ROLE === "api" && !raw.JWT_SECRET) missing.push("JWT_SECRET");
+  if (raw.SERVICE_ROLE === "api" && !appWebUrl) missing.push("APP_WEB_URL (or RENDER_EXTERNAL_URL)");
   if (missing.length) throw new Error(`Missing required production environment variables: ${missing.join(", ")}`);
   if (raw.SERVICE_ROLE === "api") {
-    if (raw.CORS_ORIGINS === "http://localhost:3000") throw new Error("CORS_ORIGINS must be configured for the production frontend");
+    if (corsOrigins.length === 0) throw new Error("At least one CORS origin is required in production");
     if (raw.SESSION_COOKIE_SAMESITE === "none" && !raw.SESSION_COOKIE_SECURE) throw new Error("SESSION_COOKIE_SECURE must be true when SESSION_COOKIE_SAMESITE=none");
     if (!raw.GOOGLE_CLIENT_ID || !raw.GOOGLE_CLIENT_SECRET) console.warn("[config] Google OAuth is disabled until GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are configured.");
     if (!raw.GITHUB_CLIENT_ID || !raw.GITHUB_CLIENT_SECRET) console.warn("[config] GitHub OAuth is disabled until GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET are configured.");
     if (!raw.RESEND_API_KEY || !raw.AUTH_EMAIL_FROM) console.warn("[config] Password reset emails are disabled until RESEND_API_KEY and AUTH_EMAIL_FROM are configured.");
     if (raw.STORAGE_PROVIDER === "s3" && (!raw.STORAGE_BUCKET || !raw.STORAGE_ACCESS_KEY || !raw.STORAGE_SECRET_KEY)) console.warn("[config] S3 uploads are disabled until STORAGE_BUCKET, STORAGE_ACCESS_KEY and STORAGE_SECRET_KEY are configured.");
-    if (!raw.CRON_SECRET) console.warn("[config] CRON_SECRET is not configured; protected cron endpoints will be unavailable.");
+    if (!raw.CRON_SECRET) console.warn("[config] CRON_SECRET is not configured; scheduled NVD sync will be unavailable.");
   }
 }
 
 export const ENV = {
   ...raw,
-  corsOrigins: raw.CORS_ORIGINS.split(",").map(value => value.trim()).filter(Boolean),
+  APP_WEB_URL: appWebUrl,
+  corsOrigins,
   isProduction: raw.NODE_ENV === "production",
   isTest: raw.NODE_ENV === "test",
 };
