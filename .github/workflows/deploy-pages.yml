@@ -2,7 +2,14 @@ name: Deploy frontend to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [main, deploy/cloudflare-workers-mvp]
+    paths:
+      - "client/**"
+      - "shared/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "vite.config.ts"
+      - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
 
 permissions:
