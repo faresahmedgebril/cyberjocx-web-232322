@@ -6,10 +6,20 @@
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "observability": { "enabled": true },
+  "vars": {
+    "NODE_ENV": "production",
+    "SERVICE_ROLE": "api",
+    "PORT": "3000",
+    "APP_WEB_URL": "https://cyberjocx-api.gebrilfares972.workers.dev/cyberjocx-web-232322",
+    "API_BASE_URL": "https://cyberjocx-api.gebrilfares972.workers.dev",
+    "CORS_ORIGINS": "https://cyberjocx-api.gebrilfares972.workers.dev,https://faresahmedgebril.github.io",
+    "AUTH_RATE_LIMIT": "20",
+    "PUBLIC_API_RATE_LIMIT": "300"
+  },
   "hyperdrive": [
     {
       "binding": "HYPERDRIVE",
-      "id": "REPLACE_WITH_NEON_HYPERDRIVE_ID"
+      "id": "e561e68997b24fe58d158ee786def876"
     }
   ]
 }
