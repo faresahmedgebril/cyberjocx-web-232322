@@ -26,6 +26,8 @@ services:
         sync: false
       - key: DATABASE_URL_UNPOOLED
         sync: false
+      - key: OWNER_OPEN_ID
+        sync: false
       - key: APP_WEB_URL
         value: https://cyberjocx-web-232322.onrender.com
       - key: CORS_ORIGINS
