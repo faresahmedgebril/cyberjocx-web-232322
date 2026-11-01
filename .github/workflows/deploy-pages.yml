@@ -2,7 +2,7 @@ name: Deploy frontend to GitHub Pages
 
 on:
   push:
-    branches: [main, deploy/cloudflare-workers-mvp]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
