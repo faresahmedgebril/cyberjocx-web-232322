@@ -19,7 +19,7 @@ The application connects using the pooled URL. Drizzle Kit reads `DATABASE_URL_U
 ## 2. Create the Render services
 
 1. Connect the GitHub repository to Render.
-2. Choose **New > Blueprint** and select this repository, using the `deploy/render-neon-free` branch until the PostgreSQL migration is approved.
+2. Choose **New > Blueprint** and select this repository, using the `main` branch after the PostgreSQL migration branch is merged.
 3. Render reads `render.yaml` and creates the API Web Service and frontend Static Site.
 4. When prompted, provide the Neon pooled connection string as `DATABASE_URL` and the direct/unpooled connection string as `DATABASE_URL_UNPOOLED`.
 5. The API Blueprint generates `JWT_SECRET` and `CRON_SECRET` automatically.
