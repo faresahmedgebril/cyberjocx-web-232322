@@ -153,7 +153,7 @@ export function registerPasswordAuthRoutes(app: Express) {
         return fail(res, 400, "This password reset link is invalid or expired.");
       }
       await db.update(users).set({
-        passwordHash: hashPassword(password), loginMethod: "password",
+        passwordHash: await hashPassword(password), loginMethod: "password",
         passwordResetTokenHash: null, passwordResetExpiresAt: null, lastSignedIn: new Date(),
       }).where(eq(users.id, user.id));
       await db.update(sessions).set({ revokedAt: new Date() }).where(and(eq(sessions.userId, user.id), isNull(sessions.revokedAt)));
