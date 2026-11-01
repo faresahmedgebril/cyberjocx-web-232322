@@ -1,0 +1,48 @@
+name: Cloudflare login API smoke test
+
+on:
+  push:
+    branches: [deploy/cloudflare-workers-mvp]
+    paths:
+      - "cloudflare/**"
+      - "server/**"
+      - ".github/workflows/cloudflare-smoke-test.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Wait for Cloudflare Worker deployment
+        env:
+          BASE_URL: https://cyberjocx-api.gebrilfares972.workers.dev
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 36); do
+            if curl --fail --silent --show-error --max-time 10 "$BASE_URL/health" -o /tmp/health.json; then
+              cat /tmp/health.json
+              exit 0
+            fi
+            echo "Worker not ready yet (attempt $attempt/36)"
+            sleep 5
+          done
+          echo "Worker did not become healthy in time." >&2
+          exit 1
+      - name: Verify Neon connectivity
+        env:
+          BASE_URL: https://cyberjocx-api.gebrilfares972.workers.dev
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 20 "$BASE_URL/ready" | tee /tmp/ready.json
+          grep -q '"database":true' /tmp/ready.json
+      - name: Verify proxied login route
+        env:
+          BASE_URL: https://cyberjocx-api.gebrilfares972.workers.dev
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 20 "$BASE_URL/cyberjocx-web-232322/login" -o /tmp/login.html
+          grep -qi "CyberJocx" /tmp/login.html
