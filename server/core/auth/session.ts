@@ -65,6 +65,6 @@ export function sessionCookie(token: string, secure: boolean, rememberMe = true)
   const cookieSecure = ENV.SESSION_COOKIE_SECURE || secure;
   const domain = ENV.SESSION_COOKIE_DOMAIN ? "; Domain=" + ENV.SESSION_COOKIE_DOMAIN : "";
   const maxAge = rememberMe ? "; Max-Age=" + Math.floor(ENV.SESSION_TTL_MS / 1000) : "";
-  const sameSite = cookieSecure ? "None" : ENV.SESSION_COOKIE_SAMESITE;
+  const sameSite = ENV.SESSION_COOKIE_SAMESITE;
   return COOKIE_NAME + "=" + token + "; Path=/; HttpOnly" + maxAge + "; SameSite=" + sameSite + domain + (cookieSecure ? "; Secure" : "");
 }

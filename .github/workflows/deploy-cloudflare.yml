@@ -1,0 +1,113 @@
+name: Deploy Cloudflare Worker
+
+on:
+  push:
+    branches: [deploy/cloudflare-workers-mvp]
+    paths:
+      - "cloudflare/**"
+      - "server/**"
+      - "drizzle/**"
+      - "shared/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/deploy-cloudflare.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cyberjocx-cloudflare-worker
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile --prod=false
+
+      - name: Check Cloudflare deployment credentials
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "${CLOUDFLARE_API_TOKEN}" ]; then
+            echo "::error::GitHub Actions secret CLOUDFLARE_API_TOKEN is missing. Add a Cloudflare API token with Workers Scripts: Edit permission, then rerun this workflow."
+            exit 1
+          fi
+
+      - name: Deploy Worker
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: 91f0bdcf3f87b86358d38b5f7559dff1
+          wranglerVersion: "4"
+          command: deploy --config cloudflare/wrangler.jsonc
+
+      - name: Verify Worker health and Neon connectivity
+        env:
+          BASE_URL: https://cyberjocx-api.gebrilfares972.workers.dev
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 20 "${BASE_URL}/health" | tee /tmp/health.json
+          curl --fail --silent --show-error --max-time 20 "${BASE_URL}/ready" | tee /tmp/ready.json
+          grep -q '"database":true' /tmp/ready.json
+
+      - name: Verify proxied login page
+        env:
+          BASE_URL: https://cyberjocx-api.gebrilfares972.workers.dev
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 20 "${BASE_URL}/cyberjocx-web-232322/login" -o /tmp/login.html
+          grep -qi "CyberJocx" /tmp/login.html
+
+      - name: Verify email registration, login and HttpOnly session
+        env:
+          BASE_URL: https://cyberjocx-api.gebrilfares972.workers.dev
+        run: |
+          set -euo pipefail
+          EMAIL="cloudflare-smoke-${GITHUB_RUN_ID}@example.invalid"
+          PASSWORD="Temporary-Smoke-${GITHUB_RUN_ID}-A9!x"
+          ORIGIN="${BASE_URL}"
+          REFERER="${BASE_URL}/cyberjocx-web-232322/login"
+
+          curl --fail --silent --show-error --max-time 90 \
+            -D /tmp/register.headers -c /tmp/auth.cookies \
+            -X POST "${BASE_URL}/api/auth/register" \
+            -H "Origin: ${ORIGIN}" -H "Referer: ${REFERER}" \
+            -H "Content-Type: application/json" \
+            --data "$(jq -n --arg email "${EMAIL}" --arg password "${PASSWORD}" '{email:$email,password:$password,name:"Cloudflare Smoke Test"}')" \
+            -o /tmp/register.json
+          jq -e --arg email "${EMAIL}" '.ok == true and .user.email == $email' /tmp/register.json
+          grep -Eqi 'Set-Cookie: cyberjocx_session=' /tmp/register.headers
+          grep -Eqi ';[[:space:]]*HttpOnly' /tmp/register.headers
+          grep -Eqi ';[[:space:]]*Secure' /tmp/register.headers
+          grep -Eqi ';[[:space:]]*SameSite=lax' /tmp/register.headers
+
+          curl --fail --silent --show-error --max-time 90 \
+            -D /tmp/login.headers -b /tmp/auth.cookies -c /tmp/auth.cookies \
+            -X POST "${BASE_URL}/api/auth/login" \
+            -H "Origin: ${ORIGIN}" -H "Referer: ${REFERER}" \
+            -H "Content-Type: application/json" \
+            --data "$(jq -n --arg email "${EMAIL}" --arg password "${PASSWORD}" '{email:$email,password:$password}')" \
+            -o /tmp/auth-login.json
+          jq -e --arg email "${EMAIL}" '.ok == true and .user.email == $email' /tmp/auth-login.json
+
+          curl --fail --silent --show-error --max-time 30 \
+            -b /tmp/auth.cookies -H "Origin: ${ORIGIN}" \
+            "${BASE_URL}/api/trpc/auth.me?input=%7B%22json%22%3Anull%7D" \
+            -o /tmp/auth-me.json
+          jq -e --arg email "${EMAIL}" '.result.data.json.email == $email' /tmp/auth-me.json
