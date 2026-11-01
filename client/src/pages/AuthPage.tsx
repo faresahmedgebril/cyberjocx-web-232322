@@ -6,12 +6,13 @@ import {
   KeyRound, LoaderCircle, LockKeyhole, Mail, ShieldCheck, UserRound, Zap,
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { API_BASE_URL } from "@/features/api/config";
 import "./AuthPage.css";
 
 type AuthView = "login" | "signup" | "forgot" | "reset";
 type Notice = { kind: "error" | "success"; text: string } | null;
 
-const API_ORIGIN = (import.meta.env.VITE_API_BASE_URL || "https://cyberjocx-api-232322.onrender.com").replace(/\/+$/, "");
+const API_ORIGIN = API_BASE_URL;
 const HOME_PATH = import.meta.env.BASE_URL || "/";
 const codeRain = [
   "01 ACCESS GRANTED 10", "sudo ./secure --future", "7F 3A C9 00 FF 12",
