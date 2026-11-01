@@ -9,6 +9,15 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <script>
+      // Keep authentication on the same origin as the proxied API so HttpOnly
+      // session cookies are first-party in browsers that block third-party cookies.
+      if (window.location.hostname === "faresahmedgebril.github.io") {
+        const destination = "https://cyberjocx-api.gebrilfares972.workers.dev"
+          + window.location.pathname + window.location.search + window.location.hash;
+        window.location.replace(destination);
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
