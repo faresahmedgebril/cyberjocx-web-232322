@@ -1,5 +1,6 @@
 import type { Express, Request, Response } from "express";
-import crypto from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual, pbkdf2, scrypt } from "node:crypto";
+import { promisify } from "node:util";
 import { and, eq, isNull } from "drizzle-orm";
 import { sessions, users } from "./../drizzle/schema";
 import { getDb, upsertUser } from "./db";
@@ -10,20 +11,36 @@ const MIN_PASSWORD_LENGTH = 8;
 const RESET_TTL_MS = 30 * 60 * 1000;
 const GENERIC_RESET_MESSAGE = "If the address is registered, a password reset link will arrive shortly.";
 function normalizeEmail(email: string) { return email.trim().toLowerCase(); }
-function hashPassword(password: string) {
-  const salt = crypto.randomBytes(16);
-  const derived = crypto.scryptSync(password, salt, 64);
-  return "scrypt$" + salt.toString("base64url") + "$" + derived.toString("base64url");
+const pbkdf2Async = promisify(pbkdf2);
+const scryptAsync = promisify(scrypt);
+const PBKDF2_ITERATIONS = 600_000;
+
+async function hashPassword(password: string) {
+  const salt = randomBytes(16);
+  const derived = await pbkdf2Async(password, salt, PBKDF2_ITERATIONS, 32, "sha256");
+  return "pbkdf2-sha256$" + PBKDF2_ITERATIONS + "$" + salt.toString("base64url") + "$" + derived.toString("base64url");
 }
-function hashResetToken(token: string) { return crypto.createHash("sha256").update(token).digest("hex"); }
-function verifyPassword(password: string, stored: string) {
-  const [scheme, saltText, hashText] = stored.split("$");
-  if (scheme !== "scrypt" || !saltText || !hashText) return false;
+function hashResetToken(token: string) { return createHash("sha256").update(token).digest("hex"); }
+async function verifyPassword(password: string, stored: string) {
+  const [scheme, roundsOrSalt, saltOrHash, hashText] = stored.split("$");
   try {
-    const salt = Buffer.from(saltText, "base64url");
-    const expected = Buffer.from(hashText, "base64url");
-    const actual = crypto.scryptSync(password, salt, expected.length);
-    return actual.length === expected.length && crypto.timingSafeEqual(actual, expected);
+    if (scheme === "pbkdf2-sha256" && roundsOrSalt && saltOrHash && hashText) {
+      const rounds = Number(roundsOrSalt);
+      if (!Number.isInteger(rounds) || rounds < 600_000 || rounds > 2_000_000) return false;
+      const salt = Buffer.from(saltOrHash, "base64url");
+      const expected = Buffer.from(hashText, "base64url");
+      const actual = await pbkdf2Async(password, salt, rounds, expected.length, "sha256");
+      return actual.length === expected.length && timingSafeEqual(actual, expected);
+    }
+
+    // Backward compatibility for accounts created by the earlier Node.js server.
+    if (scheme === "scrypt" && roundsOrSalt && saltOrHash && !hashText) {
+      const salt = Buffer.from(roundsOrSalt, "base64url");
+      const expected = Buffer.from(saltOrHash, "base64url");
+      const actual = await scryptAsync(password, salt, expected.length);
+      return actual.length === expected.length && timingSafeEqual(actual, expected);
+    }
+    return false;
   } catch { return false; }
 }
 function secureRequest(req: Request) {
@@ -60,7 +77,7 @@ export function registerPasswordAuthRoutes(app: Express) {
       if (!db) return fail(res, 503, "Database unavailable.");
       const existing = (await db.select().from(users).where(eq(users.email, email)).limit(1))[0];
       if (existing) return fail(res, 409, "An account already exists with this email.");
-      await upsertUser({ openId: "email:" + email, name, email, loginMethod: "password", passwordHash: hashPassword(password), lastSignedIn: new Date() });
+      await upsertUser({ openId: "email:" + email, name, email, loginMethod: "password", passwordHash: await hashPassword(password), lastSignedIn: new Date() });
       const user = (await db.select().from(users).where(eq(users.openId, "email:" + email)).limit(1))[0];
       if (!user) return fail(res, 500, "Account creation failed.");
       const { token } = await createSession(user.id, req);
@@ -81,7 +98,7 @@ export function registerPasswordAuthRoutes(app: Express) {
       const db = await getDb();
       if (!db) return fail(res, 503, "Database unavailable.");
       const user = (await db.select().from(users).where(eq(users.email, email)).limit(1))[0];
-      if (!user?.passwordHash || !verifyPassword(password, user.passwordHash)) return fail(res, 401, "Invalid email or password.");
+      if (!user?.passwordHash || !(await verifyPassword(password, user.passwordHash))) return fail(res, 401, "Invalid email or password.");
       await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, user.id));
       const { token } = await createSession(user.id, req);
       res.setHeader("Set-Cookie", sessionCookie(token, secureRequest(req), rememberMe));
@@ -101,7 +118,7 @@ export function registerPasswordAuthRoutes(app: Express) {
       if (!db) return fail(res, 503, "Database unavailable.");
       const user = (await db.select().from(users).where(eq(users.email, email)).limit(1))[0];
       if (!user) return res.json({ ok: true, message: GENERIC_RESET_MESSAGE });
-      const token = crypto.randomBytes(32).toString("base64url");
+      const token = randomBytes(32).toString("base64url");
       await db.update(users).set({
         passwordResetTokenHash: hashResetToken(token),
         passwordResetExpiresAt: new Date(Date.now() + RESET_TTL_MS),
@@ -132,7 +149,7 @@ export function registerPasswordAuthRoutes(app: Express) {
       if (!user?.passwordResetTokenHash || !user.passwordResetExpiresAt) return fail(res, 400, "This password reset link is invalid or expired.");
       const actual = Buffer.from(hashResetToken(token), "hex");
       const expected = Buffer.from(user.passwordResetTokenHash, "hex");
-      if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected) || user.passwordResetExpiresAt.getTime() <= Date.now()) {
+      if (actual.length !== expected.length || !timingSafeEqual(actual, expected) || user.passwordResetExpiresAt.getTime() <= Date.now()) {
         return fail(res, 400, "This password reset link is invalid or expired.");
       }
       await db.update(users).set({
