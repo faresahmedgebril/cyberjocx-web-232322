@@ -1,5 +1,5 @@
 import type { Express, Request, Response } from "express";
-import { createHash, randomBytes, timingSafeEqual, pbkdf2, scrypt } from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual, scrypt } from "node:crypto";
 import { promisify } from "node:util";
 import { and, eq, isNull } from "drizzle-orm";
 import { sessions, users } from "./../drizzle/schema";
@@ -11,13 +11,28 @@ const MIN_PASSWORD_LENGTH = 8;
 const RESET_TTL_MS = 30 * 60 * 1000;
 const GENERIC_RESET_MESSAGE = "If the address is registered, a password reset link will arrive shortly.";
 function normalizeEmail(email: string) { return email.trim().toLowerCase(); }
-const pbkdf2Async = promisify(pbkdf2);
 const scryptAsync = promisify(scrypt);
 const PBKDF2_ITERATIONS = 600_000;
 
+async function derivePbkdf2(password: string, salt: Uint8Array, iterations: number, length: number) {
+  const keyMaterial = await globalThis.crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"],
+  );
+  const bits = await globalThis.crypto.subtle.deriveBits(
+    { name: "PBKDF2", hash: "SHA-256", salt, iterations },
+    keyMaterial,
+    length * 8,
+  );
+  return Buffer.from(bits);
+}
+
 async function hashPassword(password: string) {
   const salt = randomBytes(16);
-  const derived = await pbkdf2Async(password, salt, PBKDF2_ITERATIONS, 32, "sha256");
+  const derived = await derivePbkdf2(password, salt, PBKDF2_ITERATIONS, 32);
   return "pbkdf2-sha256$" + PBKDF2_ITERATIONS + "$" + salt.toString("base64url") + "$" + derived.toString("base64url");
 }
 function hashResetToken(token: string) { return createHash("sha256").update(token).digest("hex"); }
@@ -29,7 +44,7 @@ async function verifyPassword(password: string, stored: string) {
       if (!Number.isInteger(rounds) || rounds < 600_000 || rounds > 2_000_000) return false;
       const salt = Buffer.from(saltOrHash, "base64url");
       const expected = Buffer.from(hashText, "base64url");
-      const actual = await pbkdf2Async(password, salt, rounds, expected.length, "sha256");
+      const actual = await derivePbkdf2(password, salt, rounds, expected.length);
       return actual.length === expected.length && timingSafeEqual(actual, expected);
     }
 
