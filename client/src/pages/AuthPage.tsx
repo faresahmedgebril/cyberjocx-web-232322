@@ -117,6 +117,10 @@ export default function AuthPage() {
       }
 
       if (view === "login" || view === "signup") {
+        if (typeof result.sessionToken !== "string" || !result.sessionToken) {
+          throw new Error("تم إنشاء الطلب لكن لم تصل جلسة الدخول من السيرفر. حاول تسجيل الدخول مرة أخرى.");
+        }
+        sessionStorage.setItem("cyberjocx-session", result.sessionToken);
         window.location.assign(HOME_PATH);
         return;
       }
@@ -141,7 +145,9 @@ export default function AuthPage() {
   }
 
   function startOAuth(provider: "google" | "github") {
-    window.location.assign(API_ORIGIN + "/api/auth/" + provider + "/login");
+    const state = crypto.randomUUID() + crypto.randomUUID();
+    sessionStorage.setItem("cyberjocx-oauth-state", state);
+    window.location.assign(API_ORIGIN + "/api/auth/" + provider + "/login?state=" + encodeURIComponent(state));
   }
 
   const accountView = view === "login" || view === "signup";
