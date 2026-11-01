@@ -7,7 +7,7 @@ services:
     runtime: node
     plan: free
     region: frankfurt
-    branch: deploy/render-neon-free
+    branch: main
     buildCommand: corepack enable && pnpm install --no-frozen-lockfile --prod=false && pnpm build && pnpm db:generate
     startCommand: pnpm db:migrate && pnpm start
     healthCheckPath: /health
@@ -50,9 +50,13 @@ services:
   - type: web
     name: cyberjocx-web-232322
     runtime: static
-    branch: deploy/render-neon-free
+    branch: main
     buildCommand: corepack enable && pnpm install --no-frozen-lockfile --prod=false && pnpm build:client
     staticPublishPath: ./dist/public
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
     envVars:
       - key: VITE_API_BASE_URL
         value: https://cyberjocx-api-232322.onrender.com
