@@ -14,7 +14,6 @@ const envSchema = z.object({
   APP_WEB_URL: z.string().url().optional(),
   API_BASE_URL: z.string().url().optional(),
   DATABASE_URL: z.string().min(1).optional(),
-  JWT_SECRET: z.string().min(32, "JWT_SECRET must be at least 32 characters").optional(),
   SESSION_TTL_MS: z.coerce.number().int().positive().default(1000 * 60 * 60 * 24 * 30),
   SESSION_COOKIE_SAMESITE: z.enum(["lax", "strict", "none"]).default("lax"),
   SESSION_COOKIE_DOMAIN: z.string().optional(),
@@ -75,7 +74,6 @@ const corsOrigins = Array.from(new Set([
 if (raw.NODE_ENV === "production") {
   const missing: string[] = [];
   if (!raw.DATABASE_URL) missing.push("DATABASE_URL");
-  if (raw.SERVICE_ROLE === "api" && !raw.JWT_SECRET) missing.push("JWT_SECRET");
   if (raw.SERVICE_ROLE === "api" && !appWebUrl) missing.push("APP_WEB_URL (or RENDER_EXTERNAL_URL)");
   if (missing.length) throw new Error(`Missing required production environment variables: ${missing.join(", ")}`);
   if (raw.SERVICE_ROLE === "api") {
