@@ -1,14 +1,11 @@
 import type { Express, Request, Response } from "express";
-import crypto from "node:crypto";
-import { parse as parseCookieHeader } from "cookie";
 import { createSession, ensureGoogleUser, sessionCookie } from "./core/auth/session";
-import { OAUTH_STATE_COOKIE } from "./config/constants";
 import { ENV } from "./config/env";
-import { getSessionCookieOptions } from "./_core/cookies";
 
 const GOOGLE_AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo";
+const OAUTH_STATE_PATTERN = /^[A-Za-z0-9_-]{60,100}$/;
 
 function callbackUrl(req: Request) {
   if (ENV.GOOGLE_OAUTH_REDIRECT_URI) return ENV.GOOGLE_OAUTH_REDIRECT_URI;
@@ -31,12 +28,24 @@ function requireGoogleConfig() {
   return { clientId: ENV.GOOGLE_CLIENT_ID, clientSecret: ENV.GOOGLE_CLIENT_SECRET };
 }
 
+function loginUrl(reason: string) {
+  return (ENV.APP_WEB_URL ? ENV.APP_WEB_URL.replace(/\/+$/, "") : "") + "/login?authError=" + encodeURIComponent(reason);
+}
+
+function appUrlWithSession(token: string, state: string) {
+  const base = ENV.APP_WEB_URL ? ENV.APP_WEB_URL.replace(/\/+$/, "") : "";
+  return base + "/#session=" + encodeURIComponent(token) + "&oauthState=" + encodeURIComponent(state);
+}
+
 export function registerGoogleAuthRoutes(app: Express) {
   app.get("/api/auth/google/login", (req: Request, res: Response) => {
+    const state = typeof req.query.state === "string" ? req.query.state : "";
+    if (!OAUTH_STATE_PATTERN.test(state)) {
+      res.redirect(302, loginUrl("google-state"));
+      return;
+    }
     try {
       const { clientId } = requireGoogleConfig();
-      const state = crypto.randomBytes(32).toString("base64url");
-      res.cookie(OAUTH_STATE_COOKIE, state, { ...getSessionCookieOptions(req), sameSite: "lax", maxAge: 10 * 60 * 1000 });
       const url = new URL(GOOGLE_AUTHORIZE_URL);
       url.searchParams.set("client_id", clientId);
       url.searchParams.set("redirect_uri", callbackUrl(req));
@@ -46,34 +55,56 @@ export function registerGoogleAuthRoutes(app: Express) {
       url.searchParams.set("prompt", "select_account");
       res.redirect(302, url.toString());
     } catch {
-      res.redirect(302, (ENV.APP_WEB_URL ? ENV.APP_WEB_URL.replace(/\/+$/, "") : "") + "/login?authError=google-not-configured");
+      res.redirect(302, loginUrl("google-not-configured"));
     }
   });
 
   app.get("/api/auth/google/callback", async (req: Request, res: Response) => {
-    const code = typeof req.query.code === "string" ? req.query.code : undefined;
-    const state = typeof req.query.state === "string" ? req.query.state : undefined;
-    const cookieState = parseCookieHeader(req.headers.cookie ?? "")[OAUTH_STATE_COOKIE];
-    if (!code || !state || !cookieState || Buffer.byteLength(state) !== Buffer.byteLength(cookieState) || !crypto.timingSafeEqual(Buffer.from(state), Buffer.from(cookieState))) {
-      res.status(403).send("Google sign-in verification failed. Please try again.");
+    const code = typeof req.query.code === "string" ? req.query.code : "";
+    const state = typeof req.query.state === "string" ? req.query.state : "";
+    if (!code || !OAUTH_STATE_PATTERN.test(state)) {
+      res.redirect(302, loginUrl("google-state"));
       return;
     }
-    res.clearCookie(OAUTH_STATE_COOKIE, { ...getSessionCookieOptions(req), sameSite: "lax" });
+
     try {
       const { clientId, clientSecret } = requireGoogleConfig();
-      const tokenResponse = await fetch(GOOGLE_TOKEN_URL, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ code, client_id: clientId, client_secret: clientSecret, redirect_uri: callbackUrl(req), grant_type: "authorization_code" }) });
+      const tokenResponse = await fetch(GOOGLE_TOKEN_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          code,
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: callbackUrl(req),
+          grant_type: "authorization_code",
+        }),
+      });
       if (!tokenResponse.ok) throw new Error("Google token exchange failed");
       const tokens = await tokenResponse.json() as { access_token?: string };
       if (!tokens.access_token) throw new Error("Google access token missing");
-      const userResponse = await fetch(GOOGLE_USERINFO_URL, { headers: { Authorization: `Bearer ${tokens.access_token}` } });
+
+      const userResponse = await fetch(GOOGLE_USERINFO_URL, {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      });
       if (!userResponse.ok) throw new Error("Google user profile request failed");
-      const googleUser = await userResponse.json() as { sub?: string; email?: string; name?: string; picture?: string; email_verified?: boolean };
-      if (!googleUser.sub || !googleUser.email_verified) throw new Error("Google account must have a verified email");
-      const user = await ensureGoogleUser({ openId: `google:${googleUser.sub}`, name: googleUser.name, email: googleUser.email, avatarUrl: googleUser.picture });
+      const googleUser = await userResponse.json() as {
+        sub?: string; email?: string; name?: string; picture?: string; email_verified?: boolean;
+      };
+      if (!googleUser.sub || !googleUser.email || !googleUser.email_verified) {
+        throw new Error("Google account must have a verified email");
+      }
+
+      const user = await ensureGoogleUser({
+        openId: `google:${googleUser.sub}`,
+        name: googleUser.name,
+        email: googleUser.email,
+        avatarUrl: googleUser.picture,
+      });
       const { token } = await createSession(user.id, req);
       const secure = req.protocol === "https" || String(req.headers["x-forwarded-proto"] ?? "").includes("https");
       res.setHeader("Set-Cookie", sessionCookie(token, secure));
-      res.redirect(302, ENV.APP_WEB_URL ?? "/");
+      res.redirect(302, appUrlWithSession(token, state));
     } catch (error) {
       const e = error as any;
       console.error("[Google OAuth] callback failed", {
@@ -86,7 +117,7 @@ export function registerGoogleAuthRoutes(app: Express) {
         cause: e?.cause?.message ?? e?.cause,
         stack: e?.stack,
       });
-      res.redirect(302, (ENV.APP_WEB_URL ? ENV.APP_WEB_URL.replace(/\/+$/, "") : "") + "/login?authError=google");
+      res.redirect(302, loginUrl("google"));
     }
   });
 }
