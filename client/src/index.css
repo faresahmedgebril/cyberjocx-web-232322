@@ -222,3 +222,13 @@ h1 { font-size: clamp(28px, 3.3vw, 47px); letter-spacing: -.045em; line-height: 
 @media (max-width:1250px){.dashboard-v2{grid-template-columns:minmax(0,1.5fr) minmax(270px,.85fr)}.dash-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.dash-course-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:900px){.dashboard-v2{grid-template-columns:1fr}.dashboard-side-column{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.dash-goals,.dash-quick-links{grid-column:1/-1}.content-wrap{padding:20px 14px 50px}}
 @media (max-width:600px){.dash-welcome-copy{width:100%;padding:22px 18px}.dash-welcome-art{opacity:.25;width:65%;right:-10%}.dash-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.dash-stat{padding:12px 10px}.dash-path-track{grid-template-columns:repeat(3,minmax(0,1fr));row-gap:17px}.dash-path-track:before{display:none}.dash-course-grid,.dashboard-side-column{grid-template-columns:1fr}.dash-panel{padding:13px}.dash-path-step strong{font-size:9px}.topbar{padding:0 14px}}
+
+:root { --cj-accent: #873dff; }
+.app-shell .main-nav .nav-item.active {
+  border-color: var(--cj-accent);
+  box-shadow: 0 0 17px color-mix(in srgb, var(--cj-accent) 32%, transparent);
+}
+.app-shell .primary-button, .app-shell .cart-button {
+  border-color: var(--cj-accent);
+  background: linear-gradient(105deg, color-mix(in srgb, var(--cj-accent) 80%, #1b66e7), #284be0);
+}
