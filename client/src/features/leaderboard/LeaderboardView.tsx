@@ -70,6 +70,11 @@ export default function LeaderboardView() {
 
       {board.isLoading ? (
         <div className="cj-leader-state"><RefreshCw className="cj-spin" size={20} /> Loading leaderboard…</div>
+      ) : board.isError && board.error.data?.code === "NOT_FOUND" ? (
+        <div className="cj-leader-state">
+          <Trophy size={28} />
+          <strong>Coming Soon</strong>
+        </div>
       ) : board.isError ? (
         <div className="cj-leader-state is-error">
           <Shield size={22} />
