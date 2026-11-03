@@ -82,13 +82,30 @@ export async function syncRecentNvd() {
   }
 }
 
+export async function processNextNvdSyncJob() {
+  const job = await queue.claim("nvd-sync");
+  if (!job) return undefined;
+
+  try {
+    const result = await syncRecentNvd();
+    await queue.complete(job.id);
+    return { jobId: job.id, ...result };
+  } catch (error) {
+    await queue.fail(job.id, error instanceof Error ? error.message : "NVD sync failed");
+    throw error;
+  }
+}
+
 export async function handleNvdSync(req: Request, res: Response) {
   const supplied = req.headers["x-cron-secret"] ?? (typeof req.headers.authorization === "string" && req.headers.authorization.startsWith("Bearer ") ? req.headers.authorization.slice(7) : undefined);
   if (!ENV.CRON_SECRET || supplied !== ENV.CRON_SECRET) return res.status(403).json({ error: "cron-only" });
   const db = await getDb();
   if (!db) return res.status(503).json({ error: "database-unavailable" });
-  const job = await queue.enqueue("nvd-sync", { requestedAt: new Date().toISOString() });
-  return res.status(202).json({ ok: true, queued: true, jobId: job.id });
+
+  const created = await queue.enqueue("nvd-sync", { requestedAt: new Date().toISOString() });
+  const processed = await processNextNvdSyncJob();
+  if (!processed) return res.status(503).json({ error: "queue-not-processed", createdJobId: created.id });
+  return res.status(200).json({ ok: true, queued: false, processed: true, createdJobId: created.id, ...processed });
 }
 
 export async function runQueuedJobs() {
