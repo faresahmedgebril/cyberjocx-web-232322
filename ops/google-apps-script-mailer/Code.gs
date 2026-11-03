@@ -22,6 +22,15 @@ function generateMailToken() {
   console.log(token);
 }
 
+/**
+ * Run once in the editor while signed in as the Gmail owner to grant
+ * Gmail send permission before the public Web App endpoint is used.
+ */
+function authorizeGmail() {
+  const remaining = GmailApp.getRemainingDailyQuota();
+  console.log("Gmail send permission granted. Remaining recipient quota today: " + remaining);
+}
+
 function doPost(e) {
   try {
     const body = JSON.parse((e && e.postData && e.postData.contents) || "{}");
