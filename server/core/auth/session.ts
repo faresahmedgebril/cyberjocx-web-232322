@@ -31,7 +31,7 @@ export async function createSession(userId: number, req?: Pick<Request, "headers
 export async function revokeSession(token: string | undefined) {
   if (!token) return;
   const db = await getDb();
-  if (!db) return;
+  if (!db) throw new Error("Database unavailable; session revocation could not be completed.");
   await db.update(sessions).set({ revokedAt: new Date() }).where(and(eq(sessions.tokenHash, hashToken(token)), isNull(sessions.revokedAt)));
 }
 export async function authenticateRequest(req: Request) {
