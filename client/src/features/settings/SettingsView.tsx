@@ -61,6 +61,7 @@ export default function SettingsView({
 
   useEffect(() => {
     document.documentElement.style.setProperty("--cj-accent", accent);
+    document.documentElement.style.setProperty("--cj-settings-accent", accent);
     window.localStorage.setItem("cyberjocx-accent", accent);
   }, [accent]);
 
@@ -73,7 +74,12 @@ export default function SettingsView({
       toast.info("سجّل الدخول أولًا لحفظ إعدادات الحساب.");
       return;
     }
-    updateProfile.mutate({ name: name.trim(), bio: bio.trim() });
+    const normalizedName = name.trim();
+    if (normalizedName.length < 2 || normalizedName.length > 120) {
+      toast.error("الاسم لازم يكون من حرفين إلى 120 حرفًا.");
+      return;
+    }
+    updateProfile.mutate({ name: normalizedName, bio: bio.trim() });
   }
 
   function changeTheme(next: "light" | "dark") {
