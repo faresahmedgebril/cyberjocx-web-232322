@@ -9,27 +9,6 @@ import App from "./App";
 import { startLogin } from "./const";
 import "./index.css";
 
-// OAuth returns the short-lived app session in the URL fragment. The fragment
-// is never sent to the server; bind it to the state created in this browser tab,
-// store the session, then remove the fragment before rendering the app.
-if (typeof window !== "undefined") {
-  try {
-    const fragment = new URLSearchParams(window.location.hash.replace(/^#/, ""));
-    const returnedToken = fragment.get("session");
-    const returnedState = fragment.get("oauthState");
-    if (returnedToken || returnedState) {
-      const expectedState = sessionStorage.getItem("cyberjocx-oauth-state");
-      if (returnedToken && returnedState && expectedState && returnedState === expectedState) {
-        sessionStorage.setItem("cyberjocx-session", returnedToken);
-      }
-      sessionStorage.removeItem("cyberjocx-oauth-state");
-      window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-    }
-  } catch (error) {
-    console.error("[Auth bootstrap] Could not restore OAuth session", error);
-  }
-}
-
 const queryClient = new QueryClient();
 const redirectToLoginIfUnauthorized = (error: unknown) => {
   if (!(error instanceof TRPCClientError)) return;
@@ -58,17 +37,8 @@ const trpcClient = trpc.createClient({
       url: apiUrl("/api/trpc"),
       transformer: superjson,
       fetch(input, init) {
-        const headers = new Headers(init?.headers);
-        try {
-          const sessionToken = sessionStorage.getItem("cyberjocx-session");
-          if (sessionToken) headers.set("Authorization", "Bearer " + sessionToken);
-          else headers.delete("Authorization");
-        } catch {
-          // HttpOnly cookie authentication remains available when sessionStorage is blocked.
-        }
         return globalThis.fetch(input, {
           ...(init ?? {}),
-          headers,
           credentials: "include",
         });
       },

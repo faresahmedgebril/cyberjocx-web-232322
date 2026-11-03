@@ -1,8 +1,8 @@
 import type { Express, Request, Response } from "express";
 import { createSession, ensureGitHubUser, sessionCookie } from "./core/auth/session";
 import { ENV } from "./config/env";
+import { clearOAuthStateCookie, issueOAuthState, verifyOAuthState } from "./core/auth/oauthState";
 
-const OAUTH_STATE_PATTERN = /^[A-Za-z0-9_-]{60,100}$/;
 const AUTHORIZE_URL = "https://github.com/login/oauth/authorize";
 const TOKEN_URL = "https://github.com/login/oauth/access_token";
 const CLIENT_ID = ENV.GITHUB_CLIENT_ID;
@@ -20,9 +20,9 @@ function loginUrl(reason: string) {
   return (ENV.APP_WEB_URL ? ENV.APP_WEB_URL.replace(/\/+$/, "") : "") + "/login?authError=" + encodeURIComponent(reason);
 }
 
-function appUrlWithSession(token: string, state: string) {
+function appHomeUrl() {
   const base = ENV.APP_WEB_URL ? ENV.APP_WEB_URL.replace(/\/+$/, "") : "";
-  return base + "/#session=" + encodeURIComponent(token) + "&oauthState=" + encodeURIComponent(state);
+  return base + "/";
 }
 
 export function registerGitHubAuthRoutes(app: Express) {
@@ -31,11 +31,7 @@ export function registerGitHubAuthRoutes(app: Express) {
       res.redirect(302, loginUrl("github-not-configured"));
       return;
     }
-    const state = typeof req.query.state === "string" ? req.query.state : "";
-    if (!OAUTH_STATE_PATTERN.test(state)) {
-      res.redirect(302, loginUrl("github-state"));
-      return;
-    }
+    const state = issueOAuthState(res, "github");
     const url = new URL(AUTHORIZE_URL);
     url.searchParams.set("client_id", CLIENT_ID);
     url.searchParams.set("redirect_uri", getGitHubCallbackUrl(req));
@@ -51,7 +47,9 @@ export function registerGitHubAuthRoutes(app: Express) {
       res.redirect(302, loginUrl("github-not-configured"));
       return;
     }
-    if (!code || !OAUTH_STATE_PATTERN.test(state)) {
+    const validState = verifyOAuthState(req, "github", state);
+    if (!code || !validState) {
+      res.setHeader("Set-Cookie", clearOAuthStateCookie("github"));
       res.redirect(302, loginUrl("github-state"));
       return;
     }
@@ -93,9 +91,10 @@ export function registerGitHubAuthRoutes(app: Express) {
       });
       const { token } = await createSession(user.id, req);
       const secure = req.secure || String(req.headers["x-forwarded-proto"] ?? "").split(",").some(value => value.trim().toLowerCase() === "https");
-      res.setHeader("Set-Cookie", sessionCookie(token, secure));
-      res.redirect(302, appUrlWithSession(token, state));
+      res.setHeader("Set-Cookie", [clearOAuthStateCookie("github"), sessionCookie(token, secure)]);
+      res.redirect(302, appHomeUrl());
     } catch (error) {
+      res.setHeader("Set-Cookie", clearOAuthStateCookie("github"));
       console.error("[GitHub OAuth] callback failed", error instanceof Error ? error.message : String(error));
       res.redirect(302, loginUrl("github"));
     }
