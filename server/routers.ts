@@ -30,6 +30,56 @@ export const appRouter = router({
     }),
   }),
   dashboard: protectedProcedure.query(({ ctx }) => getDashboardStats(ctx.user.id)),
+  leaderboard: router({
+    list: publicProcedure.input(z.object({ period: z.literal("all-time") })).query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return { entries: [], currentUser: null, totalMembers: 0 };
+
+      const ranked = await db.select({
+        id: users.id,
+        name: users.name,
+        avatarUrl: users.avatarUrl,
+        memberRank: users.memberRank,
+        points: users.points,
+      }).from(users).orderBy(desc(users.points), desc(users.id)).limit(50);
+
+      const entries = ranked
+        .filter(entry => Number(entry.points) > 0)
+        .map((entry, index) => ({
+          ...entry,
+          rank: index + 1,
+          isCurrentUser: entry.id === ctx.user?.id,
+        }));
+
+      let currentUser: (Omit<(typeof entries)[number], "rank"> & { rank: number | null }) | null =
+        entries.find(entry => entry.isCurrentUser) ?? null;
+
+      if (!currentUser && ctx.user) {
+        const ownProfile = await db.select({
+          id: users.id,
+          name: users.name,
+          avatarUrl: users.avatarUrl,
+          memberRank: users.memberRank,
+          points: users.points,
+        }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
+
+        if (ownProfile[0]) {
+          currentUser = {
+            ...ownProfile[0],
+            rank: null,
+            isCurrentUser: true,
+          };
+        }
+      }
+
+      const memberCount = await db.select({ count: sql<number>`count(*)` }).from(users);
+      return {
+        entries,
+        currentUser,
+        totalMembers: Number(memberCount[0]?.count ?? 0),
+      };
+    }),
+  }),
   profile: router({
     me: protectedProcedure.query(({ ctx }) => toClientSafeUser(ctx.user)),
     byId: publicProcedure.input(z.object({ userId: z.number() })).query(({ input }) => readPublicProfile(input.userId)),

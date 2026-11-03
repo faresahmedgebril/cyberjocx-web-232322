@@ -1,0 +1,83 @@
+name: Worker preview smoke test
+
+on:
+  push:
+    branches:
+      - integrate/figma-design-2026-11-03-final
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cyberjocx-worker-preview-smoke
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Worker health and Neon readiness
+        shell: bash
+        env:
+          WORKER_URL: https://feccfaf9-cyberjocx-api.gebrilfares972.workers.dev
+        run: |
+          set -euo pipefail
+          health="$(curl --fail --silent --show-error --retry 3 --retry-delay 3 --max-time 20 "$WORKER_URL/health")"
+          ready="$(curl --fail --silent --show-error --retry 3 --retry-delay 3 --max-time 20 "$WORKER_URL/ready")"
+          printf 'Health: %s\n' "$health"
+          printf 'Readiness: %s\n' "$ready"
+          node --input-type=module -e '
+            const health = JSON.parse(process.argv[1]);
+            const ready = JSON.parse(process.argv[2]);
+            if (health.ok !== true) throw new Error("Worker health failed");
+            if (ready.ok !== true || ready.database !== true) throw new Error("Neon readiness failed");
+          ' "$health" "$ready"
+
+      - name: Check database-backed all-time leaderboard
+        shell: bash
+        env:
+          WORKER_URL: https://feccfaf9-cyberjocx-api.gebrilfares972.workers.dev
+        run: |
+          set -euo pipefail
+          response="$(curl --fail --silent --show-error --retry 2 --retry-delay 2 --max-time 30             "$WORKER_URL/api/trpc/leaderboard.list?input=%7B%22json%22%3A%7B%22period%22%3A%22all-time%22%7D%7D")"
+          printf '%s\n' "$response" | head -c 1200
+          node --input-type=module -e '
+            const payload = JSON.parse(process.argv[1]);
+            const data = payload?.result?.data?.json ?? payload?.result?.data;
+            if (!data || !Array.isArray(data.entries)) {
+              throw new Error("Leaderboard response is missing entries");
+            }
+            if (!Number.isFinite(Number(data.totalMembers))) {
+              throw new Error("Leaderboard totalMembers is not numeric");
+            }
+            for (const entry of data.entries) {
+              if (!Number.isFinite(Number(entry.points))) throw new Error("Invalid points value");
+              for (const sensitive of ["email", "passwordHash", "passwordResetTokenHash", "sessionToken"]) {
+                if (Object.hasOwn(entry, sensitive)) throw new Error("Sensitive field leaked: " + sensitive);
+              }
+            }
+            console.log("Leaderboard smoke passed:", data.entries.length, "entries;", data.totalMembers, "members");
+          ' "$response"
+
+      - name: Verify production all-time leaderboard
+        shell: bash
+        env:
+          API_URL: https://cyberjocx-api.gebrilfares972.workers.dev
+        run: |
+          set -euo pipefail
+          response="$(curl --fail --silent --show-error --retry 3 --retry-delay 3 --max-time 30 \
+            "$API_URL/api/trpc/leaderboard.list?input=%7B%22json%22%3A%7B%22period%22%3A%22all-time%22%7D%7D")"
+          node --input-type=module -e '
+            const payload = JSON.parse(process.argv[1]);
+            const data = payload?.result?.data?.json ?? payload?.result?.data;
+            if (!data || !Array.isArray(data.entries)) throw new Error("Production leaderboard response is invalid");
+            if (!Number.isFinite(Number(data.totalMembers))) throw new Error("Production member count is invalid");
+            for (const entry of data.entries) {
+              if (!Number.isFinite(Number(entry.points))) throw new Error("Invalid leaderboard points");
+              for (const field of ["email", "passwordHash", "passwordResetTokenHash", "sessionToken"]) {
+                if (Object.hasOwn(entry, field)) throw new Error("Sensitive field leaked: " + field);
+              }
+            }
+            console.log("Production leaderboard passed:", data.entries.length, "ranked users;");
+          ' "$response"

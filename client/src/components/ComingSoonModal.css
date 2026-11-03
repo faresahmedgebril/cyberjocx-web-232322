@@ -1,0 +1,8 @@
+.cj-coming-backdrop{position:fixed;inset:0;z-index:1200;display:grid;place-items:center;padding:20px;background:rgba(1,4,18,.76);backdrop-filter:blur(12px);animation:cj-coming-fade .16s ease-out}
+.cj-coming-dialog{width:min(100%,390px);position:relative;display:flex;flex-direction:column;align-items:center;gap:18px;padding:36px 28px 28px;border:1px solid rgba(72,137,255,.7);border-radius:20px;background:radial-gradient(circle at 50% 0,rgba(110,43,255,.25),transparent 52%),linear-gradient(145deg,#07142f,#04091b);box-shadow:0 0 0 1px rgba(25,213,255,.1),0 24px 80px rgba(0,0,0,.55),0 0 35px rgba(65,57,255,.22);color:#eff7ff;text-align:center}
+.cj-coming-close{position:absolute;top:12px;right:12px;width:34px;height:34px;display:grid;place-items:center;border:1px solid rgba(112,156,255,.22);border-radius:9px;background:rgba(11,27,59,.8);color:#9cc5ff}
+.cj-coming-orb{width:64px;height:64px;display:grid;place-items:center;border:1px solid #7b4dff;border-radius:20px;color:#d9b8ff;background:linear-gradient(140deg,rgba(97,52,255,.42),rgba(2,178,255,.15));box-shadow:0 0 24px rgba(134,66,255,.4),inset 0 0 20px rgba(88,169,255,.16)}
+.cj-coming-dialog h2{margin:0;color:#f5f7ff;font-size:25px;font-weight:700;letter-spacing:.02em}
+.cj-coming-dismiss{min-width:112px;padding:10px 18px;border:1px solid #6c4ce9;border-radius:10px;background:linear-gradient(110deg,#5633d6,#1c73d7);color:white;font-size:13px;font-weight:600}
+@keyframes cj-coming-fade{from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){.cj-coming-backdrop{animation:none}}
