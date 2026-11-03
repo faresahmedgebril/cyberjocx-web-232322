@@ -3,6 +3,7 @@ import { Link } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
 import { trpc } from "@/lib/trpc";
+import { Streamdown } from "streamdown";
 import {
   Activity, ArrowLeft, ArrowUpRight, BookOpen, Bot, Boxes, BrainCircuit, Bug, Check, ChevronLeft, CircleUserRound, Code2, Cpu, Database, FileCode2, Filter, Gauge, Heart, LayoutDashboard, Library, LockKeyhole, LogOut, Menu, MessageSquare, Network, Plus, Radio, Search, Send, ShieldAlert, ShoppingBag, ShoppingCart, Settings2, Sparkles, Terminal, Trophy, UserPlus, Users, Wrench, X, Zap,
 } from "lucide-react";
