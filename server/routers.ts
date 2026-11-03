@@ -37,6 +37,7 @@ export const appRouter = router({
       if (!db) return { entries: [], currentUser: null, totalMembers: 0 };
 
       let ranked: { id: number; name: string | null; avatarUrl: string | null; memberRank: string; points: number }[] = [];
+      let periodStart: Date | null = null;
       if (input.period === "all-time") {
         ranked = await db.select({
           id: users.id,
@@ -58,6 +59,7 @@ export const appRouter = router({
           start.setHours(0, 0, 0, 0);
         }
 
+        periodStart = start;
         const aggregates = await db.select({
           userId: xpTransactions.userId,
           points: sql<number>`coalesce(sum(${xpTransactions.amount}), 0)`.as("points"),
@@ -86,7 +88,29 @@ export const appRouter = router({
         rank: index + 1,
         isCurrentUser: entry.id === ctx.user?.id,
       }));
-      const currentUser = entries.find(entry => entry.isCurrentUser) ?? null;
+      let currentUser = entries.find(entry => entry.isCurrentUser) ?? null;
+      if (!currentUser && ctx.user) {
+        const ownProfile = await db.select({
+          id: users.id,
+          name: users.name,
+          avatarUrl: users.avatarUrl,
+          memberRank: users.memberRank,
+          points: users.points,
+        }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
+        if (ownProfile[0]) {
+          let ownPoints = Number(ownProfile[0].points ?? 0);
+          if (periodStart) {
+            const ownPeriodPoints = await db.select({
+              points: sql<number>`coalesce(sum(${xpTransactions.amount}), 0)`.as("points"),
+            }).from(xpTransactions).where(and(
+              eq(xpTransactions.userId, ctx.user.id),
+              gte(xpTransactions.createdAt, periodStart),
+            ));
+            ownPoints = Number(ownPeriodPoints[0]?.points ?? 0);
+          }
+          currentUser = { ...ownProfile[0], points: ownPoints, rank: null, isCurrentUser: true };
+        }
+      }
       const memberCount = await db.select({ count: sql<number>`count(*)` }).from(users);
       return {
         entries,
