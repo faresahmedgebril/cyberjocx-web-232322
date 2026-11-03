@@ -45,7 +45,8 @@ export default function SettingsView({
   const [bio, setBio] = useState(user?.bio ?? "");
   const [accent, setAccent] = useState(() => {
     if (typeof window === "undefined") return accentColors[1];
-    return window.localStorage.getItem("cyberjocx-accent") || accentColors[1];
+    const savedAccent = window.localStorage.getItem("cyberjocx-accent");
+    return savedAccent && accentColors.includes(savedAccent) ? savedAccent : accentColors[1];
   });
   const [comingOpen, setComingOpen] = useState(false);
   const { theme } = useTheme();
