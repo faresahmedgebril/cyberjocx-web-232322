@@ -367,7 +367,7 @@ describe("password authentication routes", () => {
       to: user.email,
       subject: "Your CyberJocx password was changed",
     });
-    expect(user.passwordHash).toMatch(/^scrypt\\$/);
+    expect(user.passwordHash).toMatch(/^scrypt\$/);
   });
 
   it("sends password reset links through the Gmail relay, not through a third-party mail provider", async () => {
