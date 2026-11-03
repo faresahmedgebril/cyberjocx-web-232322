@@ -1,11 +1,11 @@
 import type { Express, Request, Response } from "express";
 import { createSession, ensureGoogleUser, sessionCookie } from "./core/auth/session";
 import { ENV } from "./config/env";
+import { clearOAuthStateCookie, issueOAuthState, verifyOAuthState } from "./core/auth/oauthState";
 
 const GOOGLE_AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo";
-const OAUTH_STATE_PATTERN = /^[A-Za-z0-9_-]{60,100}$/;
 
 function callbackUrl(req: Request) {
   if (ENV.GOOGLE_OAUTH_REDIRECT_URI) return ENV.GOOGLE_OAUTH_REDIRECT_URI;
@@ -32,20 +32,16 @@ function loginUrl(reason: string) {
   return (ENV.APP_WEB_URL ? ENV.APP_WEB_URL.replace(/\/+$/, "") : "") + "/login?authError=" + encodeURIComponent(reason);
 }
 
-function appUrlWithSession(token: string, state: string) {
+function appHomeUrl() {
   const base = ENV.APP_WEB_URL ? ENV.APP_WEB_URL.replace(/\/+$/, "") : "";
-  return base + "/#session=" + encodeURIComponent(token) + "&oauthState=" + encodeURIComponent(state);
+  return base + "/";
 }
 
 export function registerGoogleAuthRoutes(app: Express) {
   app.get("/api/auth/google/login", (req: Request, res: Response) => {
-    const state = typeof req.query.state === "string" ? req.query.state : "";
-    if (!OAUTH_STATE_PATTERN.test(state)) {
-      res.redirect(302, loginUrl("google-state"));
-      return;
-    }
     try {
       const { clientId } = requireGoogleConfig();
+      const state = issueOAuthState(res, "google");
       const url = new URL(GOOGLE_AUTHORIZE_URL);
       url.searchParams.set("client_id", clientId);
       url.searchParams.set("redirect_uri", callbackUrl(req));
@@ -62,7 +58,9 @@ export function registerGoogleAuthRoutes(app: Express) {
   app.get("/api/auth/google/callback", async (req: Request, res: Response) => {
     const code = typeof req.query.code === "string" ? req.query.code : "";
     const state = typeof req.query.state === "string" ? req.query.state : "";
-    if (!code || !OAUTH_STATE_PATTERN.test(state)) {
+    const validState = verifyOAuthState(req, "google", state);
+    if (!code || !validState) {
+      res.setHeader("Set-Cookie", clearOAuthStateCookie("google"));
       res.redirect(302, loginUrl("google-state"));
       return;
     }
@@ -103,9 +101,10 @@ export function registerGoogleAuthRoutes(app: Express) {
       });
       const { token } = await createSession(user.id, req);
       const secure = req.protocol === "https" || String(req.headers["x-forwarded-proto"] ?? "").includes("https");
-      res.setHeader("Set-Cookie", sessionCookie(token, secure));
-      res.redirect(302, appUrlWithSession(token, state));
+      res.setHeader("Set-Cookie", [clearOAuthStateCookie("google"), sessionCookie(token, secure)]);
+      res.redirect(302, appHomeUrl());
     } catch (error) {
+      res.setHeader("Set-Cookie", clearOAuthStateCookie("google"));
       const e = error as any;
       console.error("[Google OAuth] callback failed", {
         name: e?.name,
