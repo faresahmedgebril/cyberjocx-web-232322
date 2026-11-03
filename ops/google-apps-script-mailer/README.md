@@ -9,13 +9,14 @@ This lets the CyberJocx Cloudflare Worker send transactional email from the Gmai
 3. Create a new project named **CyberJocx Mail Relay**.
 4. Replace the editor contents with `Code.gs` from this folder and save.
 
-## 2. Set a private shared token
+## 2. Generate the private shared token
 
-1. Generate a random secret of at least 32 characters using a password manager.
-2. In Apps Script, open **Project Settings** (gear icon).
-3. Under **Script Properties**, click **Add script property**.
-4. Set property name to `MAIL_API_TOKEN` and property value to the generated secret.
-5. Save. Do not put this token in the source code or send it in chat.
+1. In the Apps Script editor toolbar, select the function `generateMailToken`.
+2. Click **Run** and approve the requested script permission.
+3. Open **Execution log** and copy the generated token. The function saves it automatically in Script Properties as `MAIL_API_TOKEN`.
+4. Keep the token private. Do not put it in source code or send it in chat.
+
+The function only generates a token if one does not already exist, so running it again will not silently rotate your live credential.
 
 ## 3. Deploy as a Web App
 
