@@ -40,6 +40,7 @@ function secureRequest(req: Request) {
 function fail(res: Response, status: number, message: string) { res.status(status).json({ ok: false, message }); }
 
 async function sendGmailEmail(input: {
+  type: "support" | "password_reset" | "password_changed";
   to: string;
   subject: string;
   text: string;
@@ -54,6 +55,7 @@ async function sendGmailEmail(input: {
     redirect: "follow",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      type: input.type,
       token: ENV.GMAIL_SCRIPT_TOKEN,
       to: input.to,
       subject: input.subject,
@@ -71,6 +73,7 @@ async function sendGmailEmail(input: {
 
 async function sendPasswordChangedEmail(email: string) {
   await sendGmailEmail({
+    type: "password_changed",
     to: email,
     subject: "Your CyberJocx password was changed",
     text: [
@@ -89,6 +92,7 @@ async function sendPasswordChangedEmail(email: string) {
 
 async function sendResetEmail(email: string, resetUrl: string) {
   await sendGmailEmail({
+    type: "password_reset",
     to: email,
     subject: "Reset your CyberJocx password",
     text: [
@@ -131,6 +135,7 @@ async function sendSupportEmail(input: { name: string; email: string; category: 
   const safeSubject = escapeHtml(input.subject);
   const safeMessage = escapeHtml(input.message).replace(/\r?\n/g, "<br>");
   await sendGmailEmail({
+    type: "support",
     to: ENV.SUPPORT_INBOX_EMAIL,
     replyTo: input.email,
     subject: "[CyberJocx Support] " + input.subject,
