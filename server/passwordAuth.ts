@@ -58,7 +58,8 @@ async function sendResetEmail(email: string, resetUrl: string) {
 
 const SUPPORT_CATEGORIES = new Set(["account", "password", "technical", "courses", "billing", "security", "other"]);
 function escapeHtml(value: string) {
-  return value.replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char] ?? char);
+  const entities: Record<string, string> = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+  return value.replace(/[&<>"']/g, char => entities[char] ?? char);
 }
 async function sendSupportEmail(input: { name: string; email: string; category: string; subject: string; message: string }) {
   if (!ENV.RESEND_API_KEY || !ENV.AUTH_EMAIL_FROM || !ENV.SUPPORT_INBOX_EMAIL) {
