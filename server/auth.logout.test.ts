@@ -98,6 +98,17 @@ describe("auth.logout", () => {
     }
   });
 
+  it("clears the browser cookie even when server-side session revocation fails", async () => {
+    sessionMocks.revokeSession.mockRejectedValueOnce(new Error("database unavailable"));
+
+    const { ctx, clearedCookies } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(caller.auth.logout()).rejects.toThrow("database unavailable");
+    expect(clearedCookies).toHaveLength(1);
+    expect(clearedCookies[0]?.name).toBe(COOKIE_NAME);
+  });
+
   it("waits for server-side session revocation before clearing the cookie", async () => {
     let finishRevocation!: () => void;
     const revocation = new Promise<void>(resolve => {
