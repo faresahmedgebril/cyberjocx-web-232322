@@ -15,8 +15,9 @@ const mocks = vi.hoisted(() => {
     db: null,
     env: {
       APP_WEB_URL: "https://faresahmedgebril.github.io/cyberjocx-web-232322",
-      RESEND_API_KEY: "test-resend-key",
-      AUTH_EMAIL_FROM: "CyberJocx <no-reply@example.test>",
+      GMAIL_SCRIPT_URL: "https://script.google.com/macros/s/test-deployment/exec",
+      GMAIL_SCRIPT_TOKEN: "test-gmail-relay-token-with-more-than-32-chars",
+      SUPPORT_INBOX_EMAIL: "gebrilfares972@gmail.com",
       SESSION_TTL_MS: String(30 * 24 * 60 * 60 * 1000),
       SESSION_COOKIE_SECURE: "true",
       SESSION_COOKIE_DOMAIN: "",
@@ -84,7 +85,7 @@ vi.mock("drizzle-orm", async importOriginal => {
 });
 
 import { users, sessions } from "../drizzle/schema";
-import { registerPasswordAuthRoutes } from "./passwordAuth";
+import { registerPasswordAuthRoutes, registerSupportRoutes } from "./passwordAuth";
 
 type Handler = (req: Request, res: Response) => unknown;
 
@@ -125,6 +126,15 @@ function createRoutes() {
     post: (path: string, handler: Handler) => handlers.set(path, handler),
   } as unknown as Express;
   registerPasswordAuthRoutes(app);
+  return handlers;
+}
+
+function createSupportRoutes() {
+  const handlers = new Map<string, Handler>();
+  const app = {
+    post: (path: string, handler: Handler) => handlers.set(path, handler),
+  } as unknown as Express;
+  registerSupportRoutes(app);
   return handlers;
 }
 
@@ -200,6 +210,7 @@ describe("password authentication routes", () => {
     vi.stubGlobal("fetch", vi.fn(async () => ({
       ok: true,
       status: 200,
+      json: async () => ({ ok: true }),
       text: async () => "",
     })));
   });
@@ -350,6 +361,67 @@ describe("password authentication routes", () => {
       password: "new secure password",
     });
     expect(login.status).toBe(200);
+  });
+
+  it("sends password reset links through the Gmail relay, not through a third-party mail provider", async () => {
+    const handlers = createRoutes();
+    const user = seedUser();
+
+    const result = await post(handlers, "/api/auth/forgot-password", {
+      email: user.email,
+    });
+
+    expect(result.status).toBe(200);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const call = vi.mocked(fetch).mock.calls[0];
+    expect(call?.[0]).toBe("https://script.google.com/macros/s/test-deployment/exec");
+    const payload = JSON.parse(String(call?.[1]?.body));
+    expect(payload).toMatchObject({
+      token: "test-gmail-relay-token-with-more-than-32-chars",
+      to: user.email,
+      subject: "Reset your CyberJocx password",
+    });
+    expect(payload.text).toContain("/reset-password?");
+    expect(payload.text).toContain("expires in 30 minutes");
+    expect(payload.text).not.toContain("test-gmail-relay-token-with-more-than-32-chars");
+  });
+
+  it("delivers public support messages to the configured Gmail inbox and sets Reply-To to the sender", async () => {
+    const result = await post(createSupportRoutes(), "/api/support", {
+      name: "Support User",
+      email: "sender@example.com",
+      category: "technical",
+      subject: "Login page not loading",
+      message: "The login page keeps showing an error after I submit the form.",
+    });
+
+    expect(result.status).toBe(202);
+    expect(result.body.ok).toBe(true);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const payload = JSON.parse(String(vi.mocked(fetch).mock.calls[0]?.[1]?.body));
+    expect(payload).toMatchObject({
+      token: "test-gmail-relay-token-with-more-than-32-chars",
+      to: "gebrilfares972@gmail.com",
+      replyTo: "sender@example.com",
+      subject: "[CyberJocx Support] Login page not loading",
+    });
+    expect(payload.text).toContain("Support User");
+    expect(payload.text).toContain("The login page keeps showing an error");
+  });
+
+  it("does not claim a support message was sent when the Gmail relay is not configured", async () => {
+    delete mocks.state.env.GMAIL_SCRIPT_URL;
+    const result = await post(createSupportRoutes(), "/api/support", {
+      name: "Support User",
+      email: "sender@example.com",
+      category: "technical",
+      subject: "Login page not loading",
+      message: "The login page keeps showing an error after I submit the form.",
+    });
+
+    expect(result.status).toBe(503);
+    expect(result.body.ok).toBe(false);
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("rejects expired password-reset tokens", async () => {
