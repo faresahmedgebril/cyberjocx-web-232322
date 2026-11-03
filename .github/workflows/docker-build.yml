@@ -69,9 +69,11 @@ jobs:
           set -euo pipefail
           mkdir -p /tmp/cyberjocx-auth-smoke
 
-          login_status="$(curl --silent --show-error --max-time 20 -o /tmp/cyberjocx-auth-smoke/login.json -w '%{http_code}' -X POST "$API_URL/api/auth/login" -H "Origin: $FRONTEND_ORIGIN" -H 'content-type: application/json' -d '{"email":"unregistered-auth-smoke@example.invalid","password":"not-the-password"}')"
+          login_status="$(curl --silent --show-error --max-time 20 -D /tmp/cyberjocx-auth-smoke/login.headers -o /tmp/cyberjocx-auth-smoke/login.json -w '%{http_code}' -X POST "$API_URL/api/auth/login" -H "Origin: $FRONTEND_ORIGIN" -H 'content-type: application/json' -d '{"email":"unregistered-auth-smoke@example.invalid","password":"not-the-password"}')"
           printf 'Invalid password login HTTP status: %s\n' "$login_status"
           test "$login_status" = "401"
+          grep -Fqi "access-control-allow-origin: $FRONTEND_ORIGIN" /tmp/cyberjocx-auth-smoke/login.headers
+          grep -Eiq '^access-control-allow-credentials: true' /tmp/cyberjocx-auth-smoke/login.headers
           node --input-type=module -e '
             import { readFileSync } from "node:fs";
             const body = JSON.parse(readFileSync("/tmp/cyberjocx-auth-smoke/login.json", "utf8"));
@@ -91,6 +93,25 @@ jobs:
               grep -Eiq '^location: https://github\.com/login/oauth/authorize' "$headers"
             fi
             grep -Eiq "^set-cookie: __Host-cyberjocx_${provider}_oauth_state=.*HttpOnly.*Secure.*SameSite=Lax" "$headers"
+            location="$(awk 'BEGIN { IGNORECASE=1 } /^location:/ { sub(/\r$/, ""); sub(/^[^:]*:[[:space:]]*/, ""); print; exit }' "$headers")"
+            node --input-type=module -e '
+              const provider = process.argv[1];
+              const location = new URL(process.argv[2]);
+              const expected = `https://cyberjocx-api.gebrilfares972.workers.dev/api/auth/${provider}/callback`;
+              if (location.searchParams.get("redirect_uri") !== expected) {
+                throw new Error(provider + " OAuth callback URL mismatch");
+              }
+              if (!location.searchParams.get("state")) {
+                throw new Error(provider + " OAuth state parameter is missing");
+              }
+            ' "$provider" "$location"
+          done
+
+          for provider in google github; do
+            state_status="$(curl --silent --show-error --max-time 20 -D "/tmp/cyberjocx-auth-smoke/$provider-invalid-state.headers" -o /dev/null -w '%{http_code}' "$API_URL/api/auth/$provider/callback?code=invalid&state=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")"
+            printf '%s callback without state cookie HTTP status: %s\n' "$provider" "$state_status"
+            test "$state_status" = "302"
+            grep -Fqi "authError=$provider-state" "/tmp/cyberjocx-auth-smoke/$provider-invalid-state.headers"
           done
 
           logout_status="$(curl --silent --show-error --max-time 20 -D /tmp/cyberjocx-auth-smoke/logout.headers -o /tmp/cyberjocx-auth-smoke/logout.json -w '%{http_code}' -X POST "$API_URL/api/trpc/auth.logout?batch=1" -H "Origin: $FRONTEND_ORIGIN" -H 'content-type: application/json' --data '{"0":{"json":null}}')"
