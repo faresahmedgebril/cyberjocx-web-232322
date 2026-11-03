@@ -39,22 +39,56 @@ function secureRequest(req: Request) {
 }
 function fail(res: Response, status: number, message: string) { res.status(status).json({ ok: false, message }); }
 
-async function sendResetEmail(email: string, resetUrl: string) {
-  const response = await fetch("https://api.resend.com/emails", {
+async function sendGmailEmail(input: {
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+  replyTo?: string;
+}) {
+  if (!ENV.GMAIL_SCRIPT_URL || !ENV.GMAIL_SCRIPT_TOKEN) {
+    throw new Error("Gmail mail delivery is not configured yet.");
+  }
+  const response = await fetch(ENV.GMAIL_SCRIPT_URL, {
     method: "POST",
-    headers: { Authorization: "Bearer " + ENV.RESEND_API_KEY, "Content-Type": "application/json" },
+    redirect: "follow",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: ENV.AUTH_EMAIL_FROM, to: [email], subject: "Reset your CyberJocx password",
-      html: "<div style=\"font-family:Arial,sans-serif;background:#05091c;color:#eaf1ff;padding:32px;border-radius:12px\"><h2 style=\"color:#a95cff\">CyberJocx</h2><p>We received a request to reset your password.</p><p><a href=\"" + resetUrl + "\" style=\"display:inline-block;background:linear-gradient(90deg,#078bff,#8a16ff);padding:13px 22px;border-radius:8px;color:white;text-decoration:none\">Reset password</a></p><p>This link expires in 30 minutes. Ignore this email if you did not request it.</p></div>",
+      token: ENV.GMAIL_SCRIPT_TOKEN,
+      to: input.to,
+      subject: input.subject,
+      text: input.text,
+      html: input.html,
+      replyTo: input.replyTo,
     }),
   });
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    console.error("[Password Auth] email provider rejected reset request", response.status, detail.slice(0, 300));
-    throw new Error("Unable to send the password reset email right now.");
+  const result = await response.json().catch(() => null) as { ok?: boolean; error?: string } | null;
+  if (!response.ok || result?.ok !== true) {
+    console.error("[Email] Gmail relay rejected a message", response.status, result?.error ?? "invalid response");
+    throw new Error("Unable to deliver the email right now.");
   }
 }
 
+async function sendResetEmail(email: string, resetUrl: string) {
+  await sendGmailEmail({
+    to: email,
+    subject: "Reset your CyberJocx password",
+    text: [
+      "We received a request to reset your CyberJocx password.",
+      "",
+      "Open this one-time link to choose a new password:",
+      resetUrl,
+      "",
+      "This link expires in 30 minutes and can only be used once.",
+      "If you did not request this, you can ignore this email.",
+    ].join("\n"),
+    html: "<div style=\"font-family:Arial,sans-serif;background:#05091c;color:#eaf1ff;padding:32px;border-radius:12px\">" +
+      "<h2 style=\"color:#a95cff\">CyberJocx</h2>" +
+      "<p>We received a request to reset your password.</p>" +
+      "<p><a href=\"" + resetUrl + "\" style=\"display:inline-block;background:linear-gradient(90deg,#078bff,#8a16ff);padding:13px 22px;border-radius:8px;color:white;text-decoration:none\">Choose a new password</a></p>" +
+      "<p>This one-time link expires in 30 minutes. Ignore this email if you did not request it.</p></div>",
+  });
+}
 
 const SUPPORT_CATEGORIES = new Set(["account", "password", "technical", "courses", "billing", "security", "other"]);
 function escapeHtml(value: string) {
@@ -62,7 +96,7 @@ function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, char => entities[char] ?? char);
 }
 async function sendSupportEmail(input: { name: string; email: string; category: string; subject: string; message: string }) {
-  if (!ENV.RESEND_API_KEY || !ENV.AUTH_EMAIL_FROM || !ENV.SUPPORT_INBOX_EMAIL) {
+  if (!ENV.GMAIL_SCRIPT_URL || !ENV.GMAIL_SCRIPT_TOKEN || !ENV.SUPPORT_INBOX_EMAIL) {
     throw new Error("Support email is not configured yet.");
   }
   const categoryLabels: Record<string, string> = {
@@ -78,37 +112,27 @@ async function sendSupportEmail(input: { name: string; email: string; category: 
   const safeEmail = escapeHtml(input.email);
   const safeSubject = escapeHtml(input.subject);
   const safeMessage = escapeHtml(input.message).replace(/\r?\n/g, "<br>");
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: "Bearer " + ENV.RESEND_API_KEY, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      from: ENV.AUTH_EMAIL_FROM,
-      to: [ENV.SUPPORT_INBOX_EMAIL],
-      reply_to: input.email,
-      subject: "[CyberJocx Support] " + input.subject,
-      text: [
-        "New CyberJocx support request",
-        "Name: " + input.name,
-        "Email: " + input.email,
-        "Category: " + (categoryLabels[input.category] ?? input.category),
-        "Subject: " + input.subject,
-        "",
-        input.message,
-      ].join("\n"),
-      html: "<div style=\"font-family:Arial,sans-serif;background:#05091c;color:#eaf1ff;padding:28px;border-radius:12px\">" +
-        "<h2 style=\"color:#a95cff\">CyberJocx Support Request</h2>" +
-        "<p><b>Name:</b> " + safeName + "</p>" +
-        "<p><b>Email:</b> " + safeEmail + "</p>" +
-        "<p><b>Category:</b> " + escapeHtml(categoryLabels[input.category] ?? input.category) + "</p>" +
-        "<p><b>Subject:</b> " + safeSubject + "</p>" +
-        "<hr style=\"border-color:#263b63\"><p style=\"line-height:1.8\">" + safeMessage + "</p></div>",
-    }),
+  await sendGmailEmail({
+    to: ENV.SUPPORT_INBOX_EMAIL,
+    replyTo: input.email,
+    subject: "[CyberJocx Support] " + input.subject,
+    text: [
+      "New CyberJocx support request",
+      "Name: " + input.name,
+      "Email: " + input.email,
+      "Category: " + (categoryLabels[input.category] ?? input.category),
+      "Subject: " + input.subject,
+      "",
+      input.message,
+    ].join("\n"),
+    html: "<div style=\"font-family:Arial,sans-serif;background:#05091c;color:#eaf1ff;padding:28px;border-radius:12px\">" +
+      "<h2 style=\"color:#a95cff\">CyberJocx Support Request</h2>" +
+      "<p><b>Name:</b> " + safeName + "</p>" +
+      "<p><b>Email:</b> " + safeEmail + "</p>" +
+      "<p><b>Category:</b> " + escapeHtml(categoryLabels[input.category] ?? input.category) + "</p>" +
+      "<p><b>Subject:</b> " + safeSubject + "</p>" +
+      "<hr style=\"border-color:#263b63\"><p style=\"line-height:1.8\">" + safeMessage + "</p></div>",
   });
-  if (!response.ok) {
-    const detail = await response.text().catch(() => "");
-    console.error("[Support] email provider rejected request", response.status, detail.slice(0, 200));
-    throw new Error("Unable to deliver the support request right now.");
-  }
 }
 
 export function registerSupportRoutes(app: Express) {
@@ -129,7 +153,7 @@ export function registerSupportRoutes(app: Express) {
       if (!SUPPORT_CATEGORIES.has(category)) return fail(res, 400, "اختار نوع المشكلة.");
       if (subject.length < 5 || subject.length > 140) return fail(res, 400, "عنوان الرسالة يجب أن يكون من 5 إلى 140 حرفًا.");
       if (message.length < 20 || message.length > 5000) return fail(res, 400, "تفاصيل المشكلة يجب أن تكون من 20 إلى 5000 حرف.");
-      if (!ENV.RESEND_API_KEY || !ENV.AUTH_EMAIL_FROM || !ENV.SUPPORT_INBOX_EMAIL) {
+      if (!ENV.GMAIL_SCRIPT_URL || !ENV.GMAIL_SCRIPT_TOKEN || !ENV.SUPPORT_INBOX_EMAIL) {
         return fail(res, 503, "استقبال رسائل الدعم غير مفعّل حاليًا. حاول لاحقًا.");
       }
 
@@ -191,7 +215,7 @@ export function registerPasswordAuthRoutes(app: Express) {
     try {
       const email = normalizeEmail(String(req.body?.email ?? ""));
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail(res, 400, "Enter a valid email address.");
-      if (!ENV.APP_WEB_URL || !ENV.RESEND_API_KEY || !ENV.AUTH_EMAIL_FROM) return fail(res, 503, "Password recovery email is not configured yet.");
+      if (!ENV.APP_WEB_URL || !ENV.GMAIL_SCRIPT_URL || !ENV.GMAIL_SCRIPT_TOKEN) return fail(res, 503, "Password recovery email is not configured yet.");
       const db = await getDb();
       if (!db) return fail(res, 503, "Database unavailable.");
       const user = (await db.select().from(users).where(eq(users.email, email)).limit(1))[0];
