@@ -5,15 +5,18 @@ import { startLogin } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { Streamdown } from "streamdown";
 import {
-  Activity, ArrowLeft, ArrowUpRight, BookOpen, Bot, Boxes, BrainCircuit, Bug, Check, ChevronLeft, CircleUserRound, Code2, Cpu, Database, FileCode2, Filter, Gauge, Heart, LayoutDashboard, Library, LockKeyhole, LogOut, Menu, MessageSquare, Network, Plus, Radio, Search, Send, ShieldAlert, ShoppingBag, ShoppingCart, Sparkles, Terminal, UserPlus, Users, Wrench, X, Zap,
+  Activity, ArrowLeft, ArrowUpRight, BookOpen, Bot, Boxes, BrainCircuit, Bug, Check, ChevronLeft, CircleUserRound, Code2, Cpu, Database, FileCode2, Filter, Gauge, Heart, LayoutDashboard, Library, LockKeyhole, LogOut, Menu, MessageSquare, Network, Plus, Radio, Search, Send, Settings2, ShieldAlert, ShoppingBag, ShoppingCart, Sparkles, Terminal, Trophy, UserPlus, Users, Wrench, X, Zap,
 } from "lucide-react";
 import { toast } from "sonner";
 import FigmaDashboard from "@/components/FigmaDashboard";
+import SettingsView from "@/features/settings/SettingsView";
+import LeaderboardView from "@/features/leaderboard/LeaderboardView";
+import NexusAssistantView from "@/features/ai/NexusAssistantView";
 
-type Section = "dashboard" | "profile" | "learning" | "tracks" | "cves" | "malware" | "tools" | "community" | "market" | "ai" | "admin";
+type Section = "dashboard" | "profile" | "learning" | "tracks" | "cves" | "malware" | "tools" | "community" | "market" | "leaderboard" | "settings" | "ai" | "admin";
 
 function SectionIcon({ section }: { section: Section }) {
-  const icons = { dashboard: LayoutDashboard, profile: CircleUserRound, learning: Library, tracks: Network, cves: ShieldAlert, malware: Bug, tools: Wrench, community: Users, market: ShoppingBag, ai: Bot, admin: Gauge };
+  const icons = { dashboard: LayoutDashboard, profile: CircleUserRound, learning: Library, tracks: Network, cves: ShieldAlert, malware: Bug, tools: Wrench, community: Users, market: ShoppingBag, leaderboard: Trophy, settings: Settings2, ai: Bot, admin: Gauge };
   const Icon = icons[section];
   return <Icon size={17} strokeWidth={1.8} />;
 }
@@ -37,9 +40,7 @@ export default function Home() {
   const [malwareCategory, setMalwareCategory] = useState("all");
   const [postText, setPostText] = useState("");
   const [aiInput, setAiInput] = useState("");
-  const [aiMessages, setAiMessages] = useState<{ role: "assistant" | "user"; content: string }[]>([
-    { role: "assistant", content: "أنا NEXUS. اطرح سؤالًا عن مسار التعلم أو تحليل ثغرة أو أداة دفاعية، وسأبني لك إجابة قابلة للتنفيذ داخل نطاق مصرح به." },
-  ]);
+  const [aiMessages, setAiMessages] = useState<{ role: "assistant" | "user"; content: string }[]>([]);
 
   const courseInput = useMemo(() => ({ search: courseSearch || undefined }), [courseSearch]);
   const cveInput = useMemo(() => ({ search: cveSearch || undefined, severity: severity === "all" ? undefined : severity }), [cveSearch, severity]);
@@ -88,13 +89,16 @@ export default function Home() {
     { id: "tools", label: "دليل الأدوات", meta: "04" },
     { id: "community", label: "المجتمع", meta: "05" },
     { id: "market", label: "السوق والكتب", meta: `${cartCount}` },
+    { id: "leaderboard", label: "لوحة المتصدرين", meta: "XP" },
+    { id: "ai", label: "NEXUS AI", meta: "AI" },
+    { id: "settings", label: "الإعدادات", meta: "CFG" },
   ];
   if (user?.role === "admin") navItems.push({ id: "admin", label: "غرفة المدير", meta: "A" });
 
   const navigate = (target: Section) => { setSection(target); setMobileOpen(false); };
-  const figmaTargets: Record<string, Section> = { dashboard: "dashboard", profile: "profile", learning: "learning", tracks: "tracks", cves: "cves", malware: "malware", tools: "tools", community: "community", market: "market", ai: "ai" };
+  const figmaTargets: Record<string, Section> = { dashboard: "dashboard", profile: "profile", learning: "learning", tracks: "tracks", cves: "cves", malware: "malware", tools: "tools", community: "community", market: "market", leaderboard: "leaderboard", settings: "settings", ai: "ai" };
   const handleFigmaNavigate = (target: string) => { const destination = figmaTargets[target]; if (destination) navigate(destination); else toast.info(`${target} module is not available yet.`); };
-  const titleMap: Record<Section, string> = { dashboard: "CYBERJOCX", profile: "YOUR PROFILE", learning: "مسارات التعلّم", tracks: "مساراتك التعليمية", cves: "مركز الثغرات CVE", malware: "مركز Malware", tools: "دليل الأدوات", community: "المجتمع", market: "مكتبة CyberJocx", ai: "NEXUS", admin: "إدارة المنصة" };
+  const titleMap: Record<Section, string> = { dashboard: "CYBERJOCX", profile: "YOUR PROFILE", learning: "مسارات التعلّم", tracks: "مساراتك التعليمية", cves: "مركز الثغرات CVE", malware: "مركز Malware", tools: "دليل الأدوات", community: "المجتمع", market: "مكتبة CyberJocx", leaderboard: "LEADERBOARD", settings: "SETTINGS", ai: "NEXUS", admin: "إدارة المنصة" };
 
   if (loading) return <div className="boot-screen"><div className="boot-panel"><div className="boot-line">[BOOT] initializing identity layer...</div><div className="boot-line">[BOOT] mounting cyberjocx interface...</div><div className="skeleton-heading" /><div className="skeleton-grid"><i /><i /><i /></div><div className="boot-cursor">█</div></div></div>;
 
@@ -131,7 +135,9 @@ export default function Home() {
           {section === "tools" && <ToolsView tools={tools} loading={toolsQuery.isLoading} error={toolsQuery.error} search={toolSearch} setSearch={setToolSearch} category={toolCategory} setCategory={setToolCategory} sort={toolSort} setSort={setToolSort} />}
           {section === "community" && <CommunityView posts={postsQuery.data ?? []} requests={friendRequestsQuery.data ?? []} loading={postsQuery.isLoading} error={postsQuery.error} postText={postText} setPostText={setPostText} onPost={() => isAuthenticated ? createPost.mutate({ content: postText }) : startLogin()} onLike={postId => isAuthenticated ? likePost.mutate({ postId }) : startLogin()} onFollow={userId => isAuthenticated ? followUser.mutate({ userId }) : startLogin()} onFriend={userId => isAuthenticated ? sendFriendRequest.mutate({ userId }) : startLogin()} onRespond={(requestId, accept) => respondFriendRequest.mutate({ requestId, accept })} />}
           {section === "market" && <MarketView books={booksQuery.data ?? []} loading={booksQuery.isLoading} error={booksQuery.error} cartItems={cartQuery.data ?? []} cartCount={cartCount} onAdd={bookId => isAuthenticated ? addToCart.mutate({ bookId }) : startLogin()} onRemove={itemId => removeFromCart.mutate({ itemId })} search={bookSearch} setSearch={setBookSearch} category={bookCategory} setCategory={setBookCategory} maxPoints={bookMaxPoints} setMaxPoints={setBookMaxPoints} sort={bookSort} setSort={setBookSort} />}
-          {section === "ai" && <AIView messages={aiMessages} input={aiInput} setInput={setAiInput} onAsk={() => { if (!aiInput.trim()) return; setAiMessages(messages => [...messages, { role: "user", content: aiInput }]); askAI.mutate({ message: aiInput, history: aiMessages }); setAiInput(""); }} isLoading={askAI.isPending} isAuthenticated={isAuthenticated} />}
+          {section === "leaderboard" && <LeaderboardView />}
+          {section === "settings" && <SettingsView user={user} isAuthenticated={isAuthenticated} onOpenProfile={() => navigate("profile")} />}
+          {section === "ai" && <NexusAssistantView messages={aiMessages} input={aiInput} setInput={setAiInput} onAsk={() => { const message = aiInput.trim(); if (!message || !isAuthenticated || askAI.isPending) return; setAiMessages(messages => [...messages, { role: "user", content: message }]); askAI.mutate({ message, history: aiMessages.slice(-12) }); setAiInput(""); }} onNewChat={() => { setAiMessages([]); setAiInput(""); }} isLoading={askAI.isPending} isAuthenticated={isAuthenticated} onSignIn={startLogin} />}
           {section === "admin" && <AdminView />} 
         </div>
         <button className="nexus-float" onClick={() => navigate("ai")} aria-label="فتح محادثة NEXUS"><span className="nexus-bot"><Bot size={23} /></span><span className="nexus-float-label">NEXUS<br /><small>اسألني</small></span></button>
@@ -274,10 +280,6 @@ function MalwareView({ items, loading, error, search, setSearch, category, setCa
   if (loading) return <ModuleState title="جارٍ تحميل مركز Malware..." />;
   if (error) return <ModuleState title="تعذر تحميل بيانات Malware." error={error} />;
   return <section className="module-stack"><div className="module-toolbar"><div className="search-box wide"><Search size={17} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="ابحث باسم العائلة أو التقنية أو الوصف..." /></div><div className="filter-tabs"><Filter size={15} />{categories.map(value => <button key={value} className={category === value ? "active" : ""} onClick={() => setCategory(value)}>{value === "all" ? "الكل" : value}</button>)}</div><span className="result-count">{items.length} FAMILIES</span></div><div className="intel-banner panel-card"><div className="intel-glyph"><Bug size={28} /></div><div><div className="section-tag">// MALWARE INTELLIGENCE</div><h2>افهم السلوك قبل بناء الدفاع.</h2><p>مركز داخلي للعائلات الخبيثة والتقنيات المرتبطة بها، مخصص للبحث والتحليل والدفاع القانوني.</p></div></div>{items.length ? <div className="tools-grid">{items.map(item => <article className="tool-card panel-card" key={item.id} onClick={() => setSelectedId(item.id)} role="button" tabIndex={0} onKeyDown={event => event.key === "Enter" && setSelectedId(item.id)}><div className="tool-card-top"><div className="tool-icon tool-1"><Bug size={20} /></div><span className={`severity-pill ${item.severity}`}>{item.severity}</span></div><h3>{item.name}</h3><p>{item.description}</p><div className="command-line"><span>MITRE</span>{item.mitreTechniques}</div><div className="detail-meta"><span>TARGETS: {item.targets}</span></div><button className="tool-link" onClick={event => { event.stopPropagation(); setSelectedId(item.id); }}>عرض التفاصيل <ArrowUpRight size={13} /></button></article>)}</div> : <ModuleState title="لم تُفهرس عائلات Malware بهذه الفلاتر بعد." empty />}{selectedId !== null && <div className="modal-backdrop" onClick={() => setSelectedId(null)}><div className="detail-modal panel-card" onClick={event => event.stopPropagation()}><button className="modal-close" onClick={() => setSelectedId(null)}><X size={16} /></button><div className="section-tag">// MALWARE PROFILE</div><h2>{detail.data?.name ?? "جارٍ التحميل"}</h2><p>{detail.data?.description}</p><div className="detail-meta"><span>{detail.data?.category}</span><span>{detail.data?.severity}</span><span>{detail.data?.targets}</span></div><div className="command-line"><span>MITRE TECHNIQUES</span>{detail.data?.mitreTechniques}</div>{detail.data?.sourceUrl && <a href={detail.data.sourceUrl} target="_blank" rel="noreferrer" className="primary-button">فتح المرجع <ArrowUpRight size={14} /></a>}</div></div>}</section>;
-}
-
-function AIView({ messages, input, setInput, onAsk, isLoading, isAuthenticated }: { messages: { role: "assistant" | "user"; content: string }[]; input: string; setInput: (value: string) => void; onAsk: () => void; isLoading: boolean; isAuthenticated: boolean }) {
-  return <section className="ai-layout"><div className="ai-chat panel-card"><div className="ai-chat-head"><div className="ai-orb"><Bot size={22} /></div><div><strong>NEXUS INTELLIGENCE</strong><span>AI LEARNING COPILOT // ONLINE</span></div><span className="ai-online"><span className="pulse-dot" /> READY</span></div><div className="messages">{messages.map((message, index) => <div className={`message-row ${message.role}`} key={index}><div className="message-avatar">{message.role === "assistant" ? <Bot size={15} /> : "G"}</div><div className="message-bubble">{message.role === "assistant" ? <Streamdown>{message.content}</Streamdown> : message.content}<span className="message-time">23:{42 + index}</span></div></div>)}{isLoading && <div className="typing"><span /><span /><span /> NEXUS is parsing signal...</div>}</div><div className="ai-input"><textarea value={input} onChange={event => setInput(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); onAsk(); } }} placeholder={isAuthenticated ? "اسأل NEXUS عن أي مفهوم..." : "سجّل الدخول لبدء جلسة مع NEXUS"} disabled={!isAuthenticated} /><button onClick={onAsk} disabled={!isAuthenticated || isLoading || !input.trim()}><Send size={17} /></button></div></div><aside className="ai-aside"><div className="ai-status panel-card"><div className="section-tag">// NEXUS CORE</div><div className="core-visual"><div className="core-ring r1" /><div className="core-ring r2" /><div className="core-dot"><Cpu size={20} /></div></div><h3>Context aware.</h3><p>المساعد يربط أسئلتك بالدورات والـ CVE والأدوات الموجودة في منظومتك.</p><div className="ai-tags"><span>LEARNING</span><span>DEFENSE</span><span>RESEARCH</span></div></div><div className="prompt-card panel-card"><div className="section-tag">// TRY ASKING</div>{["ما الفرق بين XSS و SSRF؟", "ابنِ لي خطة SOC خلال 30 يومًا", "كيف أقرأ CVSS بشكل صحيح؟"].map(prompt => <button key={prompt} onClick={() => setInput(prompt)}><span>&gt;</span>{prompt}</button>)}</div></aside></section>;
 }
 
 function AdminView() {
