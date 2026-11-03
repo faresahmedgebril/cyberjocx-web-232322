@@ -39,6 +39,9 @@ export default function SupportPage() {
         body: JSON.stringify({ name: name.trim(), email: email.trim(), category, subject: subject.trim(), message: message.trim(), website }),
       });
       const result = await response.json().catch(() => ({}));
+      if (response.status === 404) {
+        throw new Error("نموذج الدعم لم يُفعّل على خادم البريد بعد. راسلنا مباشرة على gebrilfares972@gmail.com من رابط البريد أسفل الصفحة.");
+      }
       if (!response.ok) {
         throw new Error(typeof result.message === "string" ? result.message : "تعذر إرسال رسالتك الآن. حاول مرة أخرى.");
       }
