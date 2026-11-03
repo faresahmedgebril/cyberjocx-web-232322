@@ -88,8 +88,7 @@ export default function LeaderboardView() {
           <div className="cj-leader-grid">
             <section className="cj-leader-main-card">
               <div className="cj-podium">
-                {podium.map((entry, index) => {
-                  const actualRank = index === 0 ? 2 : index === 1 ? 1 : 3;
+                {podium.map(({ entry, rank: actualRank }) => {
                   const rankClass = actualRank === 1 ? "first" : actualRank === 2 ? "second" : "third";
                   return (
                     <article className={`cj-podium-person ${rankClass}`} key={entry.id}>
