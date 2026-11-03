@@ -38,10 +38,15 @@ The importer uses a 48-hour lookback window and batches of 200 CVEs per NVD API 
 - Current callback URLs:
   - Google: `https://cyberjocx-api.gebrilfares972.workers.dev/api/auth/google/callback`
   - GitHub: `https://cyberjocx-api.gebrilfares972.workers.dev/api/auth/github/callback`
-- At the last configuration audit, the Worker had the two client-ID bindings but did not have either client-secret binding. Consequently, provider OAuth callbacks cannot be marked production-ready until the real secrets are added and a browser round-trip is verified.
+- The 2026-11-03 Cloudflare Worker settings audit listed both `GOOGLE_CLIENT_SECRET` and `GITHUB_CLIENT_SECRET` as `secret_text` bindings. Their values are intentionally not readable from Worker metadata. The OAuth initiation routes have passed redirect smoke tests; a full browser authorization/callback round-trip is still the correct final verification.
 
 ## Retired infrastructure
 
 Render was used in an earlier deployment attempt. It is not part of the active production request path or NVD scheduler. Keep any legacy Render blueprint/document as historical reference only; do not restore its URLs or secrets to active workflows.
 
 Cloudflare Pages and GitHub Pages are different products. CyberJocx's current frontend is GitHub Pages; Cloudflare runs the API Worker.
+
+
+## Worker release process
+
+The repository currently contains no checked-in Wrangler configuration or Cloudflare Worker deployment workflow. The GitHub Actions Docker workflow verifies the Node server build and tests, but it does not publish code to `cyberjocx-api`. GitHub Pages deployment is a separate workflow. Treat API Worker uploads as a distinct release: build and review the actual Worker-compatible entry bundle, preserve the existing Hyperdrive and secret bindings, deploy a new version, and verify `/health`, `/ready`, authentication, and affected tRPC procedures before declaring the API update live.
