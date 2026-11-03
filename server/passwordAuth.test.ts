@@ -361,6 +361,13 @@ describe("password authentication routes", () => {
       password: "new secure password",
     });
     expect(login.status).toBe(200);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const notificationPayload = JSON.parse(String(vi.mocked(fetch).mock.calls[0]?.[1]?.body));
+    expect(notificationPayload).toMatchObject({
+      to: user.email,
+      subject: "Your CyberJocx password was changed",
+    });
+    expect(user.passwordHash).toMatch(/^scrypt\\$/);
   });
 
   it("sends password reset links through the Gmail relay, not through a third-party mail provider", async () => {
