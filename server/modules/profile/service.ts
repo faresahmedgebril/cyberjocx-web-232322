@@ -1,13 +1,27 @@
 import { getPublicProfile, getDb } from "../../db";
-import { users } from "../../../drizzle/schema";
+import { users, type User } from "../../../drizzle/schema";
 import { eq } from "drizzle-orm";
 import { getStorageProvider, profileObjectKey } from "../../infrastructure/storage/provider";
 import { validationError } from "../../core/errors";
 
+export function toClientSafeUser(user: User) {
+  const {
+    passwordHash,
+    passwordResetTokenHash,
+    passwordResetExpiresAt,
+    ...safeUser
+  } = user;
+  void passwordHash;
+  void passwordResetTokenHash;
+  void passwordResetExpiresAt;
+  return safeUser;
+}
+
 export async function readPublicProfile(userId: number) {
   const profile = await getPublicProfile(userId);
   if (!profile) return undefined;
-  const { email: _email, phone: _phone, linkedinUrl: _linkedinUrl, ...publicUser } = profile.user;
+  const safeUser = toClientSafeUser(profile.user);
+  const { email: _email, phone: _phone, linkedinUrl: _linkedinUrl, ...publicUser } = safeUser;
   return { ...profile, user: publicUser };
 }
 
