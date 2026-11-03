@@ -111,7 +111,33 @@ export default function Home() {
   const handleFigmaNavigate = (target: string) => { const destination = figmaTargets[target]; if (destination) navigate(destination); else toast.info(`${target} module is not available yet.`); };
   const titleMap: Record<Section, string> = { dashboard: "CYBERJOCX", profile: "YOUR PROFILE", learning: "مسارات التعلّم", tracks: "مساراتك التعليمية", cves: "مركز الثغرات CVE", malware: "مركز Malware", tools: "دليل الأدوات", community: "المجتمع", market: "مكتبة CyberJocx", leaderboard: "LEADERBOARD", settings: "SETTINGS", ai: "NEXUS", admin: "إدارة المنصة" };
 
-  if (loading) return <div className="boot-screen"><div className="boot-panel"><div className="boot-line">[BOOT] initializing identity layer...</div><div className="boot-line">[BOOT] mounting cyberjocx interface...</div><div className="skeleton-heading" /><div className="skeleton-grid"><i /><i /><i /></div><div className="boot-cursor">█</div></div></div>;
+  if (loading) return (
+    <div className="launch-loader" role="status" aria-live="polite">
+      <div className="launch-loader__glow launch-loader__glow--one" aria-hidden="true" />
+      <div className="launch-loader__glow launch-loader__glow--two" aria-hidden="true" />
+      <div className="launch-loader__content">
+        <div className="launch-loader__brand" aria-label="CyberJocx">
+          <span>Cyber</span><strong>Jocx</strong>
+        </div>
+        <p className="launch-loader__message">بنجهّز مساحتك في CyberJocx</p>
+        <div className="runner-scene" aria-hidden="true">
+          <div className="runner-track"><span /></div>
+          <div className="runner-runner">
+            <svg viewBox="0 0 64 68" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle className="runner-head" cx="39" cy="9" r="6" />
+              <path className="runner-body" d="M35 18L28 35" />
+              <path className="runner-limb runner-arm runner-arm--back" d="M34 21L23 29L15 25" />
+              <path className="runner-limb runner-arm runner-arm--front" d="M35 21L45 27L53 20" />
+              <path className="runner-limb runner-leg runner-leg--back" d="M28 35L17 46L8 57" />
+              <path className="runner-limb runner-leg runner-leg--front" d="M28 35L40 43L51 51" />
+            </svg>
+          </div>
+          <div className="runner-scene__markers"><i /><i /><i /><i /><i /></div>
+        </div>
+        <div className="launch-loader__caption"><span /> جاري التحميل <span /></div>
+      </div>
+    </div>
+  );
 
   if (String(section) === "dashboard") return <><FigmaDashboard stats={{ points: stats.points, coursesCompleted: stats.coursesCompleted, activeCourses: stats.activeCourses, cvesTracked: stats.cvesTracked || cves.length }} learningCourses={courses.map((course: any) => ({ id: course.id, title: course.title, category: course.category, level: course.level, progress: course.progress }))} userName={user?.name?.trim() || user?.email?.split("@")[0]?.trim() || (isAuthenticated ? "GHOST_OPERATOR" : "Guest")} onNavigate={handleFigmaNavigate} onOpenAuth={() => isAuthenticated ? navigate("profile") : startLogin()} /></>;
 
