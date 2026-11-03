@@ -98,3 +98,7 @@ For the public frontend development preview, GitHub Pages is deployed automatica
 https://faresahmedgebril.github.io/cyberjocx-web-232322/
 
 The preview is frontend-only. Set the repository variable VITE_API_BASE_URL to the public API URL for API-backed features.
+
+## Gmail support and password recovery
+
+CyberJocx can send password-reset links, password-change notifications, and public support messages from the owner's Gmail account. No Resend account or custom email-sending domain is required. Complete the one-time setup in [GMAIL_BRIDGE_SETUP.md](GMAIL_BRIDGE_SETUP.md). Never commit the Gmail bridge token.
