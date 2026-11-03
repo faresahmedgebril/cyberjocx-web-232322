@@ -4,9 +4,10 @@ import { trpc } from "@/lib/trpc";
 import { ComingSoonModal } from "@/components/ComingSoonModal";
 import "./leaderboard.css";
 
-type Period = "all-time" | "month" | "week" | "today";
+type Period = "all-time";
+type PeriodOption = Period | "month" | "week" | "today";
 
-const periods: { id: Period; label: string }[] = [
+const periods: { id: PeriodOption; label: string }[] = [
   { id: "all-time", label: "All Time" },
   { id: "month", label: "This Month" },
   { id: "week", label: "This Week" },
