@@ -55,6 +55,92 @@ async function sendResetEmail(email: string, resetUrl: string) {
   }
 }
 
+
+const SUPPORT_CATEGORIES = new Set(["account", "password", "technical", "courses", "billing", "security", "other"]);
+function escapeHtml(value: string) {
+  return value.replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char] ?? char);
+}
+async function sendSupportEmail(input: { name: string; email: string; category: string; subject: string; message: string }) {
+  if (!ENV.RESEND_API_KEY || !ENV.AUTH_EMAIL_FROM || !ENV.SUPPORT_INBOX_EMAIL) {
+    throw new Error("Support email is not configured yet.");
+  }
+  const categoryLabels: Record<string, string> = {
+    account: "Account and sign-in",
+    password: "Password recovery",
+    technical: "Technical issue",
+    courses: "Courses and learning",
+    billing: "Subscriptions and billing",
+    security: "Security report",
+    other: "Other",
+  };
+  const safeName = escapeHtml(input.name);
+  const safeEmail = escapeHtml(input.email);
+  const safeSubject = escapeHtml(input.subject);
+  const safeMessage = escapeHtml(input.message).replace(/\\r?\\n/g, "<br>");
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: "Bearer " + ENV.RESEND_API_KEY, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      from: ENV.AUTH_EMAIL_FROM,
+      to: [ENV.SUPPORT_INBOX_EMAIL],
+      reply_to: input.email,
+      subject: "[CyberJocx Support] " + input.subject,
+      text: [
+        "New CyberJocx support request",
+        "Name: " + input.name,
+        "Email: " + input.email,
+        "Category: " + (categoryLabels[input.category] ?? input.category),
+        "Subject: " + input.subject,
+        "",
+        input.message,
+      ].join("\\n"),
+      html: "<div style=\"font-family:Arial,sans-serif;background:#05091c;color:#eaf1ff;padding:28px;border-radius:12px\">" +
+        "<h2 style=\"color:#a95cff\">CyberJocx Support Request</h2>" +
+        "<p><b>Name:</b> " + safeName + "</p>" +
+        "<p><b>Email:</b> " + safeEmail + "</p>" +
+        "<p><b>Category:</b> " + escapeHtml(categoryLabels[input.category] ?? input.category) + "</p>" +
+        "<p><b>Subject:</b> " + safeSubject + "</p>" +
+        "<hr style=\"border-color:#263b63\"><p style=\"line-height:1.8\">" + safeMessage + "</p></div>",
+    }),
+  });
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    console.error("[Support] email provider rejected request", response.status, detail.slice(0, 200));
+    throw new Error("Unable to deliver the support request right now.");
+  }
+}
+
+export function registerSupportRoutes(app: Express) {
+  app.post("/api/support", async (req: Request, res: Response) => {
+    try {
+      const name = String(req.body?.name ?? "").trim();
+      const email = normalizeEmail(String(req.body?.email ?? ""));
+      const category = String(req.body?.category ?? "");
+      const subject = String(req.body?.subject ?? "").trim();
+      const message = String(req.body?.message ?? "").trim();
+      const website = String(req.body?.website ?? "").trim();
+
+      // Quietly absorb automated submissions caught by the honeypot.
+      if (website) return res.status(202).json({ ok: true });
+
+      if (name.length < 2 || name.length > 100) return fail(res, 400, "اكتب اسمًا صحيحًا.");
+      if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) return fail(res, 400, "اكتب بريدًا إلكترونيًا صحيحًا.");
+      if (!SUPPORT_CATEGORIES.has(category)) return fail(res, 400, "اختار نوع المشكلة.");
+      if (subject.length < 5 || subject.length > 140) return fail(res, 400, "عنوان الرسالة يجب أن يكون من 5 إلى 140 حرفًا.");
+      if (message.length < 20 || message.length > 5000) return fail(res, 400, "تفاصيل المشكلة يجب أن تكون من 20 إلى 5000 حرف.");
+      if (!ENV.RESEND_API_KEY || !ENV.AUTH_EMAIL_FROM || !ENV.SUPPORT_INBOX_EMAIL) {
+        return fail(res, 503, "استقبال رسائل الدعم غير مفعّل حاليًا. حاول لاحقًا.");
+      }
+
+      await sendSupportEmail({ name, email, category, subject, message });
+      return res.status(202).json({ ok: true, message: "Support request accepted." });
+    } catch (error) {
+      console.error("[Support] request failed", error instanceof Error ? error.message : String(error));
+      return fail(res, 503, "تعذر إرسال رسالتك حاليًا. حاول مرة أخرى بعد قليل.");
+    }
+  });
+}
+
 export function registerPasswordAuthRoutes(app: Express) {
   app.post("/api/auth/register", async (req: Request, res: Response) => {
     try {
