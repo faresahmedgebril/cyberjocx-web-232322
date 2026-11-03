@@ -88,7 +88,7 @@ export const appRouter = router({
         rank: index + 1,
         isCurrentUser: entry.id === ctx.user?.id,
       }));
-      let currentUser = entries.find(entry => entry.isCurrentUser) ?? null;
+      let currentUser: (Omit<(typeof entries)[number], "rank"> & { rank: number | null }) | null = entries.find(entry => entry.isCurrentUser) ?? null;
       if (!currentUser && ctx.user) {
         const ownProfile = await db.select({
           id: users.id,
