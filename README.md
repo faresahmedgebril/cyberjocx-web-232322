@@ -53,7 +53,7 @@ Public frontend: https://faresahmedgebril.github.io/cyberjocx-web-232322/
 
 The existing login/authentication page and main home dashboard layout remain intact. The platform also includes:
 
-- **Leaderboard:** all-time points from `users.points`; daily, weekly and monthly points from `xpTransactions`. No mock members or hardcoded point totals.
+- **Leaderboard:** live all-time points from `users.points`; date-based filters are marked Coming Soon until their Worker API is deployed. No mock members or hardcoded point totals.
 - **Settings:** profile name/bio updates, browser-persisted accent color and the supported dark-theme preference. Unimplemented settings actions are marked Coming Soon.
 - **NEXUS Assistant:** the existing protected AI API and its platform context. Attachments and persistent chat history are not currently implemented.
 
