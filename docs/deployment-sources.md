@@ -1,10 +1,12 @@
 # Deployment references
 
-The deployment runbook was cross-checked against these official documents:
+The active CyberJocx production topology is documented in [DEPLOYMENT_ARCHITECTURE.md](./DEPLOYMENT_ARCHITECTURE.md).
 
-- [Cloudflare Pages build configuration](https://developers.cloudflare.com/pages/configuration/build-configuration/): Pages accepts a build command and build output directory; environment variables are configured in the Pages project settings. The repository-specific output is `dist/public` because Vite is configured to write there.
-- [Render Blueprint specification](https://render.com/docs/blueprint-spec): Blueprints support web, private (`pserv`), worker, cron, and key-value services; Postgres databases are represented separately under `databases`.
-- [Render MySQL deployment](https://render.com/docs/deploy-mysql): MySQL is deployed as a private Docker service using the Render MySQL example, with a persistent disk mounted at `/var/lib/mysql`; the private hostname is used by other Render services.
-- [Render Cron Jobs](https://render.com/docs/cronjobs): Cron jobs run a command on a UTC schedule, receive environment variables, cannot use persistent disks, and should exit after completing their run.
+Official references:
+- [GitHub Pages](https://docs.github.com/en/pages/getting-started-with-github-pages): current frontend publishing target.
+- [Cloudflare Workers](https://developers.cloudflare.com/workers/): current backend/API runtime.
+- [Cloudflare Workers Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/): the single NVD schedule.
+- [Cloudflare Hyperdrive](https://developers.cloudflare.com/hyperdrive/): connection path from the Worker to Neon PostgreSQL.
+- [Neon PostgreSQL](https://neon.com/docs/introduction): production database and branch management.
 
-No external deployment URL was available in this session because Render required account sign-in and no authenticated Cloudflare deployment connector was present.
+Render references in older repository files describe a retired deployment attempt; Render is not part of the active production topology.
