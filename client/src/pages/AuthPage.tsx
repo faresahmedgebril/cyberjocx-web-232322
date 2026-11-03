@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import {
   ArrowLeft, ArrowRight, BarChart3, Eye, EyeOff, Github,
   KeyRound, LoaderCircle, LockKeyhole, Mail, ShieldCheck, UserRound, Zap,
@@ -363,6 +363,8 @@ export default function AuthPage() {
               <ArrowLeft size={15} /> Back to sign in
             </button>
           )}
+
+          <div className="auth-support-link"><Link href="/support">محتاج مساعدة؟ تواصل مع الدعم الفني</Link></div>
 
           <footer className="benefits">
             <span><ShieldCheck />Better Skills</span>
