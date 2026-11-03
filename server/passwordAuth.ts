@@ -77,7 +77,7 @@ async function sendSupportEmail(input: { name: string; email: string; category: 
   const safeName = escapeHtml(input.name);
   const safeEmail = escapeHtml(input.email);
   const safeSubject = escapeHtml(input.subject);
-  const safeMessage = escapeHtml(input.message).replace(/\\r?\\n/g, "<br>");
+  const safeMessage = escapeHtml(input.message).replace(/\r?\n/g, "<br>");
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: "Bearer " + ENV.RESEND_API_KEY, "Content-Type": "application/json" },
@@ -94,7 +94,7 @@ async function sendSupportEmail(input: { name: string; email: string; category: 
         "Subject: " + input.subject,
         "",
         input.message,
-      ].join("\\n"),
+      ].join("\n"),
       html: "<div style=\"font-family:Arial,sans-serif;background:#05091c;color:#eaf1ff;padding:28px;border-radius:12px\">" +
         "<h2 style=\"color:#a95cff\">CyberJocx Support Request</h2>" +
         "<p><b>Name:</b> " + safeName + "</p>" +
@@ -125,7 +125,7 @@ export function registerSupportRoutes(app: Express) {
       if (website) return res.status(202).json({ ok: true });
 
       if (name.length < 2 || name.length > 100) return fail(res, 400, "اكتب اسمًا صحيحًا.");
-      if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) return fail(res, 400, "اكتب بريدًا إلكترونيًا صحيحًا.");
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return fail(res, 400, "اكتب بريدًا إلكترونيًا صحيحًا.");
       if (!SUPPORT_CATEGORIES.has(category)) return fail(res, 400, "اختار نوع المشكلة.");
       if (subject.length < 5 || subject.length > 140) return fail(res, 400, "عنوان الرسالة يجب أن يكون من 5 إلى 140 حرفًا.");
       if (message.length < 20 || message.length > 5000) return fail(res, 400, "تفاصيل المشكلة يجب أن تكون من 20 إلى 5000 حرف.");
