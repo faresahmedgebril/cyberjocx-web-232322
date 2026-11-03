@@ -75,7 +75,6 @@ const corsOrigins = Array.from(new Set([
 if (raw.NODE_ENV === "production") {
   const missing: string[] = [];
   if (!raw.DATABASE_URL) missing.push("DATABASE_URL");
-  if (raw.SERVICE_ROLE === "api" && !raw.JWT_SECRET) missing.push("JWT_SECRET");
   if (raw.SERVICE_ROLE === "api" && !appWebUrl) missing.push("APP_WEB_URL (or RENDER_EXTERNAL_URL)");
   if (missing.length) throw new Error(`Missing required production environment variables: ${missing.join(", ")}`);
   if (raw.SERVICE_ROLE === "api") {
