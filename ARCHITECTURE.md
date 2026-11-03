@@ -42,7 +42,6 @@ flowchart TD
     HOME --> NEXUS["NexusAssistantView"]
     LEADER --> TRPC_LB["tRPC leaderboard.list"]
     TRPC_LB --> DB_USERS["users.points / public profile fields"]
-    TRPC_LB --> XP["xpTransactions for day/week/month"]
     SETTINGS --> LOCAL["localStorage\nAccent color"]
     SETTINGS --> THEME["ThemeContext\nDark theme preference"]
     SETTINGS --> PROFILE_API["tRPC profile.update\nName and bio"]
@@ -65,7 +64,7 @@ flowchart TD
 ### Leaderboard
 
 - All-time order uses the persisted `users.points` value.
-- Today, this week and this month use summed `xpTransactions.amount` values within the selected UTC period.
+- Today, this week and this month are visible design options but open Coming Soon; the active Worker API currently exposes the all-time query only.
 - The endpoint returns up to 50 ranked entries plus a signed-in user's own position summary.
 - Only public profile fields are selected: display name, avatar URL, member rank, points and rank. Email, password hashes and session data are not returned.
 
