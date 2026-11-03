@@ -16,7 +16,7 @@ The submitted exports were inspected and mapped into the existing React/Vite app
 
 ## Implemented screens
 
-- Leaderboard: all-time points from `users.points`; daily/weekly/monthly from `xpTransactions`. No mock names, avatars or point totals are shipped.
+- Leaderboard: all-time points from `users.points`. Day/week/month filters open Coming Soon until the production Worker supports them. No mock names, avatars or point totals are shipped.
 - Settings: name and bio save through `profile.update`; accent color persists in localStorage; dark theme preference uses ThemeContext.
 - NEXUS Assistant: reuses the protected `ai.ask` mutation and its existing platform context. New chat clears the current in-memory thread.
 
