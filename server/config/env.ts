@@ -66,7 +66,7 @@ if (!parsed.success) {
 }
 
 const raw = parsed.data;
-const appWebUrl = raw.APP_WEB_URL ?? process.env.RENDER_EXTERNAL_URL;
+const appWebUrl = raw.APP_WEB_URL;
 const corsOrigins = Array.from(new Set([
   ...raw.CORS_ORIGINS.split(",").map(value => value.trim()).filter(Boolean),
   ...(appWebUrl ? [appWebUrl] : []),
@@ -75,7 +75,7 @@ const corsOrigins = Array.from(new Set([
 if (raw.NODE_ENV === "production") {
   const missing: string[] = [];
   if (!raw.DATABASE_URL) missing.push("DATABASE_URL");
-  if (raw.SERVICE_ROLE === "api" && !appWebUrl) missing.push("APP_WEB_URL (or RENDER_EXTERNAL_URL)");
+  if (raw.SERVICE_ROLE === "api" && !appWebUrl) missing.push("APP_WEB_URL");
   if (missing.length) throw new Error(`Missing required production environment variables: ${missing.join(", ")}`);
   if (raw.SERVICE_ROLE === "api") {
     if (corsOrigins.length === 0) throw new Error("At least one CORS origin is required in production");
