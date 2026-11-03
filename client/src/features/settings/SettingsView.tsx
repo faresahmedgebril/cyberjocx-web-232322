@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Bell, Check, ChevronRight, CreditCard, Globe, Link2, LockKeyhole, Moon,
-  Palette, Shield, Sun, Trash2, UserRound, Monitor, Pencil, Sparkles,
+  Shield, Sun, Trash2, UserRound, Monitor, Pencil, Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -48,7 +48,7 @@ export default function SettingsView({
     return window.localStorage.getItem("cyberjocx-accent") || accentColors[1];
   });
   const [comingOpen, setComingOpen] = useState(false);
-  const { theme, toggleTheme } = useTheme();
+  const { theme } = useTheme();
   const updateProfile = trpc.profile.update.useMutation({
     onSuccess: () => toast.success("تم حفظ إعدادات الحساب."),
     onError: () => toast.error("تعذر حفظ إعدادات الحساب الآن."),
@@ -82,9 +82,6 @@ export default function SettingsView({
     updateProfile.mutate({ name: normalizedName, bio: bio.trim() });
   }
 
-  function changeTheme(next: "light" | "dark") {
-    if (theme !== next) toggleTheme?.();
-  }
 
   return (
     <section className="cj-settings">
@@ -114,7 +111,7 @@ export default function SettingsView({
                 <h3>Theme</h3>
                 <div className="cj-theme-options">
                   <button type="button" onClick={openComingSoon}><Sun size={22} />Light</button>
-                  <button type="button" className={theme === "dark" ? "selected" : ""} onClick={() => changeTheme("dark")}><Moon size={22} />Dark{theme === "dark" && <Check size={15} />}</button>
+                  <button type="button" className={theme === "dark" ? "selected" : ""} aria-pressed={theme === "dark"} disabled><Moon size={22} />Dark{theme === "dark" && <Check size={15} />}</button>
                   <button type="button" onClick={openComingSoon}><Monitor size={22} />Auto</button>
                 </div>
                 <div className="cj-settings-divider" />
