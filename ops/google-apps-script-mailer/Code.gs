@@ -4,6 +4,24 @@
  * Set Script Property MAIL_API_TOKEN to the same random secret stored in
  * Cloudflare Worker secret GMAIL_SCRIPT_TOKEN.
  */
+/**
+ * Run this once from the Apps Script editor.
+ * It stores a new high-entropy token in Script Properties and prints it
+ * so you can paste the same value into the Cloudflare Worker secret.
+ */
+function generateMailToken() {
+  const properties = PropertiesService.getScriptProperties();
+  if (properties.getProperty("MAIL_API_TOKEN")) {
+    console.log("MAIL_API_TOKEN already exists. It was not changed.");
+    return;
+  }
+
+  const token = Array.from({ length: 4 }, () => Utilities.getUuid().replace(/-/g, "")).join("");
+  properties.setProperty("MAIL_API_TOKEN", token);
+  console.log("Copy this token into Cloudflare as the GMAIL_SCRIPT_TOKEN secret:");
+  console.log(token);
+}
+
 function doPost(e) {
   try {
     const body = JSON.parse((e && e.postData && e.postData.contents) || "{}");
