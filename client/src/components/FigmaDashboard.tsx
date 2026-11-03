@@ -53,40 +53,6 @@ const navigation: { icon: IconName; label: string }[] = [
   { icon: "settings", label: "Settings" }, { icon: "terminal", label: "AI Assistant" },
 ]
 
-const stats: { icon: IconName; title: string; value: string; gain: string; progress: number }[] = [
-  { icon: "star", title: "Total Points", value: "1,420", gain: "+120", progress: 82 },
-  { icon: "book", title: "Completed Courses", value: "3", gain: "+1", progress: 20 },
-  { icon: "server", title: "Machines Solved", value: "2", gain: "+1", progress: 20 },
-  { icon: "target", title: "Challenges Solved", value: "5", gain: "+2", progress: 40 },
-]
-
-const pathSteps = [
-  { name: "Web Fundamentals", status: "Completed" }, { name: "Linux Basics", status: "Completed" },
-  { name: "Network Security", status: "In Progress" }, { name: "Penetration Testing", status: "Locked" },
-  { name: "Malware Analysis", status: "Locked" }, { name: "Advanced Exploitation", status: "Locked" },
-]
-
-const courses: { icon: IconName; name: string; detail: string; progress: number }[] = [
-  { icon: "linux", name: "Linux Basics", detail: "Beginner • 5h", progress: 60 },
-  { icon: "network", name: "Network Security", detail: "Intermediate • 8h", progress: 30 },
-  { icon: "code", name: "Web Exploitation", detail: "Intermediate • 10h", progress: 0 },
-  { icon: "bug", name: "Malware Analysis", detail: "Advanced • 12h", progress: 0 },
-]
-
-const activity: { icon: IconName; text: string; time: string; tone: string }[] = [
-  { icon: "target", text: "Solved machine - Blue", time: "2 hours ago", tone: "green" },
-  { icon: "book", text: "Completed course - Linux Basics", time: "5 hours ago", tone: "purple" },
-  { icon: "star", text: "Earned 100 points", time: "6 hours ago", tone: "purple" },
-  { icon: "users", text: "Joined community discussion", time: "8 hours ago", tone: "blue" },
-  { icon: "shield", text: "New CVE available - CVE-2024-1234", time: "10 hours ago", tone: "purple" },
-]
-
-const initialGoals = [
-  { text: "Complete Network Security course", done: true }, { text: "Solve 1 machine", done: true },
-  { text: "Read 1 blog post", done: false }, { text: "Join community discussion", done: false },
-  { text: "Practice 1 challenge", done: false },
-]
-
 function Panel({ children, className = "" }: { children: ReactNode; className?: string }) {
   return <section className={`panel ${className}`}>{children}</section>
 }
@@ -119,11 +85,9 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
   const [activeNav, setActiveNav] = useState("Home")
   const [search, setSearch] = useState("")
   const [terminalOpen, setTerminalOpen] = useState(true)
-  const [goals] = useState(initialGoals)
   const [comingSoonOpen, setComingSoonOpen] = useState(false)
 
   const matches = useMemo(() => dashboardCourses.filter((course) => course.name.toLowerCase().includes(search.toLowerCase())), [dashboardCourses, search])
-  const completedGoals = goals.filter((goal) => goal.done).length
 
   return <div className="figma-dashboard">
     <header className="topbar">
@@ -176,12 +140,7 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
 
           <Panel className="learning-panel">
             <SectionTitle icon="target" action="Continue Learning" onAction={() => onNavigate("learning")}>Your Learning Path</SectionTitle>
-            <div className="learning-path">
-              {pathSteps.map((step, index) => <div className={`path-step ${step.status === "Completed" ? "complete" : step.status === "In Progress" ? "current" : "locked"}`} key={step.name}>
-                <div className="step-track"><span className="step-circle">{step.status === "Completed" ? <Icon name="check" size={23} /> : step.status === "Locked" ? <Icon name="lock" size={18} /> : index + 1}</span>{index < pathSteps.length - 1 && <i />}</div>
-                <small>{index + 1}</small><strong>{step.name}</strong><b>{step.status}</b>
-              </div>)}
-            </div>
+            <div className="dashboard-placeholder">Coming Soon</div>
           </Panel>
 
           <Panel className="courses-panel">
@@ -195,23 +154,23 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
         <div className="right-column">
           <Panel className="activity-panel">
             <SectionTitle icon="bolt" action="View All" onAction={() => setComingSoonOpen(true)}>Recent Activity</SectionTitle>
-            <div className="activity-list">{activity.map((item) => <div className="activity-item" key={item.text}><span className={item.tone}><Icon name={item.icon} size={23} /></span><div><strong>{item.text}</strong><small>{item.time}</small></div></div>)}</div>
+            <div className="dashboard-placeholder">Coming Soon</div>
           </Panel>
 
           <Panel className={`terminal-panel ${terminalOpen ? "" : "closed"}`}>
             <div className="terminal-head"><span><Icon name="terminal" size={22} /></span><h2>Quick Terminal</h2><div><button aria-label="Minimize terminal" onClick={() => setTerminalOpen(!terminalOpen)}>−</button><button aria-label="Expand terminal" onClick={() => setComingSoonOpen(true)}><Icon name="expand" size={14} /></button><button aria-label="Close terminal" onClick={() => setTerminalOpen(false)}><Icon name="close" size={15} /></button></div></div>
-            {terminalOpen && <div className="terminal"><p><em>kali@cyberjocx</em>:~$ nmap -sC -sV 10.10.10.10</p><p>Starting Nmap 7.94 ...</p><br /><p>PORT&nbsp;&nbsp;&nbsp;&nbsp; STATE&nbsp;&nbsp; SERVICE&nbsp;&nbsp; VERSION</p><p>22/tcp&nbsp;&nbsp; open&nbsp;&nbsp;&nbsp; ssh&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OpenSSH 8.9p1</p><p>80/tcp&nbsp;&nbsp; open&nbsp;&nbsp;&nbsp; http&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Apache 2.4.41</p><p>443/tcp&nbsp; open&nbsp;&nbsp;&nbsp; https&nbsp;&nbsp;&nbsp;&nbsp; Apache 2.4.41</p><br /><p>Nmap done: 1 IP address (1 host up)</p><p><em>kali@cyberjocx</em>:~$ <span className="cursor" /></p></div>}
+            {terminalOpen && <div className="terminal dashboard-placeholder">Coming Soon</div>}
           </Panel>
 
           <Panel className="goals-panel">
-            <div className="goals-head"><span><Icon name="target" size={23} /></span><h2>Today's Goals</h2><i /><b>{completedGoals} / 5</b></div>
-            <div className="goal-list">{goals.map((goal, index) => <label key={goal.text}><input type="checkbox" checked={goal.done} onChange={() => setComingSoonOpen(true)} /><span><Icon name="check" size={15} /></span>{goal.text}</label>)}</div>
+            <div className="goals-head"><span><Icon name="target" size={23} /></span><h2>Today's Goals</h2><i /></div>
+            <div className="dashboard-placeholder">Coming Soon</div>
           </Panel>
         </div>
       </div>
     </main>
 
-    <footer><strong>Cyber<span>Jocx</span></strong><b>v1.0.0</b><i /><span>Learn</span><small>•</small><span>Practice</span><small>•</small><span>Become Better</span><div className="online"><i /> Online <b>1,248 members</b><Icon name="message" size={16} /></div></footer>
+    <footer><strong>Cyber<span>Jocx</span></strong><b>v1.0.0</b><i /><span>Learn</span><small>•</small><span>Practice</span><small>•</small><span>Become Better</span><div className="online"><Icon name="message" size={16} /> Community</div></footer>
     <ComingSoonModal open={comingSoonOpen} onClose={() => setComingSoonOpen(false)} />
   </div>
 }
