@@ -6,7 +6,7 @@ import { listChallenges, getChallenge, submitChallenge, createChallenge } from "
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq, or, sql } from "drizzle-orm";
 import { askAI, personalizeAI } from "./modules/ai/service";
-import { readPublicProfile, updateProfile, uploadProfileMedia } from "./modules/profile/service";
+import { readPublicProfile, toClientSafeUser, updateProfile, uploadProfileMedia } from "./modules/profile/service";
 import { nanoid } from "nanoid";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { getSessionToken, revokeSession } from "./core/auth/session";
@@ -18,7 +18,7 @@ import { z } from "zod";
 export const appRouter = router({
   system: systemRouter,
   auth: router({
-    me: publicProcedure.query(opts => opts.ctx.user),
+    me: publicProcedure.query(({ ctx }) => ctx.user ? toClientSafeUser(ctx.user) : null),
     logout: publicProcedure.mutation(async ({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       await revokeSession(getSessionToken(ctx.req));
@@ -28,7 +28,7 @@ export const appRouter = router({
   }),
   dashboard: protectedProcedure.query(({ ctx }) => getDashboardStats(ctx.user.id)),
   profile: router({
-    me: protectedProcedure.query(({ ctx }) => ctx.user),
+    me: protectedProcedure.query(({ ctx }) => toClientSafeUser(ctx.user)),
     byId: publicProcedure.input(z.object({ userId: z.number() })).query(({ input }) => readPublicProfile(input.userId)),
     update: protectedProcedure.input(z.object({ name: z.string().min(2).max(120).optional(), bio: z.string().max(500).optional(), avatarUrl: z.string().url().optional(), bannerUrl: z.string().url().optional(), phone: z.string().max(32).optional(), linkedinUrl: z.string().url().optional(), memberRank: z.enum(["learner", "contributor", "analyst", "mentor", "elite"]).optional(), primaryTrackId: z.number().optional() })).mutation(async ({ ctx, input }) => {
       return updateProfile(ctx.user.id, input);
