@@ -69,6 +69,24 @@ async function sendGmailEmail(input: {
   }
 }
 
+async function sendPasswordChangedEmail(email: string) {
+  await sendGmailEmail({
+    to: email,
+    subject: "Your CyberJocx password was changed",
+    text: [
+      "Your CyberJocx password was successfully changed.",
+      "",
+      "If you did not make this change, use Forgot Password to secure your account and contact support immediately.",
+      "For your security, all existing sessions were signed out.",
+    ].join("\n"),
+    html: "<div style=\"font-family:Arial,sans-serif;background:#05091c;color:#eaf1ff;padding:32px;border-radius:12px\">" +
+      "<h2 style=\"color:#a95cff\">CyberJocx</h2>" +
+      "<p>Your password was successfully changed.</p>" +
+      "<p>If you did not make this change, use Forgot Password to secure your account and contact support immediately.</p>" +
+      "<p>For your security, all existing sessions were signed out.</p></div>",
+  });
+}
+
 async function sendResetEmail(email: string, resetUrl: string) {
   await sendGmailEmail({
     to: email,
@@ -259,6 +277,12 @@ export function registerPasswordAuthRoutes(app: Express) {
         passwordResetTokenHash: null, passwordResetExpiresAt: null, lastSignedIn: new Date(),
       }).where(eq(users.id, user.id));
       await db.update(sessions).set({ revokedAt: new Date() }).where(and(eq(sessions.userId, user.id), isNull(sessions.revokedAt)));
+      try {
+        await sendPasswordChangedEmail(user.email ?? email);
+      } catch (emailError) {
+        // The password is already safely changed; a notification failure must not undo it.
+        console.error("[Password Auth] password-changed notification failed", emailError instanceof Error ? emailError.message : String(emailError));
+      }
       return res.json({ ok: true, message: "Password updated. You can sign in with your new password." });
     } catch (error) {
       console.error("[Password Auth] reset password failed", error instanceof Error ? error.message : String(error));
