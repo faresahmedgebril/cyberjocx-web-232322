@@ -28,6 +28,7 @@ const envSchema = z.object({
   GITHUB_OAUTH_REDIRECT_URI: z.string().url().optional(),
   RESEND_API_KEY: z.string().optional(),
   AUTH_EMAIL_FROM: z.string().optional(),
+  SUPPORT_INBOX_EMAIL: z.string().email().default("gebrilfares972@gmail.com"),
   STORAGE_PROVIDER: z.enum(["s3", "r2"]).default("s3"),
   STORAGE_ENDPOINT: z.string().url().optional(),
   STORAGE_REGION: z.string().default("auto"),
