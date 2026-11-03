@@ -55,3 +55,18 @@
   .figma-dashboard .welcome-copy h1{font-size:24px;}
   .figma-dashboard .welcome-copy p{margin-top:9px;font-size:10px;}
 }
+
+.dashboard-placeholder{
+  min-height:112px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border:1px dashed rgba(69,126,225,.35);
+  border-radius:10px;
+  color:#9ab9ed;
+  background:radial-gradient(circle at 50% 0,rgba(69,70,202,.12),transparent 72%),rgba(4,15,38,.48);
+  font:600 12px "DM Mono",monospace;
+  letter-spacing:.1em;
+  text-align:center;
+}
+.terminal.dashboard-placeholder{min-height:180px;color:#66d9e7}
