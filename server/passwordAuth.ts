@@ -73,7 +73,7 @@ export function registerPasswordAuthRoutes(app: Express) {
       if (!user) return fail(res, 500, "Account creation failed.");
       const { token } = await createSession(user.id, req);
       res.setHeader("Set-Cookie", sessionCookie(token, secureRequest(req)));
-      res.status(201).json({ ok: true, sessionToken: token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+      res.status(201).json({ ok: true, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
     } catch (error) {
       console.error("[Password Auth] register failed", error instanceof Error ? error.message : String(error));
       fail(res, 500, "Unable to create the account right now.");
@@ -93,7 +93,7 @@ export function registerPasswordAuthRoutes(app: Express) {
       await db.update(users).set({ lastSignedIn: new Date() }).where(eq(users.id, user.id));
       const { token } = await createSession(user.id, req);
       res.setHeader("Set-Cookie", sessionCookie(token, secureRequest(req), rememberMe));
-      res.json({ ok: true, sessionToken: token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+      res.json({ ok: true, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
     } catch (error) {
       console.error("[Password Auth] login failed", error instanceof Error ? error.message : String(error));
       fail(res, 500, "Unable to sign in right now.");
