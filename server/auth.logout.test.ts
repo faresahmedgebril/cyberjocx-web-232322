@@ -5,7 +5,7 @@ import { toClientSafeUser } from "./modules/profile/service";
 import type { TrpcContext } from "./_core/context";
 
 const sessionMocks = vi.hoisted(() => ({
-  revokeSession: vi.fn(async (_token?: string) => undefined),
+  revokeSession: vi.fn(async (_token?: string): Promise<void> => {}),
 }));
 
 vi.mock("./core/auth/session", async importOriginal => {
