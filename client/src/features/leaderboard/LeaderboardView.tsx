@@ -36,7 +36,9 @@ export default function LeaderboardView() {
   const [period, setPeriod] = useState<Period>("all-time");
   const board = trpc.leaderboard.list.useQuery({ period });
   const entries = board.data?.entries ?? [];
-  const podium = entries.length >= 3\n    ? [{ entry: entries[1]!, rank: 2 }, { entry: entries[0]!, rank: 1 }, { entry: entries[2]!, rank: 3 }]\n    : entries.map((entry, index) => ({ entry, rank: index + 1 }));
+  const podium = entries.length >= 3
+    ? [{ entry: entries[1]!, rank: 2 }, { entry: entries[0]!, rank: 1 }, { entry: entries[2]!, rank: 3 }]
+    : entries.map((entry, index) => ({ entry, rank: index + 1 }));
   const current = board.data?.currentUser ?? null;
 
   return (
