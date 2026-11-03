@@ -4,7 +4,7 @@ import { getPortfolio, ensurePortfolio } from "./modules/portfolio/service";
 import { listLabTemplates, startLab, submitLabFlag } from "./modules/labs/service";
 import { listChallenges, getChallenge, submitChallenge, createChallenge } from "./modules/practice/service";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq, gte, gt, or, sql } from "drizzle-orm";
+import { and, desc, eq, or, sql } from "drizzle-orm";
 import { askAI, personalizeAI } from "./modules/ai/service";
 import { readPublicProfile, toClientSafeUser, updateProfile, uploadProfileMedia } from "./modules/profile/service";
 import { nanoid } from "nanoid";
@@ -14,7 +14,6 @@ import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { books, cartItems, carts, certificates, courseProgress, courses, cves, friendRequests, follows, malwareFamilies, notifications, nvdSyncSettings, postLikes, posts, quizAttempts, quizQuestions, trackQuizzes, tracks, tools, users, getCart, getDashboardStats, getDb, getTrackProgress, getTrackRoadmap, getUserById, listBooks, listBooksAdvanced, listCourses, listCves, listCvesPaginated, listMalware, listPosts, listTools, listToolsAdvanced, listRoadmaps, listTracks, ensureCart } from "./db";
 import { z } from "zod";
-import { xpTransactions } from "../drizzle/schema";
 
 export const appRouter = router({
   system: systemRouter,
@@ -32,63 +31,29 @@ export const appRouter = router({
   }),
   dashboard: protectedProcedure.query(({ ctx }) => getDashboardStats(ctx.user.id)),
   leaderboard: router({
-    list: publicProcedure.input(z.object({ period: z.enum(["all-time", "month", "week", "today"]) })).query(async ({ ctx, input }) => {
+    list: publicProcedure.input(z.object({ period: z.literal("all-time") })).query(async ({ ctx }) => {
       const db = await getDb();
       if (!db) return { entries: [], currentUser: null, totalMembers: 0 };
 
-      let ranked: { id: number; name: string | null; avatarUrl: string | null; memberRank: string; points: number }[] = [];
-      let periodStart: Date | null = null;
-      if (input.period === "all-time") {
-        ranked = await db.select({
-          id: users.id,
-          name: users.name,
-          avatarUrl: users.avatarUrl,
-          memberRank: users.memberRank,
-          points: users.points,
-        }).from(users).where(gt(users.points, 0)).orderBy(desc(users.points), desc(users.id)).limit(50);
-      } else {
-        const now = new Date();
-        const start = new Date(now);
-        if (input.period === "month") {
-          start.setDate(1);
-          start.setHours(0, 0, 0, 0);
-        } else if (input.period === "week") {
-          start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
-          start.setHours(0, 0, 0, 0);
-        } else {
-          start.setHours(0, 0, 0, 0);
-        }
+      const ranked = await db.select({
+        id: users.id,
+        name: users.name,
+        avatarUrl: users.avatarUrl,
+        memberRank: users.memberRank,
+        points: users.points,
+      }).from(users).orderBy(desc(users.points), desc(users.id)).limit(50);
 
-        periodStart = start;
-        const aggregates = await db.select({
-          userId: xpTransactions.userId,
-          points: sql<number>`coalesce(sum(${xpTransactions.amount}), 0)`.as("points"),
-        }).from(xpTransactions)
-          .where(gte(xpTransactions.createdAt, start))
-          .groupBy(xpTransactions.userId)
-          .orderBy(desc(sql<number>`coalesce(sum(${xpTransactions.amount}), 0)`))
-          .limit(50);
-        if (aggregates.length) {
-          const ids = aggregates.map(row => row.userId);
-          const profiles = await db.select({
-            id: users.id,
-            name: users.name,
-            avatarUrl: users.avatarUrl,
-            memberRank: users.memberRank,
-          }).from(users).where(or(...ids.map(id => eq(users.id, id))));
-          ranked = aggregates.flatMap(row => {
-            const profile = profiles.find(item => item.id === row.userId);
-            return profile ? [{ ...profile, points: Number(row.points ?? 0) }] : [];
-          });
-        }
-      }
+      const entries = ranked
+        .filter(entry => Number(entry.points) > 0)
+        .map((entry, index) => ({
+          ...entry,
+          rank: index + 1,
+          isCurrentUser: entry.id === ctx.user?.id,
+        }));
 
-      const entries = ranked.map((entry, index) => ({
-        ...entry,
-        rank: index + 1,
-        isCurrentUser: entry.id === ctx.user?.id,
-      }));
-      let currentUser: (Omit<(typeof entries)[number], "rank"> & { rank: number | null }) | null = entries.find(entry => entry.isCurrentUser) ?? null;
+      let currentUser: (Omit<(typeof entries)[number], "rank"> & { rank: number | null }) | null =
+        entries.find(entry => entry.isCurrentUser) ?? null;
+
       if (!currentUser && ctx.user) {
         const ownProfile = await db.select({
           id: users.id,
@@ -97,20 +62,16 @@ export const appRouter = router({
           memberRank: users.memberRank,
           points: users.points,
         }).from(users).where(eq(users.id, ctx.user.id)).limit(1);
+
         if (ownProfile[0]) {
-          let ownPoints = Number(ownProfile[0].points ?? 0);
-          if (periodStart) {
-            const ownPeriodPoints = await db.select({
-              points: sql<number>`coalesce(sum(${xpTransactions.amount}), 0)`.as("points"),
-            }).from(xpTransactions).where(and(
-              eq(xpTransactions.userId, ctx.user.id),
-              gte(xpTransactions.createdAt, periodStart),
-            ));
-            ownPoints = Number(ownPeriodPoints[0]?.points ?? 0);
-          }
-          currentUser = { ...ownProfile[0], points: ownPoints, rank: null, isCurrentUser: true };
+          currentUser = {
+            ...ownProfile[0],
+            rank: null,
+            isCurrentUser: true,
+          };
         }
       }
+
       const memberCount = await db.select({ count: sql<number>`count(*)` }).from(users);
       return {
         entries,
