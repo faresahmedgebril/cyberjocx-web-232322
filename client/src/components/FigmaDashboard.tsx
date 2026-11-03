@@ -91,8 +91,8 @@ function Panel({ children, className = "" }: { children: ReactNode; className?: 
   return <section className={`panel ${className}`}>{children}</section>
 }
 
-function SectionTitle({ icon, children, action }: { icon: IconName; children: ReactNode; action?: string }) {
-  return <div className="section-title"><span className="title-icon"><Icon name={icon} size={23} /></span><h2>{children}</h2>{action && <button className="outline-action">{action} <span>→</span></button>}</div>
+function SectionTitle({ icon, children, action, onAction }: { icon: IconName; children: ReactNode; action?: string; onAction?: () => void }) {
+  return <div className="section-title"><span className="title-icon"><Icon name={icon} size={23} /></span><h2>{children}</h2>{action && <button type="button" className="outline-action" onClick={onAction}>{action} <span>→</span></button>}</div>
 }
 
 type FigmaDashboardProps = {
