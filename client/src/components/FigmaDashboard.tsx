@@ -1,5 +1,6 @@
 import { ReactNode, useMemo, useState } from "react";
 import "./FigmaDashboard.css";
+import { ComingSoonModal } from "@/components/ComingSoonModal";
 
 type IconName =
   | "home" | "server" | "target" | "trophy" | "user" | "book" | "roadmap"
@@ -144,14 +145,14 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
       </label>
       <div className="top-actions">
         <button className="round-button" aria-label="Toggle brightness" onClick={() => setBright(!bright)}><Icon name="sun" size={27} /></button>
-        <button className="round-button notification" aria-label="Notifications" onClick={() => notify("You have 3 new notifications")}><Icon name="bell" size={26} /><i>3</i></button>
+        <button className="round-button notification" aria-label="Notifications" onClick={() => setComingSoonOpen(true)}><Icon name="bell" size={26} /><i>3</i></button>
         <button className="profile-button" onClick={onOpenAuth}><span><Icon name="user" size={22} /></span><b>{userName || "GHOST_OPERATOR"}</b><Icon name="chevron" size={14} /></button>
       </div>
     </header>
 
     <aside className="sidebar">
       <nav aria-label="Dashboard navigation">
-        {navigation.map((item) => <button key={item.label} className={`nav-item ${activeNav === item.label ? "active" : ""}`} onClick={() => { const targets: Record<string, string> = { Home: "dashboard", Profile: "profile", Courses: "learning", "Tracks / Roadmaps": "tracks", CVE: "cves", Malware: "malware", Tools: "tools", Community: "community", Marketplace: "market" }; const target = targets[item.label]; if (!target) { notify(`${item.label} module is not available yet`); return; } setActiveNav(item.label); onNavigate(target); }}><Icon name={item.icon} size={23} /><span>{item.label}</span></button>)}
+        {navigation.map((item) => <button key={item.label} className={`nav-item ${activeNav === item.label ? "active" : ""}`} onClick={() => { const targets: Record<string, string> = { Home: "dashboard", Profile: "profile", Courses: "learning", "Tracks / Roadmaps": "tracks", CVE: "cves", Malware: "malware", Tools: "tools", Community: "community", Marketplace: "market", Leaderboard: "leaderboard", Settings: "settings", "AI Assistant": "ai" }; const target = targets[item.label]; if (!target) { setComingSoonOpen(true); return; } setActiveNav(item.label); onNavigate(target); }}><Icon name={item.icon} size={23} /><span>{item.label}</span></button>)}
       </nav>
       <div className="sidebar-brand" role="button" tabIndex={0} onClick={() => onNavigate("dashboard")}>
         <img src={`${import.meta.env.BASE_URL}assets/cyber-hacker.jpg`} alt="Hooded CyberJocx character" />
@@ -180,7 +181,7 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
           </div>
 
           <Panel className="learning-panel">
-            <SectionTitle icon="target" action="Continue Learning">Your Learning Path</SectionTitle>
+            <SectionTitle icon="target" action="Continue Learning" onAction={() => onNavigate("learning")}>Your Learning Path</SectionTitle>
             <div className="learning-path">
               {pathSteps.map((step, index) => <div className={`path-step ${step.status === "Completed" ? "complete" : step.status === "In Progress" ? "current" : "locked"}`} key={step.name}>
                 <div className="step-track"><span className="step-circle">{step.status === "Completed" ? <Icon name="check" size={23} /> : step.status === "Locked" ? <Icon name="lock" size={18} /> : index + 1}</span>{index < pathSteps.length - 1 && <i />}</div>
@@ -190,7 +191,7 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
           </Panel>
 
           <Panel className="courses-panel">
-            <SectionTitle icon="book" action="View All">Featured Courses</SectionTitle>
+            <SectionTitle icon="book" action="View All" onAction={() => onNavigate("learning")}>Featured Courses</SectionTitle>
             <div className="course-grid">
               {dashboardCourses.map((course) => <article className="course-card" key={course.name}><div className="course-heading"><span><Icon name={course.icon} size={25} /></span><div><strong>{course.name}</strong><small>{course.detail}</small></div></div><div className="course-progress"><i style={{ width: `${course.progress}%` }} /></div><b>{course.progress}%</b><button onClick={() => onNavigate("learning")}>{course.progress ? "Continue" : "Start"} →</button></article>)}
             </div>
@@ -199,12 +200,12 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
 
         <div className="right-column">
           <Panel className="activity-panel">
-            <SectionTitle icon="bolt" action="View All">Recent Activity</SectionTitle>
+            <SectionTitle icon="bolt" action="View All" onAction={() => setComingSoonOpen(true)}>Recent Activity</SectionTitle>
             <div className="activity-list">{activity.map((item) => <div className="activity-item" key={item.text}><span className={item.tone}><Icon name={item.icon} size={23} /></span><div><strong>{item.text}</strong><small>{item.time}</small></div></div>)}</div>
           </Panel>
 
           <Panel className={`terminal-panel ${terminalOpen ? "" : "closed"}`}>
-            <div className="terminal-head"><span><Icon name="terminal" size={22} /></span><h2>Quick Terminal</h2><div><button aria-label="Minimize terminal" onClick={() => setTerminalOpen(!terminalOpen)}>−</button><button aria-label="Expand terminal" onClick={() => notify("Terminal expanded")}><Icon name="expand" size={14} /></button><button aria-label="Close terminal" onClick={() => setTerminalOpen(false)}><Icon name="close" size={15} /></button></div></div>
+            <div className="terminal-head"><span><Icon name="terminal" size={22} /></span><h2>Quick Terminal</h2><div><button aria-label="Minimize terminal" onClick={() => setTerminalOpen(!terminalOpen)}>−</button><button aria-label="Expand terminal" onClick={() => setComingSoonOpen(true)}><Icon name="expand" size={14} /></button><button aria-label="Close terminal" onClick={() => setTerminalOpen(false)}><Icon name="close" size={15} /></button></div></div>
             {terminalOpen && <div className="terminal"><p><em>kali@cyberjocx</em>:~$ nmap -sC -sV 10.10.10.10</p><p>Starting Nmap 7.94 ...</p><br /><p>PORT&nbsp;&nbsp;&nbsp;&nbsp; STATE&nbsp;&nbsp; SERVICE&nbsp;&nbsp; VERSION</p><p>22/tcp&nbsp;&nbsp; open&nbsp;&nbsp;&nbsp; ssh&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OpenSSH 8.9p1</p><p>80/tcp&nbsp;&nbsp; open&nbsp;&nbsp;&nbsp; http&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Apache 2.4.41</p><p>443/tcp&nbsp; open&nbsp;&nbsp;&nbsp; https&nbsp;&nbsp;&nbsp;&nbsp; Apache 2.4.41</p><br /><p>Nmap done: 1 IP address (1 host up)</p><p><em>kali@cyberjocx</em>:~$ <span className="cursor" /></p></div>}
           </Panel>
 
@@ -218,5 +219,6 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
 
     <footer><strong>Cyber<span>Jocx</span></strong><b>v1.0.0</b><i /><span>Learn</span><small>•</small><span>Practice</span><small>•</small><span>Become Better</span><div className="online"><i /> Online <b>1,248 members</b><Icon name="message" size={16} /></div></footer>
     {toast && <div className="toast" role="status">{toast}</div>}
+    <ComingSoonModal open={comingSoonOpen} onClose={() => setComingSoonOpen(false)} />
   </div>
 }
