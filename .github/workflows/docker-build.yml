@@ -100,7 +100,7 @@ jobs:
           node --input-type=module -e '
             import { readFileSync } from "node:fs";
             const body = JSON.parse(readFileSync("/tmp/cyberjocx-auth-smoke/logout.json", "utf8"));
-            if (!JSON.stringify(body).includes('"success":true')) {
+            if (!JSON.stringify(body).includes(String.fromCharCode(34) + "success" + String.fromCharCode(34) + ":true")) {
               throw new Error("Logout mutation did not report success");
             }
           '
