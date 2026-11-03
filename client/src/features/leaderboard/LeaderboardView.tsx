@@ -93,9 +93,9 @@ export default function LeaderboardView() {
                   return (
                     <article className={`cj-podium-person ${rankClass}`} key={entry.id}>
                       {actualRank === 1 && <Crown className="cj-podium-crown" size={22} />}
-                      <Avatar name={entry.entry.name} src={entry.entry.avatarUrl} />
-                      <strong>{displayName(entry.entry.name)}</strong>
-                      <span>{Number(entry.entry.points).toLocaleString()} XP</span>
+                      <Avatar name={entry.name} src={entry.avatarUrl} />
+                      <strong>{displayName(entry.name)}</strong>
+                      <span>{Number(entry.points).toLocaleString()} XP</span>
                       <b className="cj-podium-base">{actualRank}</b>
                     </article>
                   );
