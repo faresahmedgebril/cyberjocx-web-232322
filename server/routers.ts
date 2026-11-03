@@ -21,8 +21,11 @@ export const appRouter = router({
     me: publicProcedure.query(({ ctx }) => ctx.user ? toClientSafeUser(ctx.user) : null),
     logout: publicProcedure.mutation(async ({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
-      await revokeSession(getSessionToken(ctx.req));
-      ctx.res.clearCookie("cyberjocx_session", { ...cookieOptions, maxAge: -1 });
+      try {
+        await revokeSession(getSessionToken(ctx.req));
+      } finally {
+        ctx.res.clearCookie("cyberjocx_session", { ...cookieOptions, maxAge: -1 });
+      }
       return { success: true } as const;
     }),
   }),
