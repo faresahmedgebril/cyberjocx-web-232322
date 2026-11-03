@@ -137,8 +137,7 @@ export default function Home() {
         <div className="content-wrap">
           <div className="page-heading"><div><div className="eyebrow"><span /> {section === "dashboard" ? "WELCOME BACK" : "WELCOME TO CYBERJOCX"}</div><h1>{titleMap[section]}</h1><p>{section === "dashboard" ? "راقب تقدمك، اجمع نقاطك، ووسّع مساحة معرفتك داخل الشبكة." : "محتوى واضح وخطوات عملية تساعدك على التعلّم وبناء خبرة قابلة للقياس."}</p></div></div>
           {syncError && <div className="system-alert"><ShieldAlert size={15} /><span>{authError ? "AUTH WARNING // تعذر إكمال جلسة الدخول. سجّل الدخول مرة أخرى أو أنشئ حسابًا جديدًا." : "SYNC WARNING // تعذر مزامنة بعض الإشارات. ستظهر آخر نسخة متاحة ويمكن إعادة المحاولة تلقائيًا."}</span></div>}
-          {section === "dashboard" && <DashboardView stats={stats} courses={courses} cves={cves} onNavigate={navigate} />}
-          {section === "profile" && <ProfileView user={user} />}
+                    {section === "profile" && <ProfileView user={user} />}
           {section === "learning" && <LearningView courses={courses} roadmaps={roadmapsQuery.data ?? []} tracks={tracksQuery.data ?? []} loading={coursesQuery.isLoading || roadmapsQuery.isLoading || tracksQuery.isLoading} error={coursesQuery.error || roadmapsQuery.error || tracksQuery.error} search={courseSearch} setSearch={setCourseSearch} onStart={course => isAuthenticated ? progressMutation.mutate({ courseId: course.id, progress: 10 }) : startLogin()} />}
           {section === "tracks" && <TracksView tracks={tracksQuery.data ?? []} loading={tracksQuery.isLoading} error={tracksQuery.error} />}
           {section === "cves" && <CvesView cves={cves} loading={cvesQuery.isLoading || paginatedCvesQuery.isLoading} error={cvesQuery.error || paginatedCvesQuery.error} search={cveSearch} setSearch={value => { setCveSearch(value); setCvePage(1); }} severity={severity} setSeverity={value => { setSeverity(value); setCvePage(1); }} page={cvePage} totalPages={paginatedCvesQuery.data?.totalPages ?? 0} onPage={setCvePage} lastUpdated={nvdStatusQuery.data?.lastCompletedAt ? new Date(nvdStatusQuery.data.lastCompletedAt).toLocaleString("ar-EG") : nvdStatusQuery.data?.lastStatus ?? "لم تبدأ بعد"} />}
@@ -155,47 +154,6 @@ export default function Home() {
       </main>
     </div>
   );
-}
-
-function DashboardView({ stats, courses, cves, onNavigate }: { stats: { points: number; coursesCompleted: number; activeCourses: number; cvesTracked: number; followers: number }; courses: any[]; cves: any[]; onNavigate: (section: Section) => void }) {
-  const [goals, setGoals] = useState([true, true, false, false, false]);
-  const goalLabels = ["Complete Network Security course", "Solve 1 machine", "Read 1 blog post", "Join community discussion", "Practice 1 challenge"];
-  const featured = courses.slice(0, 4);
-  const activity = [
-    { icon: Check, color: "green", title: "Learning progress synchronized", detail: "Just now" },
-    { icon: BookOpen, color: "purple", title: "Course progress updated", detail: "2 hours ago" },
-    { icon: Zap, color: "pink", title: "Points added to your profile", detail: "Yesterday" },
-    { icon: Users, color: "blue", title: "Community is ready for you", detail: "Yesterday" },
-    { icon: ShieldAlert, color: "pink", title: cves[0]?.cveNumber ? `New CVE signal · ${cves[0].cveNumber}` : "Threat intelligence feed", detail: "Latest feed" },
-  ];
-  return <div className="dashboard-v2">
-    <div className="dashboard-main-column">
-      <section className="dash-welcome">
-        <div className="dash-welcome-copy"><span className="dash-eyebrow">CYBERJOCX // PERSONAL COMMAND CENTER</span><h2>Welcome back,<br /><span>{(stats as any).name || "operator"}</span></h2><p>Keep learning. Keep hacking. Keep growing.</p><button className="dash-cta" onClick={() => onNavigate("learning")}>Continue learning <ArrowUpRight size={16} /></button></div>
-        <div className="dash-welcome-art"><div className="dash-orbit orbit-a" /><div className="dash-orbit orbit-b" /><div className="dash-hacker"><ShieldAlert size={68} strokeWidth={1.15} /><span>CYBER<br/>JOCX</span></div><i className="dash-spark spark-a" /><i className="dash-spark spark-b" /></div>
-      </section>
-      <section className="dash-stat-grid">
-        <article className="dash-stat"><div className="dash-stat-icon purple"><Zap size={22}/></div><span>Total points</span><strong>{stats.points.toLocaleString()}</strong><small className="positive">↗ Keep building your streak</small><div className="dash-mini-bars"><i/><i/><i/><i/><i/><i/><i/></div></article>
-        <article className="dash-stat"><div className="dash-stat-icon pink"><BookOpen size={22}/></div><span>Completed courses</span><strong>{stats.coursesCompleted}</strong><small>{stats.activeCourses} active learning paths</small><div className="dash-progress"><i style={{width:`${Math.min(100, stats.coursesCompleted * 20)}%`}}/></div></article>
-        <article className="dash-stat"><div className="dash-stat-icon blue"><Terminal size={22}/></div><span>Machines solved</span><strong>{Math.max(0, stats.activeCourses)}</strong><small>Practice makes progress</small><div className="dash-progress"><i style={{width:"38%"}}/></div></article>
-        <article className="dash-stat"><div className="dash-stat-icon cyan"><ShieldAlert size={22}/></div><span>CVEs tracked</span><strong>{stats.cvesTracked || cves.length}</strong><small>Threat intelligence signals</small><div className="dash-progress"><i style={{width:"58%"}}/></div></article>
-      </section>
-      <section className="dash-panel dash-learning-path">
-        <div className="dash-panel-head"><div><span className="dash-section-label">YOUR ROADMAP</span><h3>Your learning path</h3></div><button className="dash-link" onClick={() => onNavigate("tracks")}>View roadmap <ArrowUpRight size={14}/></button></div>
-        <div className="dash-path-track">{["Web Fundamentals","Linux Basics","Network Security","Penetration Testing","Malware Analysis","Advanced Exploitation"].map((name,i)=><div className={`dash-path-step ${i<2?"complete":i===2?"current":"locked"}`} key={name}><div className="dash-path-node">{i<2?<Check size={18}/>:i===2?"3":<LockKeyhole size={15}/>}</div><span className="dash-path-number">{i+1}</span><strong>{name}</strong><small>{i<2?"Completed":i===2?"In progress":"Locked"}</small></div>)}</div>
-      </section>
-      <section className="dash-panel dash-featured">
-        <div className="dash-panel-head"><div><span className="dash-section-label">CURATED FOR YOU</span><h3>Featured courses</h3></div><button className="dash-link" onClick={() => onNavigate("learning")}>View all <ArrowUpRight size={14}/></button></div>
-        <div className="dash-course-grid">{(featured.length?featured:[{id:"web",title:"Web Security Fundamentals",category:"Security",level:"Beginner"},{id:"linux",title:"Linux Basics",category:"Systems",level:"Beginner"},{id:"network",title:"Network Security",category:"Networking",level:"Intermediate"},{id:"malware",title:"Malware Analysis",category:"Threat Intel",level:"Advanced"}]).map((course:any,index:number)=><article className="dash-course-card" key={course.id}><div className={`dash-course-icon icon-${index%4}`}>{index===0?<ShieldAlert size={22}/>:index===1?<Terminal size={22}/>:index===2?<Network size={22}/>:<Bug size={22}/>}</div><span>{course.category || "Cybersecurity"} · {course.level || "Beginner"}</span><strong>{course.title}</strong><div className="dash-progress"><i style={{width:`${[62,30,0,0][index]}%`}}/></div><button onClick={() => onNavigate("learning")}>{index<2?"Continue":"Start course"} <ArrowUpRight size={13}/></button></article>)}</div>
-      </section>
-    </div>
-    <aside className="dashboard-side-column">
-      <section className="dash-panel dash-activity"><div className="dash-panel-head"><div><span className="dash-section-label">LIVE FEED</span><h3><Activity size={17}/> Recent activity</h3></div><button className="dash-link" onClick={() => onNavigate("community")}>View all <ArrowUpRight size={14}/></button></div><div className="dash-activity-list">{activity.map((item,i)=>{const Icon=item.icon;return <div className="dash-activity-row" key={item.title}><div className={`dash-activity-icon ${item.color}`}><Icon size={17}/></div><div><strong>{item.title}</strong><span>{item.detail}</span></div></div>})}</div></section>
-      <section className="dash-panel dash-terminal"><div className="dash-panel-head"><div><span className="dash-section-label">SANDBOX // PREVIEW</span><h3><Terminal size={17}/> Quick terminal</h3></div><span className="dash-terminal-dots">•••</span></div><div className="dash-terminal-screen"><p><b>kali@cyberjocx</b>:~$ nmap -sV target</p><p>Starting Nmap scan...</p><div className="dash-terminal-table"><span>PORT</span><span>STATE</span><span>SERVICE</span><span>22/tcp</span><span className="term-green">open</span><span>ssh</span><span>80/tcp</span><span className="term-green">open</span><span>http</span><span>443/tcp</span><span className="term-green">open</span><span>https</span></div><p>Scan complete. <b>3 services found.</b></p><p><b>kali@cyberjocx</b>:~$ <i className="terminal-cursor"> </i></p></div></section>
-      <section className="dash-panel dash-goals"><div className="dash-panel-head"><div><span className="dash-section-label">DAILY MISSION</span><h3><Zap size={17}/> Today's goals</h3></div><strong className="dash-goal-count">{goals.filter(Boolean).length} / {goals.length}</strong></div><div className="dash-goal-list">{goalLabels.map((label,i)=><label key={label} className={goals[i]?"is-done":""}><input type="checkbox" checked={goals[i]} onChange={e=>setGoals(current=>current.map((v,j)=>j===i?e.target.checked:v))}/><span>{label}</span></label>)}</div></section>
-      <section className="dash-quick-links"><button onClick={() => onNavigate("ai")}><Bot size={17}/> Ask NEXUS <ArrowUpRight size={13}/></button><button onClick={() => onNavigate("tools")}><Wrench size={17}/> Toolbox <ArrowUpRight size={13}/></button><button onClick={() => onNavigate("community")}><MessageSquare size={17}/> Community <ArrowUpRight size={13}/></button><button onClick={() => onNavigate("market")}><ShoppingCart size={17}/> Marketplace <ArrowUpRight size={13}/></button></section>
-    </aside>
-  </div>;
 }
 
 function ModuleState({ title, error, empty = false }: { title: string; error?: unknown; empty?: boolean }) {
