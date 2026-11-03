@@ -7,7 +7,7 @@ import { createContext } from "./context";
 import { handleNvdSync } from "../nvdSync";
 import { registerGoogleAuthRoutes } from "../googleAuth";
 import { registerGitHubAuthRoutes } from "../githubAuth";
-import { registerPasswordAuthRoutes } from "../passwordAuth";
+import { registerPasswordAuthRoutes, registerSupportRoutes } from "../passwordAuth";
 import { setupVite, serveStatic } from "./vite";
 import { ENV } from "../config/env";
 import { HEALTH_PATH, READY_PATH } from "../config/constants";
@@ -35,6 +35,8 @@ export function createApp() {
   registerGitHubAuthRoutes(app);
   app.use("/api/auth", rateLimit(ENV.AUTH_RATE_LIMIT));
   registerPasswordAuthRoutes(app);
+  app.use("/api/support", rateLimit(5));
+  registerSupportRoutes(app);
   app.post("/api/scheduled/nvd-sync", rateLimit(10), handleNvdSync);
   app.use("/api/trpc", rateLimit(ENV.PUBLIC_API_RATE_LIMIT));
   app.use("/api/trpc", createExpressMiddleware({ router: appRouter, createContext }));
