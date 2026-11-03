@@ -102,3 +102,7 @@ flowchart TD
 ## UI integration scope
 
 The existing authentication screen and main home dashboard layout are retained. The integration adds Leaderboard, Settings and NEXUS Assistant screens inside the existing application shell and navigation. Unimplemented actions use a shared Coming Soon modal rather than inert or fake-success controls.
+
+## Detailed domain architecture reference
+
+The earlier architecture document contained a much more extensive module-by-module design and product lifecycle reference. It is preserved at [docs/ARCHITECTURE_LEGACY_REFERENCE.md](docs/ARCHITECTURE_LEGACY_REFERENCE.md) for historical domain context. Its Render/MySQL deployment model is retired; the production topology above is authoritative.
