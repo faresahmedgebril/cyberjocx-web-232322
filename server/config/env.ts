@@ -26,8 +26,8 @@ const envSchema = z.object({
   GITHUB_CLIENT_ID: z.string().optional(),
   GITHUB_CLIENT_SECRET: z.string().optional(),
   GITHUB_OAUTH_REDIRECT_URI: z.string().url().optional(),
-  RESEND_API_KEY: z.string().optional(),
-  AUTH_EMAIL_FROM: z.string().optional(),
+  GMAIL_SCRIPT_URL: z.string().url().optional(),
+  GMAIL_SCRIPT_TOKEN: z.string().min(32).optional(),
   SUPPORT_INBOX_EMAIL: z.string().email().default("gebrilfares972@gmail.com"),
   STORAGE_PROVIDER: z.enum(["s3", "r2"]).default("s3"),
   STORAGE_ENDPOINT: z.string().url().optional(),
@@ -83,7 +83,7 @@ if (raw.NODE_ENV === "production") {
     if (raw.SESSION_COOKIE_SAMESITE === "none" && !raw.SESSION_COOKIE_SECURE) throw new Error("SESSION_COOKIE_SECURE must be true when SESSION_COOKIE_SAMESITE=none");
     if (!raw.GOOGLE_CLIENT_ID || !raw.GOOGLE_CLIENT_SECRET) console.warn("[config] Google OAuth is disabled until GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are configured.");
     if (!raw.GITHUB_CLIENT_ID || !raw.GITHUB_CLIENT_SECRET) console.warn("[config] GitHub OAuth is disabled until GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET are configured.");
-    if (!raw.RESEND_API_KEY || !raw.AUTH_EMAIL_FROM) console.warn("[config] Password reset emails are disabled until RESEND_API_KEY and AUTH_EMAIL_FROM are configured.");
+    if (!raw.GMAIL_SCRIPT_URL || !raw.GMAIL_SCRIPT_TOKEN) console.warn("[config] Support and password reset emails are disabled until GMAIL_SCRIPT_URL and GMAIL_SCRIPT_TOKEN are configured.");
     if (raw.STORAGE_PROVIDER === "s3" && (!raw.STORAGE_BUCKET || !raw.STORAGE_ACCESS_KEY || !raw.STORAGE_SECRET_KEY)) console.warn("[config] S3 uploads are disabled until STORAGE_BUCKET, STORAGE_ACCESS_KEY and STORAGE_SECRET_KEY are configured.");
     if (!raw.CRON_SECRET) console.warn("[config] CRON_SECRET is not configured; scheduled NVD sync will be unavailable.");
   }
