@@ -19,9 +19,9 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(opts => opts.ctx.user),
-    logout: publicProcedure.mutation(({ ctx }) => {
+    logout: publicProcedure.mutation(async ({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
-      void revokeSession(getSessionToken(ctx.req));
+      await revokeSession(getSessionToken(ctx.req));
       ctx.res.clearCookie("cyberjocx_session", { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
     }),
