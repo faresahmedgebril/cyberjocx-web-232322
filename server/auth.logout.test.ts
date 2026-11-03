@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { appRouter } from "./routers";
 import { COOKIE_NAME } from "./config/constants";
+import { toClientSafeUser } from "./modules/profile/service";
 import type { TrpcContext } from "./_core/context";
 
 const sessionMocks = vi.hoisted(() => ({
@@ -35,6 +36,9 @@ function createAuthContext(): { ctx: TrpcContext; clearedCookies: CookieCall[] }
     createdAt: new Date(),
     updatedAt: new Date(),
     lastSignedIn: new Date(),
+    passwordHash: "scrypt$fake-salt$fake-hash",
+    passwordResetTokenHash: "private-reset-token-hash",
+    passwordResetExpiresAt: new Date(),
   };
 
   const ctx: TrpcContext = {
@@ -75,6 +79,23 @@ describe("auth.logout", () => {
       httpOnly: true,
       path: "/",
     });
+  });
+
+  it("never returns password credentials or reset secrets in user profile responses", async () => {
+    const { ctx } = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const [authUser, profileUser] = await Promise.all([
+      caller.auth.me(),
+      caller.profile.me(),
+    ]);
+    const safePublicProfileUser = toClientSafeUser(ctx.user!);
+
+    for (const user of [authUser, profileUser, safePublicProfileUser]) {
+      expect(user).not.toHaveProperty("passwordHash");
+      expect(user).not.toHaveProperty("passwordResetTokenHash");
+      expect(user).not.toHaveProperty("passwordResetExpiresAt");
+    }
   });
 
   it("waits for server-side session revocation before clearing the cookie", async () => {
