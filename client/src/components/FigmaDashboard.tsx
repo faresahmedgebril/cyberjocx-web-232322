@@ -126,11 +126,6 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
   const matches = useMemo(() => dashboardCourses.filter((course) => course.name.toLowerCase().includes(search.toLowerCase())), [dashboardCourses, search])
   const completedGoals = goals.filter((goal) => goal.done).length
 
-  function notify(message: string) {
-    setToast(message)
-    window.setTimeout(() => setToast(""), 1800)
-  }
-
   return <div className={`figma-dashboard ${bright ? "bright" : ""}`}>
     <header className="topbar">
       <div className="brand">
@@ -218,7 +213,6 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
     </main>
 
     <footer><strong>Cyber<span>Jocx</span></strong><b>v1.0.0</b><i /><span>Learn</span><small>•</small><span>Practice</span><small>•</small><span>Become Better</span><div className="online"><i /> Online <b>1,248 members</b><Icon name="message" size={16} /></div></footer>
-    {toast && <div className="toast" role="status">{toast}</div>}
     <ComingSoonModal open={comingSoonOpen} onClose={() => setComingSoonOpen(false)} />
   </div>
 }
