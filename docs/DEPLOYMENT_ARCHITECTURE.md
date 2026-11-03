@@ -30,6 +30,16 @@ The importer uses a 48-hour lookback window and batches of 200 CVEs per NVD API 
 - `GET /api/auth/me` (or the current session endpoint used by the client): must be tested with a valid session cookie/token to verify persistence after reload.
 - Neon `nvdSyncRuns`, `nvdSyncSettings`, `jobs`, and `cves` are the source of truth for successful synchronization.
 
+## Authentication and session configuration
+
+- Password authentication uses opaque random session tokens. The database stores a SHA-256 token hash in Neon; it does not require a JWT signing secret.
+- The frontend stores the returned session token in tab-scoped `sessionStorage`, sends it as a Bearer token to tRPC, and also accepts the HttpOnly session cookie. A page reload in the same tab should retain the session.
+- The Worker must have `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GITHUB_CLIENT_ID`, and `GITHUB_CLIENT_SECRET` configured as secret bindings. Client secrets must be the actual credentials from the provider consoles; never substitute placeholders.
+- Current callback URLs:
+  - Google: `https://cyberjocx-api.gebrilfares972.workers.dev/api/auth/google/callback`
+  - GitHub: `https://cyberjocx-api.gebrilfares972.workers.dev/api/auth/github/callback`
+- At the last configuration audit, the Worker had the two client-ID bindings but did not have either client-secret binding. Consequently, provider OAuth callbacks cannot be marked production-ready until the real secrets are added and a browser round-trip is verified.
+
 ## Retired infrastructure
 
 Render was used in an earlier deployment attempt. It is not part of the active production request path or NVD scheduler. Keep any legacy Render blueprint/document as historical reference only; do not restore its URLs or secrets to active workflows.
