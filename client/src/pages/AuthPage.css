@@ -184,3 +184,7 @@
 @media(max-width:760px){
   .auth-create-account{margin-top:12px;flex-direction:column;gap:5px}
 }
+
+.auth-support-link{display:flex;justify-content:center;margin-top:12px;font-size:12px}
+.auth-support-link a{color:#91b9e7;text-decoration:none}
+.auth-support-link a:hover{color:#d8a8ff;text-decoration:underline}
