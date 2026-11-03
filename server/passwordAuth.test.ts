@@ -364,6 +364,7 @@ describe("password authentication routes", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
     const notificationPayload = JSON.parse(String(vi.mocked(fetch).mock.calls[0]?.[1]?.body));
     expect(notificationPayload).toMatchObject({
+      type: "password_changed",
       to: user.email,
       subject: "Your CyberJocx password was changed",
     });
@@ -384,6 +385,7 @@ describe("password authentication routes", () => {
     expect(call?.[0]).toBe("https://script.google.com/macros/s/test-deployment/exec");
     const payload = JSON.parse(String(call?.[1]?.body));
     expect(payload).toMatchObject({
+      type: "password_reset",
       token: "test-gmail-relay-token-with-more-than-32-chars",
       to: user.email,
       subject: "Reset your CyberJocx password",
@@ -407,6 +409,7 @@ describe("password authentication routes", () => {
     expect(fetch).toHaveBeenCalledTimes(1);
     const payload = JSON.parse(String(vi.mocked(fetch).mock.calls[0]?.[1]?.body));
     expect(payload).toMatchObject({
+      type: "support",
       token: "test-gmail-relay-token-with-more-than-32-chars",
       to: "gebrilfares972@gmail.com",
       replyTo: "sender@example.com",
