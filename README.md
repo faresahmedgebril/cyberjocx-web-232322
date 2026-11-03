@@ -1,100 +1,58 @@
-# CyberJocx Web
+# CyberJocx
 
-CyberJocx is a React/Vite frontend and Express/tRPC modular monolith backed by MySQL and Drizzle ORM. Authentication, storage, AI, notifications, scheduling, and background work are application-owned and provider-neutral.
+CyberJocx is a cybersecurity learning platform built with React, TypeScript, tRPC, Cloudflare Workers and Neon PostgreSQL.
+
+## Production architecture
+
+- **Frontend:** React 19 + Vite, published on GitHub Pages.
+- **API:** Cloudflare Worker `cyberjocx-api`, exposing REST authentication routes and the tRPC application API.
+- **Database:** Neon PostgreSQL, reached from the Worker through Cloudflare Hyperdrive.
+- **AI:** Server-side NEXUS AI service using the configured provider. Provider credentials must never be shipped to the browser.
+- **Scheduled threat intelligence:** Cloudflare Worker Cron Trigger for NVD synchronization.
+
+The active production deployment is **not Render or MySQL**. Older Render/MySQL references in legacy deployment files are historical and are not part of the live request path.
 
 ## Requirements
 
 - Node.js 22+
 - pnpm 10+
-- MySQL 8-compatible database
-- S3-compatible object storage for profile media
-- Google OAuth client for sign-in
-- Optional OpenAI-compatible AI endpoint
+- PostgreSQL connection for local backend development
+- Provider credentials only when enabling OAuth, email delivery, storage or AI features
 
-## Installation
+## Local development
 
 ```bash
 pnpm install
 cp .env.example .env
-```
-
-Fill in the required values in `.env`. Do not commit `.env` or credentials.
-
-## Environment variables
-
-The authoritative template is `.env.example`. Production requires `DATABASE_URL`, `JWT_SECRET`, Google OAuth credentials and redirect URI, storage credentials, and `CRON_SECRET`. `VITE_*` values are public browser configuration only.
-
-## Development
-
-```bash
 pnpm dev
 ```
 
-The combined development server runs the API and Vite frontend at `http://localhost:3000`.
+Configure local environment values in `.env`. Never commit secrets. The production Worker uses Cloudflare bindings and Hyperdrive rather than browser-exposed environment variables.
 
-## Database setup and migrations
-
-```bash
-pnpm db:generate
-pnpm db:migrate
-```
-
-Migrations are explicit. They are not run automatically during application startup.
-
-## Testing and verification
+## Verification
 
 ```bash
 pnpm typecheck
 pnpm test
-pnpm build
-```
-
-## Production build
-
-```bash
 pnpm build:client
 pnpm build:server
 pnpm build:worker
-pnpm start
 ```
 
-The frontend build is written to `dist/public`. The backend bundle is `dist/index.js`. The worker bundle is `dist/worker.js`.
+## Deployment
 
-## Cloudflare deployment
+The frontend is built into `dist/public` and published to GitHub Pages by `.github/workflows/deploy-pages.yml` on `main`.
 
-Cloudflare can provide DNS, CDN, WAF, edge protection, rate limiting, and static frontend hosting. Build the client with `pnpm build:client` and publish `dist/public` through Cloudflare Pages or equivalent static hosting. Set `VITE_API_BASE_URL` to the public Render API URL.
+The API is hosted by the Cloudflare Worker `cyberjocx-api`. Neon PostgreSQL is connected through Cloudflare Hyperdrive. Consult [docs/DEPLOYMENT_ARCHITECTURE.md](docs/DEPLOYMENT_ARCHITECTURE.md) for the production topology, authentication callbacks, scheduler and operational checks.
 
-## Render deployment
+Public frontend: https://faresahmedgebril.github.io/cyberjocx-web-232322/
 
-Use `render.yaml` as the starting point for the Render Web Service, background worker, and scheduled job. The Web Service runs the Express/tRPC API and exposes `/health` and `/ready`. The worker shares the same codebase and service layer.
+## UI features
 
-## Worker and cron deployment
+The existing login and home dashboard remain intact. The application also includes:
 
-The scheduled job calls `POST /api/scheduled/nvd-sync` with `x-cron-secret`. The endpoint authenticates the request and enqueues a durable MySQL job. The Render Worker claims and executes it. See `DEPLOYMENT.md` for the exact temporary deployment procedure.
+- **Leaderboard:** uses persisted all-time user points and transaction-based daily/weekly/monthly points; no hardcoded demo rankings.
+- **Settings:** profile name/bio updates, browser-persisted accent color and dark-theme preference. Unimplemented settings are marked Coming Soon.
+- **NEXUS Assistant:** uses the existing protected AI API and platform context. Attachments and chat-history persistence are not yet implemented.
 
-## Architecture
-
-The request path is:
-
-```text
-Browser → Cloudflare → Render API → Express → tRPC → Zod → Auth → Authorization → Service → Repository → MySQL
-```
-
-AI requests use `AIService → AIProvider → configured OpenAI-compatible endpoint`. Profile media uses `StorageProvider → S3/R2-compatible storage`. NVD work uses the scheduled endpoint and worker boundary. See `ARCHITECTURE.md` for the detailed architecture and security model.
-
-
-## Docker
-
-Docker is the canonical local runtime for the project.
-
-~~~bash
-docker compose up --build
-~~~
-
-Open http://localhost:3000. The compose stack includes the API/frontend container, MySQL, and the background worker.
-
-For the public frontend development preview, GitHub Pages is deployed automatically from main:
-
-https://faresahmedgebril.github.io/cyberjocx-web-232322/
-
-The preview is frontend-only. Set the repository variable VITE_API_BASE_URL to the public API URL for API-backed features.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for component connections, data flow and security boundaries.
