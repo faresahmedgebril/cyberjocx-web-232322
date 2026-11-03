@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Award, Crown, Medal, RefreshCw, Shield, Trophy, Users } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { ComingSoonModal } from "@/components/ComingSoonModal";
 import "./leaderboard.css";
 
 type Period = "all-time" | "month" | "week" | "today";
@@ -34,6 +35,7 @@ function Avatar({ name, src }: { name: string | null; src: string | null }) {
 
 export default function LeaderboardView() {
   const [period, setPeriod] = useState<Period>("all-time");
+  const [comingOpen, setComingOpen] = useState(false);
   const board = trpc.leaderboard.list.useQuery({ period });
   const entries = board.data?.entries ?? [];
   const podium = entries.length >= 3
@@ -42,6 +44,7 @@ export default function LeaderboardView() {
   const current = board.data?.currentUser ?? null;
 
   return (
+    <>
     <section className="cj-leaderboard">
       <header className="cj-leader-hero">
         <div className="cj-leader-heading">
@@ -60,7 +63,7 @@ export default function LeaderboardView() {
               role="tab"
               aria-selected={period === item.id}
               className={period === item.id ? "is-active" : ""}
-              onClick={() => setPeriod(item.id)}
+              onClick={() => item.id === "all-time" ? setPeriod("all-time") : setComingOpen(true)}
             >
               {item.label}
             </button>
@@ -158,5 +161,7 @@ export default function LeaderboardView() {
         </>
       )}
     </section>
+    <ComingSoonModal open={comingOpen} onClose={() => setComingOpen(false)} />
+    </>
   );
 }
