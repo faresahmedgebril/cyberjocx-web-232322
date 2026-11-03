@@ -118,15 +118,14 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
   })), [learningCourses]);
   const [activeNav, setActiveNav] = useState("Home")
   const [search, setSearch] = useState("")
-  const [bright, setBright] = useState(false)
   const [terminalOpen, setTerminalOpen] = useState(true)
-  const [goals, setGoals] = useState(initialGoals)
+  const [goals] = useState(initialGoals)
   const [comingSoonOpen, setComingSoonOpen] = useState(false)
 
   const matches = useMemo(() => dashboardCourses.filter((course) => course.name.toLowerCase().includes(search.toLowerCase())), [dashboardCourses, search])
   const completedGoals = goals.filter((goal) => goal.done).length
 
-  return <div className={`figma-dashboard ${bright ? "bright" : ""}`}>
+  return <div className="figma-dashboard">
     <header className="topbar">
       <div className="brand">
         <img src={`${import.meta.env.BASE_URL}assets/cyber-hacker.jpg`} alt="CyberJocx" />
@@ -139,8 +138,8 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
         {search && <small>{matches.length} course{matches.length === 1 ? "" : "s"}</small>}
       </label>
       <div className="top-actions">
-        <button className="round-button" aria-label="Toggle brightness" onClick={() => setBright(!bright)}><Icon name="sun" size={27} /></button>
-        <button className="round-button notification" aria-label="Notifications" onClick={() => setComingSoonOpen(true)}><Icon name="bell" size={26} /><i>3</i></button>
+        <button className="round-button" aria-label="Toggle brightness" onClick={() => setComingSoonOpen(true)}><Icon name="sun" size={27} /></button>
+        <button className="round-button notification" aria-label="Notifications" onClick={() => setComingSoonOpen(true)}><Icon name="bell" size={26} /></button>
         <button className="profile-button" onClick={onOpenAuth}><span><Icon name="user" size={22} /></span><b>{userName || "GHOST_OPERATOR"}</b><Icon name="chevron" size={14} /></button>
       </div>
     </header>
@@ -206,7 +205,7 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
 
           <Panel className="goals-panel">
             <div className="goals-head"><span><Icon name="target" size={23} /></span><h2>Today's Goals</h2><i /><b>{completedGoals} / 5</b></div>
-            <div className="goal-list">{goals.map((goal, index) => <label key={goal.text}><input type="checkbox" checked={goal.done} onChange={() => setGoals((items) => items.map((item, itemIndex) => itemIndex === index ? { ...item, done: !item.done } : item))} /><span><Icon name="check" size={15} /></span>{goal.text}</label>)}</div>
+            <div className="goal-list">{goals.map((goal, index) => <label key={goal.text}><input type="checkbox" checked={goal.done} onChange={() => setComingSoonOpen(true)} /><span><Icon name="check" size={15} /></span>{goal.text}</label>)}</div>
           </Panel>
         </div>
       </div>
