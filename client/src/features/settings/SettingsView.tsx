@@ -60,7 +60,7 @@ export default function SettingsView({
   }, [user?.name, user?.bio]);
 
   useEffect(() => {
-    document.documentElement.style.setProperty("--cj-settings-accent", accent);
+    document.documentElement.style.setProperty("--cj-accent", accent);
     window.localStorage.setItem("cyberjocx-accent", accent);
   }, [accent]);
 
@@ -107,7 +107,7 @@ export default function SettingsView({
                 <div className="cj-settings-divider" />
                 <h3>Theme</h3>
                 <div className="cj-theme-options">
-                  <button type="button" className={theme === "light" ? "selected" : ""} onClick={() => changeTheme("light")}><Sun size={22} />Light{theme === "light" && <Check size={15} />}</button>
+                  <button type="button" onClick={openComingSoon}><Sun size={22} />Light</button>
                   <button type="button" className={theme === "dark" ? "selected" : ""} onClick={() => changeTheme("dark")}><Moon size={22} />Dark{theme === "dark" && <Check size={15} />}</button>
                   <button type="button" onClick={openComingSoon}><Monitor size={22} />Auto</button>
                 </div>
