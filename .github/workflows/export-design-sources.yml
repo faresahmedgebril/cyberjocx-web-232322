@@ -1,0 +1,78 @@
+name: Export Figma design source archives
+
+on:
+  push:
+    branches:
+      - integrate/figma-design-2026-11-03
+
+permissions:
+  contents: read
+
+jobs:
+  export-designs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract design archives safely
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json
+          import shutil
+          import zipfile
+          from pathlib import Path, PurePosixPath
+
+          assets = {
+              "duplicate-current-design": Path("تكرار التصميم الحالي (1) (2).zip"),
+              "untitled-design": Path("Untitled (1) (2).zip"),
+              "create-my-design": Path("Create my design (3).zip"),
+              "ai-assistant-chat": Path("AI Assistant Chat-html (1).zip"),
+          }
+          output = Path("design-export")
+          output.mkdir(exist_ok=True)
+          report = {}
+
+          for name, archive in assets.items():
+              if not archive.is_file():
+                  raise SystemExit(f"Missing required design archive: {archive}")
+              target = output / name
+              target.mkdir(parents=True, exist_ok=True)
+              with zipfile.ZipFile(archive) as bundle:
+                  bad = bundle.testzip()
+                  if bad:
+                      raise SystemExit(f"Corrupt archive {archive}: {bad}")
+                  names = []
+                  total_size = 0
+                  for entry in bundle.infolist():
+                      raw = entry.filename.replace("\\\\", "/")
+                      path = PurePosixPath(raw)
+                      if path.is_absolute() or ".." in path.parts:
+                          raise SystemExit(f"Unsafe archive path in {archive}: {entry.filename}")
+                      names.append(entry.filename)
+                      total_size += entry.file_size
+                  bundle.extractall(target)
+              report[name] = {
+                  "archive": str(archive),
+                  "file_count": len(names),
+                  "uncompressed_bytes": total_size,
+                  "entries": names,
+              }
+
+          image = Path("settings_without_background_style (1).png")
+          if image.exists():
+              shutil.copy2(image, output / image.name)
+              report["settings-reference"] = {"file": image.name}
+
+          (output / "manifest.json").write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+          print(json.dumps({k: {x: v for x, v in val.items() if x != "entries"} for k, val in report.items()}, indent=2, ensure_ascii=False))
+          PY
+
+      - name: Upload extracted design sources
+        uses: actions/upload-artifact@v4
+        with:
+          name: cyberjocx-figma-design-sources
+          path: design-export/
+          if-no-files-found: error
+          retention-days: 1
