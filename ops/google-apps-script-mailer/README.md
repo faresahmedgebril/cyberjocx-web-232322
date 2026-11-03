@@ -11,10 +11,9 @@ This lets the CyberJocx Cloudflare Worker send transactional email from the Gmai
 
 ## 2. Generate the private shared token
 
-1. In the Apps Script editor toolbar, select the function `generateMailToken`.
-2. Click **Run** and approve the requested script permission.
-3. Open **Execution log** and copy the generated token. The function saves it automatically in Script Properties as `MAIL_API_TOKEN`.
-4. Keep the token private. Do not put it in source code or send it in chat.
+1. In the Apps Script editor toolbar, select `generateMailToken`, click **Run**, then open **Execution log** and copy the generated token. The function saves it automatically as the Script Property `MAIL_API_TOKEN`.
+2. Select `authorizeGmail` and click **Run**. Approve Google’s Gmail permission prompt while signed in as **gebrilfares972@gmail.com**. This authorizes the script to send email from your Gmail before the public endpoint is called.
+3. Keep the token private. Do not put it in source code or send it in chat.
 
 The function only generates a token if one does not already exist, so running it again will not silently rotate your live credential.
 
