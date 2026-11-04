@@ -14,6 +14,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, instructorProcedure, ownerAdminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { books, cartItems, carts, certificates, courseProgress, courses, cves, friendRequests, follows, malwareFamilies, notifications, nvdSyncSettings, postLikes, posts, quizAttempts, quizQuestions, trackQuizzes, tracks, tools, users, getCart, getDashboardStats, getDb, getTrackProgress, getTrackRoadmap, getUserById, listBooks, listBooksAdvanced, listCourses, listCves, listCvesPaginated, listMalware, listPosts, listTools, listToolsAdvanced, listRoadmaps, listTracks, ensureCart } from "./db";
 import { z } from "zod";
+import { ENV } from "./config/env";
 import { notifyAll } from "./modules/notifications/service";
 import { auditLogs, courseChangeRequests, labInstances, labTemplates } from "../drizzle/schema";
 
@@ -126,14 +127,15 @@ export const appRouter = router({
     }),
   }),
   courses: router({
-    list: publicProcedure.input(z.object({ search: z.string().optional() }).optional()).query(({ input }) => listCourses(input?.search)),
+    list: publicProcedure.input(z.object({ search: z.string().optional() }).optional()).query(async ({ input }) => (await listCourses(input?.search)).map(course => ({ ...course, availabilityStatus: ENV.COURSES_COMING_SOON ? "coming-soon" as const : "available" as const }))),
     byId: publicProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
       const db = await getDb();
       if (!db) return undefined;
       const rows = await db.select().from(courses).where(and(eq(courses.id, input.id), eq(courses.isPublished, true))).limit(1);
-      return rows[0];
+      return rows[0] ? { ...rows[0], availabilityStatus: ENV.COURSES_COMING_SOON ? "coming-soon" as const : "available" as const } : undefined;
     }),
     progress: protectedProcedure.input(z.object({ courseId: z.number().int().positive(), progress: z.number().min(0).max(100) })).mutation(async ({ ctx, input }) => {
+      if (ENV.COURSES_COMING_SOON) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This course is coming soon." });
       const db = await getDb();
       if (!db) return { success: false };
       const completed = input.progress >= 100;
