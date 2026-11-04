@@ -14,6 +14,7 @@ import { HEALTH_PATH, READY_PATH } from "../config/constants";
 import { corsMiddleware, rateLimit, validateStateChangingOrigin } from "../core/security/middleware";
 import { logger } from "../core/logger";
 import { closeDatabase } from "../infrastructure/database/client";
+import { requestScopeMiddleware } from "../infrastructure/database/requestScopeMiddleware";
 import { startEmbeddedWorker } from "../worker";
 
 export function createApp() {
@@ -24,6 +25,7 @@ export function createApp() {
   app.use(express.json({ limit: "10mb" }));
   app.use(express.urlencoded({ limit: "2mb", extended: true }));
   app.get(HEALTH_PATH, (_req, res) => res.json({ ok: true, service: "cyberjocx-api", timestamp: new Date().toISOString() }));
+  app.use(requestScopeMiddleware);
   app.get(READY_PATH, async (_req, res) => {
     const { getDb } = await import("../db");
     const db = await getDb();
