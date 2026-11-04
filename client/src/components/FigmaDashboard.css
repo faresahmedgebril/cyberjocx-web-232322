@@ -75,3 +75,92 @@
 .figma-dashboard .nav-item--section{margin-top:13px;position:relative}
 .figma-dashboard .nav-item--section:before{content:"";position:absolute;top:-9px;left:16px;right:16px;height:1px;background:linear-gradient(90deg,transparent,#224c99,transparent)}
 .figma-dashboard .nav-item--section:has(span){scroll-margin-top:12px}
+
+
+/* Dashboard shell: keep the entire page scrollable; the footer must never cover content. */
+.figma-dashboard{height:auto;min-height:100vh;overflow:visible}
+.figma-dashboard main{min-width:0;min-height:calc(100vh - 128px);padding-bottom:34px}
+.figma-dashboard footer{position:relative;left:auto;right:auto;bottom:auto;width:calc(100% + 255px);margin-left:-255px;min-height:51px;height:auto;flex-wrap:wrap}
+.figma-dashboard.nav-collapsed{padding-left:82px}
+.figma-dashboard.nav-collapsed .sidebar{width:82px}
+.figma-dashboard.nav-collapsed .sidebar nav{padding-left:9px;padding-right:9px}
+.figma-dashboard.nav-collapsed .nav-item{justify-content:center;padding-left:9px;padding-right:9px}
+.figma-dashboard.nav-collapsed .nav-item span,.figma-dashboard.nav-collapsed .sidebar-brand{display:none}
+.figma-dashboard .nav-toggle{display:grid}
+.figma-dashboard .notification-anchor{position:relative}
+.figma-dashboard .notification-popover{position:absolute;z-index:90;top:calc(100% + 14px);right:-45px;width:min(390px,calc(100vw - 24px));max-height:min(540px,calc(100vh - 100px));overflow:hidden;border:1px solid #375fc0;border-radius:13px;background:rgba(3,10,31,.98);box-shadow:0 18px 55px rgba(0,0,0,.48),0 0 24px rgba(83,44,220,.25);color:#edf4ff}
+.figma-dashboard .notification-popover-head{height:54px;padding:0 15px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(58,102,177,.45)}
+.figma-dashboard .notification-popover-head strong{font-size:14px}
+.figma-dashboard .notification-popover-head button{padding:6px 9px;border:1px solid #315db3;border-radius:6px;background:#091b41;color:#8fdcff;font-size:10px;cursor:pointer}
+.figma-dashboard .notification-popover-head button:disabled{opacity:.4;cursor:not-allowed}
+.figma-dashboard .notification-list{max-height:calc(min(540px,100vh - 100px) - 54px);overflow:auto}
+.figma-dashboard .notification-empty{padding:26px 16px;color:#8ea5cc;text-align:center;font-size:12px}
+.figma-dashboard .notification-item{width:100%;min-height:78px;padding:12px 13px;display:flex;align-items:flex-start;gap:10px;border:0;border-bottom:1px solid rgba(53,84,143,.27);text-align:left;background:transparent;cursor:pointer}
+.figma-dashboard .notification-item:hover{background:rgba(20,55,111,.45)}
+.figma-dashboard .notification-item.is-read{opacity:.58}
+.figma-dashboard .notification-type{width:34px;height:34px;flex:none;display:grid;place-items:center;border:1px solid #177bb6;border-radius:9px;color:#46d5ff;background:rgba(5,62,105,.34)}
+.figma-dashboard .notification-type.cve{color:#ffa8d8;border-color:#9c36b9;background:rgba(81,19,109,.3)}
+.figma-dashboard .notification-type.content{color:#80e8bc;border-color:#1f8f79;background:rgba(4,98,73,.24)}
+.figma-dashboard .notification-copy{min-width:0;flex:1;display:flex;flex-direction:column;gap:4px}
+.figma-dashboard .notification-copy b{color:#f0f5ff;font-size:11px}
+.figma-dashboard .notification-copy small{color:#a5bbdb;font-size:10px;line-height:1.45;overflow-wrap:anywhere}
+.figma-dashboard .notification-copy time{color:#708aac;font-size:9px}
+.figma-dashboard .notification-unread-dot{width:7px;height:7px;flex:none;margin-top:5px;border-radius:50%;background:#20caff;box-shadow:0 0 8px #20caff}
+.figma-dashboard.light-theme{
+  --bg:#edf4ff;--surface:rgba(255,255,255,.96);--surface-soft:rgba(244,249,255,.94);
+  --line:#b5c9e8;--line-soft:rgba(85,122,178,.24);--text:#172642;--muted:#526c91;
+  color:#172642;background:radial-gradient(circle at 58% 0,rgba(123,93,255,.12),transparent 32%),linear-gradient(120deg,#f5f9ff,#e8f1ff 58%,#f8fbff)
+}
+.figma-dashboard.light-theme .topbar{background:rgba(247,250,255,.97);border-bottom-color:#b8cae5;box-shadow:0 8px 22px rgba(25,56,100,.1)}
+.figma-dashboard.light-theme .sidebar{background:linear-gradient(180deg,#f5f8ff,#eaf1fb);border-right-color:#becfe7}
+.figma-dashboard.light-theme .nav-item{color:#334d72}
+.figma-dashboard.light-theme .nav-item.active{color:#fff}
+.figma-dashboard.light-theme .brand strong,.figma-dashboard.light-theme .section-title h2,.figma-dashboard.light-theme .terminal-head h2,.figma-dashboard.light-theme .goals-head h2{color:#152747}
+.figma-dashboard.light-theme .panel{--surface:rgba(255,255,255,.96);color:#1c3151;background:linear-gradient(var(--surface),var(--surface)) padding-box,linear-gradient(135deg,#78a8e9,#b78af5 58%,#57b6df) border-box;box-shadow:0 7px 22px rgba(40,76,126,.08),inset 0 0 18px rgba(96,130,190,.05)}
+.figma-dashboard.light-theme .stat-card small,.figma-dashboard.light-theme .course-heading small,.figma-dashboard.light-theme .path-step>small,.figma-dashboard.light-theme .course-heading strong{color:#526b8f}
+.figma-dashboard.light-theme .stat-card strong,.figma-dashboard.light-theme .welcome-copy h1,.figma-dashboard.light-theme .course-card strong{color:#142746}
+.figma-dashboard.light-theme .course-card,.figma-dashboard.light-theme .notification-popover{background:#fff;color:#1b3151}
+.figma-dashboard.light-theme .notification-popover-head strong,.figma-dashboard.light-theme .notification-copy b{color:#193153}
+.figma-dashboard.light-theme .notification-copy small{color:#526c91}
+.figma-dashboard.light-theme .notification-item:hover{background:#edf5ff}
+.figma-dashboard.light-theme .dashboard-placeholder{color:#56749e;background:#f2f7ff;border-color:#c1d1e8}
+.figma-dashboard.light-theme footer{background:rgba(241,247,255,.98);color:#506b91;border-top-color:#bbcee7}
+.figma-dashboard.light-theme footer strong{color:#183456}
+.figma-dashboard.light-theme .terminal-head,.figma-dashboard.light-theme .goals-head{border-bottom-color:#c7d6eb}
+@media(max-width:1180px){
+  .figma-dashboard footer{width:calc(100% + 82px);margin-left:-82px}
+}
+@media(max-width:760px){
+  .figma-dashboard{height:auto;min-height:100vh;padding:65px 0 0 0;overflow:visible}
+  .figma-dashboard .topbar{height:65px;padding:0 8px;gap:7px}
+  .figma-dashboard .brand{width:auto;min-width:0;gap:4px}
+  .figma-dashboard .brand img{width:47px;height:52px}
+  .figma-dashboard .brand strong{font-size:20px}
+  .figma-dashboard .brand>b{display:none}
+  .figma-dashboard .search-box{width:36px;min-width:36px}
+  .figma-dashboard .search-box input,.figma-dashboard .search-box small{display:none}
+  .figma-dashboard .search-box>.icon{right:8px}
+  .figma-dashboard .top-actions{gap:0}
+  .figma-dashboard .round-button{width:34px;height:40px}
+  .figma-dashboard .profile-button{gap:4px}
+  .figma-dashboard .profile-button b,.figma-dashboard .profile-button>.icon{display:none}
+  .figma-dashboard .profile-button>span{width:32px;height:32px}
+  .figma-dashboard .sidebar{position:fixed;z-index:70;left:0;top:65px;bottom:0;width:272px;height:auto;transform:translateX(-105%);transition:transform .22s ease;display:flex;overflow:hidden;border-right:1px solid #2457a9;border-top:0}
+  .figma-dashboard .sidebar.is-open{transform:translateX(0)}
+  .figma-dashboard .sidebar nav{width:100%;height:100%;padding:16px 12px 24px;overflow:auto;display:grid;grid-auto-rows:min-content;gap:3px}
+  .figma-dashboard .sidebar .nav-item{width:100%;min-height:42px;justify-content:flex-start;padding:8px 16px}
+  .figma-dashboard .sidebar .nav-item span{display:inline}
+  .figma-dashboard .sidebar .sidebar-brand{display:none}
+  .figma-dashboard .sidebar-overlay{position:fixed;z-index:65;inset:65px 0 0;border:0;background:rgba(0,5,18,.68);backdrop-filter:blur(2px)}
+  .figma-dashboard main{padding:10px 9px 24px;min-height:calc(100vh - 65px)}
+  .figma-dashboard main.has-page-content{padding:9px 8px 24px}
+  .figma-dashboard .dashboard-grid{grid-template-columns:minmax(0,1fr);gap:14px}
+  .figma-dashboard .main-column{max-width:none}
+  .figma-dashboard .right-column{display:flex}
+  .figma-dashboard .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .figma-dashboard .course-grid{grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible}
+  .figma-dashboard footer{display:none}
+  .figma-dashboard .notification-popover{position:fixed;top:61px;right:8px;width:min(370px,calc(100vw - 16px))}
+  .figma-dashboard .notification-list{max-height:calc(100vh - 130px)}
+  .figma-dashboard .welcome-copy{max-width:66%}
+}
