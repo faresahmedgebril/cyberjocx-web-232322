@@ -1,6 +1,6 @@
 # CyberJocx deployment architecture
 
-Last verified: 2026-11-03
+Last verified: 2026-11-04
 
 ## Active production topology
 
@@ -8,6 +8,15 @@ Last verified: 2026-11-03
 - **Backend/API:** Cloudflare Worker `cyberjocx-api` at `https://cyberjocx-api.gebrilfares972.workers.dev`. It handles `/health`, `/ready`, and `/api/*`, and proxies frontend paths to the GitHub Pages site.
 - **Database:** Neon PostgreSQL project `CyberJocx Production`, default branch `main`. The Worker connects through its Cloudflare Hyperdrive binding.
 - **NVD scheduler:** Cloudflare Worker Cron Trigger only. GitHub Actions is not a scheduler for NVD and must not call retired Render endpoints.
+
+## Worker source and request-scoped database connections
+
+- The checked-in Cloudflare adapter is `server/cloudflare-worker.ts`. It owns the API proxy, frontend path proxy, and scheduled NVD entry point; `server/worker.ts` remains the separate Node.js background job runner.
+- Build the deployable Worker module with `pnpm build:cloudflare-worker`. The build keeps the Cloudflare `cloudflare:node` request bridge external and bundles the application code.
+- The Worker sets `DB_REQUEST_SCOPED=true` before importing the Express application. Every HTTP request receives its own AsyncLocalStorage database context. A `pg.Client` connects lazily at the first DB operation and is closed when the response finishes/closes. Hyperdrive pools upstream connections.
+- In Worker mode, database calls without a request scope fail closed. Conventional Node.js hosts keep the existing process-scoped Pool fallback.
+- PostgreSQL diagnostic logs include only safe metadata (SQLSTATE, severity and validated schema/table/column/constraint identifiers); SQL text, bind parameters, email addresses and OAuth credentials are not logged.
+- The app schema and Neon data are unchanged. This repair requires no migration or destructive database operation.
 
 ## NVD scheduled execution
 
@@ -49,4 +58,4 @@ Cloudflare Pages and GitHub Pages are different products. CyberJocx's current fr
 
 ## Worker release process
 
-The repository currently contains no checked-in Wrangler configuration or Cloudflare Worker deployment workflow. The GitHub Actions Docker workflow verifies the Node server build and tests, but it does not publish code to `cyberjocx-api`. GitHub Pages deployment is a separate workflow. Treat API Worker uploads as a distinct release: build and review the actual Worker-compatible entry bundle, preserve the existing Hyperdrive and secret bindings, deploy a new version, and verify `/health`, `/ready`, authentication, and affected tRPC procedures before declaring the API update live.
+The repository does not use a Wrangler configuration or an automatic Cloudflare Worker deployment workflow. The checked-in adapter is built with `pnpm build:cloudflare-worker`; GitHub Actions verifies that bundle and the Node app, but does not publish it to `cyberjocx-api`. GitHub Pages deployment is a separate workflow. Treat API Worker uploads as a distinct release: upload a new version while inheriting existing Hyperdrive and secret bindings, deploy it, and verify `/health`, `/ready`, OAuth initiation, and database-backed tRPC procedures before declaring the API update live.
