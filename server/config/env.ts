@@ -48,6 +48,11 @@ const envSchema = z.object({
   AI_RATE_LIMIT: z.coerce.number().int().positive().default(20),
   PUBLIC_API_RATE_LIMIT: z.coerce.number().int().positive().default(300),
   USER_MUTATION_RATE_LIMIT: z.coerce.number().int().positive().default(120),
+  COURSES_COMING_SOON: z.preprocess(value => {
+    if (typeof value === "boolean") return value;
+    if (typeof value === "string") return value.toLowerCase() === "true";
+    return true;
+  }, z.boolean()).default(true),
   ADMIN_RATE_LIMIT: z.coerce.number().int().positive().default(120),
   NVD_API_URL: z.string().url().default("https://services.nvd.nist.gov/rest/json/cves/2.0"),
   NVD_API_KEY: z.string().optional(),
