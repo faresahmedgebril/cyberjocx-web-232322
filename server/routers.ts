@@ -251,10 +251,16 @@ export const appRouter = router({
       if (!db) return [];
       return db.select().from(notifications).where(eq(notifications.userId, ctx.user.id)).orderBy(desc(notifications.createdAt)).limit(30);
     }),
-    markRead: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
+    markRead: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) return { success: false };
       await db.update(notifications).set({ isRead: true }).where(and(eq(notifications.id, input.id), eq(notifications.userId, ctx.user.id)));
+      return { success: true };
+    }),
+    markAllRead: protectedProcedure.mutation(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return { success: false };
+      await db.update(notifications).set({ isRead: true }).where(and(eq(notifications.userId, ctx.user.id), eq(notifications.isRead, false)));
       return { success: true };
     }),
   }),
@@ -404,10 +410,13 @@ export const appRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.insert(cves).values(input);
-      if (input.severity === "critical" || input.severity === "high") {
-        const recipients = await db.select({ id: users.id }).from(users);
-        if (recipients.length) await db.insert(notifications).values(recipients.map(recipient => ({ userId: recipient.id, type: "cve" as const, title: `CVE ${input.severity.toUpperCase()} detected`, message: `${input.cveNumber}: ${input.title}` })));
-      }
+      const recipients = await db.select({ id: users.id }).from(users);
+      if (recipients.length) await db.insert(notifications).values(recipients.map(recipient => ({
+        userId: recipient.id,
+        type: "cve" as const,
+        title: `New CVE • ${input.severity.toUpperCase()}`,
+        message: `${input.cveNumber}: ${input.title}`,
+      })));
       return { success: true };
     }),
   }),
