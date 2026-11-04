@@ -57,7 +57,7 @@ export async function syncRecentNvd() {
       totalResults = Number.isFinite(payload.totalResults) ? Number(payload.totalResults) : startIndex + vulnerabilities.length;
       if (vulnerabilities.length === 0) break;
 
-      const candidateIds = [...new Set(vulnerabilities.map(item => item.cve?.id).filter((id): id is string => Boolean(id)))];
+      const candidateIds = Array.from(new Set(vulnerabilities.map(item => item.cve?.id).filter((id): id is string => Boolean(id))));
       const existingRows = candidateIds.length
         ? await db.select({ cveNumber: cves.cveNumber }).from(cves).where(inArray(cves.cveNumber, candidateIds))
         : [];
