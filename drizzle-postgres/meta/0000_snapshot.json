@@ -1,6 +1,6 @@
 {
-  "id": "3fd4e2c8-0a4e-4ea2-973f-c9c7cfaf0014",
-  "prevId": "cefb4966-8711-4b9a-8f6a-2c70b223e4f2",
+  "id": "cefb4966-8711-4b9a-8f6a-2c70b223e4f2",
+  "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -808,12 +808,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
-        },
-        "instructorUserId": {
-          "name": "instructorUserId",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {},
@@ -3329,158 +3323,6 @@
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
-    },
-    "public.courseChangeRequests": {
-      "name": "courseChangeRequests",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "serial",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "courseId": {
-          "name": "courseId",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "instructorUserId": {
-          "name": "instructorUserId",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "changesJson": {
-          "name": "changesJson",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "varchar(24)",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'pending'"
-        },
-        "reviewedBy": {
-          "name": "reviewedBy",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reviewNote": {
-          "name": "reviewNote",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "requestedAt": {
-          "name": "requestedAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "reviewedAt": {
-          "name": "reviewedAt",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "courseChangeRequests_status_requestedAt_idx": {
-          "name": "courseChangeRequests_status_requestedAt_idx",
-          "columns": [
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "requestedAt",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "courseChangeRequests_instructorUserId_idx": {
-          "name": "courseChangeRequests_instructorUserId_idx",
-          "columns": [
-            {
-              "expression": "instructorUserId",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "requestedAt",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "courseChangeRequests_courseId_courses_id_fk": {
-          "name": "courseChangeRequests_courseId_courses_id_fk",
-          "tableFrom": "courseChangeRequests",
-          "tableTo": "courses",
-          "columnsFrom": [
-            "courseId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "courseChangeRequests_instructorUserId_users_id_fk": {
-          "name": "courseChangeRequests_instructorUserId_users_id_fk",
-          "tableFrom": "courseChangeRequests",
-          "tableTo": "users",
-          "columnsFrom": [
-            "instructorUserId"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "courseChangeRequests_reviewedBy_users_id_fk": {
-          "name": "courseChangeRequests_reviewedBy_users_id_fk",
-          "tableFrom": "courseChangeRequests",
-          "tableTo": "users",
-          "columnsFrom": [
-            "reviewedBy"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
     }
   },
   "enums": {
@@ -3641,8 +3483,7 @@
       "schema": "public",
       "values": [
         "user",
-        "admin",
-        "instructor"
+        "admin"
       ]
     }
   },
