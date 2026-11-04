@@ -14,6 +14,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, instructorProcedure, ownerAdminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { books, cartItems, carts, certificates, courseProgress, courses, cves, friendRequests, follows, malwareFamilies, notifications, nvdSyncSettings, postLikes, posts, quizAttempts, quizQuestions, trackQuizzes, tracks, tools, users, getCart, getDashboardStats, getDb, getTrackProgress, getTrackRoadmap, getUserById, listBooks, listBooksAdvanced, listCourses, listCves, listCvesPaginated, listMalware, listPosts, listTools, listToolsAdvanced, listRoadmaps, listTracks, ensureCart } from "./db";
 import { z } from "zod";
+import { notifyAll } from "./modules/notifications/service";
 import { auditLogs, courseChangeRequests, labInstances, labTemplates } from "../drizzle/schema";
 
 export const appRouter = router({
@@ -125,14 +126,41 @@ export const appRouter = router({
       const rows = await db.select().from(courses).where(and(eq(courses.id, input.id), eq(courses.isPublished, true))).limit(1);
       return rows[0];
     }),
-    progress: protectedProcedure.input(z.object({ courseId: z.number(), progress: z.number().min(0).max(100) })).mutation(async ({ ctx, input }) => {
+    progress: protectedProcedure.input(z.object({ courseId: z.number().int().positive(), progress: z.number().min(0).max(100) })).mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) return { success: false };
       const completed = input.progress >= 100;
-      const existing = await db.select().from(courseProgress).where(and(eq(courseProgress.userId, ctx.user.id), eq(courseProgress.courseId, input.courseId))).limit(1);
-      if (existing[0]) await db.update(courseProgress).set({ progress: input.progress, completed }).where(eq(courseProgress.id, existing[0].id));
-      else await db.insert(courseProgress).values({ userId: ctx.user.id, courseId: input.courseId, progress: input.progress, completed });
-      return { success: true, completed };
+      const existing = await db.select({ id: courseProgress.id, completed: courseProgress.completed })
+        .from(courseProgress)
+        .where(and(eq(courseProgress.userId, ctx.user.id), eq(courseProgress.courseId, input.courseId)))
+        .limit(1);
+      let newlyCompleted = false;
+
+      if (existing[0]) {
+        const updated = await db.update(courseProgress)
+          .set({ progress: input.progress, completed })
+          .where(and(eq(courseProgress.id, existing[0].id), eq(courseProgress.completed, false)))
+          .returning({ id: courseProgress.id });
+        newlyCompleted = completed && updated.length > 0;
+      } else {
+        await db.insert(courseProgress).values({
+          userId: ctx.user.id, courseId: input.courseId, progress: input.progress, completed,
+        });
+        newlyCompleted = completed;
+      }
+
+      if (newlyCompleted) {
+        const course = await db.select({ title: courses.title }).from(courses)
+          .where(and(eq(courses.id, input.courseId), eq(courses.isPublished, true))).limit(1);
+        if (course[0]) {
+          await notifyAll({
+            type: "content",
+            title: "Course completed",
+            message: `${ctx.user.name?.trim() || "A CyberJocx learner"} completed ${course[0].title}.`,
+          });
+        }
+      }
+      return { success: true, completed, newlyCompleted };
     }),
   }),
   cves: router({
