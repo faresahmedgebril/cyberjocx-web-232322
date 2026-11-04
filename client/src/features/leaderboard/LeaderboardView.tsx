@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Award, Crown, Medal, RefreshCw, Shield, Trophy, Users } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Award, Clock3, Crown, Grid2X2, Medal, RefreshCw, Shield, Trophy, Users, Zap } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { ComingSoonModal } from "@/components/ComingSoonModal";
 import "./leaderboard.css";
@@ -7,11 +7,11 @@ import "./leaderboard.css";
 type Period = "all-time";
 type PeriodOption = Period | "month" | "week" | "today";
 
-const periods: { id: PeriodOption; label: string }[] = [
-  { id: "all-time", label: "All Time" },
-  { id: "month", label: "This Month" },
-  { id: "week", label: "This Week" },
-  { id: "today", label: "Today" },
+const periods: { id: PeriodOption; label: string; Icon: typeof Trophy }[] = [
+  { id: "all-time", label: "All Time", Icon: Trophy },
+  { id: "month", label: "This Month", Icon: Grid2X2 },
+  { id: "week", label: "This Week", Icon: Grid2X2 },
+  { id: "today", label: "Today", Icon: Clock3 },
 ];
 
 const rankLabels: Record<string, string> = {
@@ -26,143 +26,144 @@ function displayName(name: string | null | undefined) {
   return name?.trim() || "CyberJocx Member";
 }
 
-function Avatar({ name, src }: { name: string | null; src: string | null }) {
+function Avatar({ name, src, size = "normal" }: { name: string | null; src: string | null; size?: "normal" | "large" }) {
   return (
-    <span className="cj-leader-avatar">
+    <span className={`cj-lb-avatar ${size === "large" ? "is-large" : ""}`}>
       {src ? <img src={src} alt="" loading="lazy" /> : <span>{displayName(name).slice(0, 1).toUpperCase()}</span>}
     </span>
   );
 }
 
+function points(value: number | string | null | undefined) {
+  return Number(value ?? 0).toLocaleString();
+}
+
 export default function LeaderboardView() {
   const [period, setPeriod] = useState<Period>("all-time");
   const [comingOpen, setComingOpen] = useState(false);
-  const board = trpc.leaderboard.list.useQuery({ period });
+  const board = trpc.leaderboard.list.useQuery({ period }, { staleTime: 30_000, refetchOnWindowFocus: true });
   const entries = board.data?.entries ?? [];
-  const podium = entries.length >= 3
-    ? [{ entry: entries[1]!, rank: 2 }, { entry: entries[0]!, rank: 1 }, { entry: entries[2]!, rank: 3 }]
-    : entries.map((entry, index) => ({ entry, rank: index + 1 }));
   const current = board.data?.currentUser ?? null;
+  const podium = useMemo(() => entries.slice(0, 3), [entries]);
+  const podiumOrder = podium.length === 3
+    ? [{ entry: podium[1]!, rank: 2 }, { entry: podium[0]!, rank: 1 }, { entry: podium[2]!, rank: 3 }]
+    : podium.map((entry, index) => ({ entry, rank: index + 1 }));
 
   return (
     <>
-    <section className="cj-leaderboard">
-      <header className="cj-leader-hero">
-        <div className="cj-leader-heading">
-          <span className="cj-leader-heading-icon"><Trophy size={30} /></span>
-          <div>
-            <span className="cj-leader-eyebrow">// COMMUNITY RANKING</span>
-            <h2>Leaderboard</h2>
-            <p>See how you rank among the CyberJocx community.</p>
-          </div>
-        </div>
-        <div className="cj-leader-period" role="tablist" aria-label="Leaderboard period">
-          {periods.map(item => (
-            <button
-              key={item.id}
-              type="button"
-              role="tab"
-              aria-selected={period === item.id}
-              className={period === item.id ? "is-active" : ""}
-              onClick={() => item.id === "all-time" ? setPeriod("all-time") : setComingOpen(true)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </header>
-
-      {board.isLoading ? (
-        <div className="cj-leader-state"><RefreshCw className="cj-spin" size={20} /> Loading leaderboard…</div>
-      ) : board.isError && board.error.data?.code === "NOT_FOUND" ? (
-        <div className="cj-leader-state">
-          <Trophy size={28} />
-          <strong>Coming Soon</strong>
-        </div>
-      ) : board.isError ? (
-        <div className="cj-leader-state is-error">
-          <Shield size={22} />
-          <strong>Leaderboard unavailable</strong>
-          <span>تعذر تحميل الترتيب الآن. حاول مرة أخرى.</span>
-          <button type="button" onClick={() => void board.refetch()}>Retry</button>
-        </div>
-      ) : entries.length === 0 ? (
-        <div className="cj-leader-state">
-          <Trophy size={28} />
-          <strong>No ranking data yet</strong>
-          <span>سيظهر ترتيب المجتمع بمجرد تسجيل نقاط فعلية.</span>
-        </div>
-      ) : (
-        <>
-          <div className="cj-leader-grid">
-            <section className="cj-leader-main-card">
-              <div className="cj-podium">
-                {podium.map(({ entry, rank: actualRank }) => {
-                  const rankClass = actualRank === 1 ? "first" : actualRank === 2 ? "second" : "third";
-                  return (
-                    <article className={`cj-podium-person ${rankClass}`} key={entry.id}>
-                      {actualRank === 1 && <Crown className="cj-podium-crown" size={22} />}
-                      <Avatar name={entry.name} src={entry.avatarUrl} />
+      <section className="cj-leaderboard-page">
+        <div className="cj-lb-main">
+          <div className="cj-lb-content">
+            <section className="cj-lb-hero">
+              <header>
+                <span className="cj-lb-hero-icon"><Trophy size={38} /></span>
+                <div>
+                  <span className="cj-lb-eyebrow">COMMUNITY RANKING</span>
+                  <h1>Leaderboard</h1>
+                  <p>See how you rank among the CyberJocx community</p>
+                </div>
+              </header>
+              {board.isLoading ? (
+                <div className="cj-lb-state"><RefreshCw className="cj-lb-spin" size={20} /> Loading leaderboard…</div>
+              ) : board.isError ? (
+                <div className="cj-lb-state is-error">
+                  <Shield size={25} />
+                  <strong>Leaderboard unavailable</strong>
+                  <span>تعذر تحميل الترتيب الآن. حاول مرة أخرى.</span>
+                  <button type="button" onClick={() => void board.refetch()}>Retry</button>
+                </div>
+              ) : entries.length === 0 ? (
+                <div className="cj-lb-state">
+                  <Trophy size={28} />
+                  <strong>No ranking data yet</strong>
+                  <span>سيظهر ترتيب المجتمع بمجرد تسجيل نقاط فعلية.</span>
+                </div>
+              ) : (
+                <div className="cj-lb-podium">
+                  {podiumOrder.map(({ entry, rank }) => (
+                    <article className={`cj-lb-podium-user place-${rank}`} key={entry.id}>
+                      {rank === 1 && <Crown className="cj-lb-crown" size={25} />}
+                      <Avatar name={entry.name} src={entry.avatarUrl} size="large" />
                       <strong>{displayName(entry.name)}</strong>
-                      <span>{Number(entry.points).toLocaleString()} XP</span>
-                      <b className="cj-podium-base">{actualRank}</b>
+                      <span>{points(entry.points)} Pts</span>
+                      <div className="cj-lb-podium-base"><b>{rank}</b></div>
                     </article>
-                  );
-                })}
-              </div>
-              <div className="cj-ranking-header">
-                <div><span>// GLOBAL RANKING</span><h3>Top Operators</h3></div>
-                <span className="cj-live-pill"><i /> LIVE DATA</span>
-              </div>
-              <div className="cj-ranking-table-wrap">
-                <table className="cj-ranking-table">
-                  <thead><tr><th>#</th><th>Operator</th><th>Points</th><th>Member Rank</th></tr></thead>
-                  <tbody>
-                    {entries.map(entry => (
-                      <tr key={entry.id} className={entry.isCurrentUser ? "is-current" : ""}>
-                        <td><span className={`cj-rank-number rank-${entry.rank}`}>{entry.rank}</span></td>
-                        <td>
-                          <span className="cj-ranking-user">
-                            <Avatar name={entry.name} src={entry.avatarUrl} />
-                            <strong>{displayName(entry.name)}</strong>
-                            {entry.isCurrentUser && <small>YOU</small>}
-                          </span>
-                        </td>
-                        <td className="cj-points-cell">{Number(entry.points).toLocaleString()}</td>
-                        <td><span className={`cj-member-rank rank-${entry.memberRank}`}><Medal size={13} />{rankLabels[entry.memberRank] ?? "Learner"}</span></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <p className="cj-ranking-footnote">Ranking is calculated from recorded platform points. Only public profile details are displayed.</p>
+                  ))}
+                </div>
+              )}
             </section>
 
-            <aside className="cj-leader-aside">
-              <section className="cj-leader-profile-card">
-                <div className="cj-leader-card-label"><Award size={17} /> YOUR POSITION</div>
-                {current ? (
-                  <>
-                    <Avatar name={current.name} src={current.avatarUrl} />
-                    <strong>{displayName(current.name)}</strong>
-                    <span className="cj-your-points">{Number(current.points).toLocaleString()} <small>XP</small></span>
-                    <p>{current.rank ? `Rank #${current.rank}` : "Not currently in the top 50"}</p>
-                  </>
-                ) : (
-                  <div className="cj-leader-guest"><Users size={22} /><span>Sign in to see your position.</span></div>
-                )}
-              </section>
-              <section className="cj-leader-note">
-                <Trophy size={23} />
-                <strong>Earn your place.</strong>
-                <p>Complete courses, challenges and practical activities to build your verified points.</p>
-              </section>
-            </aside>
+            <section className="cj-lb-board">
+              <div className="cj-lb-periods" role="tablist" aria-label="Leaderboard period">
+                {periods.map(({ id, label, Icon }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={period === id}
+                    className={period === id ? "is-active" : ""}
+                    onClick={() => id === "all-time" ? setPeriod("all-time") : setComingOpen(true)}
+                  >
+                    <Icon size={16} />{label}
+                  </button>
+                ))}
+              </div>
+              {!board.isLoading && !board.isError && entries.length > 0 && (
+                <div className="cj-lb-table-wrap">
+                  <div className="cj-lb-table">
+                    <div className="cj-lb-table-head"><span>#</span><span>Operator</span><span>Points</span><span>Member Rank</span></div>
+                    {entries.map(entry => (
+                      <div className={`cj-lb-row ${entry.isCurrentUser ? "is-current" : ""}`} key={entry.id}>
+                        <span className={`cj-lb-rank-number rank-${entry.rank}`}>{entry.rank}</span>
+                        <span className="cj-lb-user">
+                          <Avatar name={entry.name} src={entry.avatarUrl} />
+                          <strong>{displayName(entry.name)}</strong>
+                          {entry.isCurrentUser && <small>YOU</small>}
+                        </span>
+                        <span className="cj-lb-points">{points(entry.points)}</span>
+                        <span><b className={`cj-lb-tier rank-${entry.memberRank}`}><Medal size={14} />{rankLabels[entry.memberRank] ?? "Learner"}</b></span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <p className="cj-lb-footnote">Rankings use points recorded by platform activities. Only public profile details are displayed.</p>
+            </section>
           </div>
-        </>
-      )}
-    </section>
-    <ComingSoonModal open={comingOpen} onClose={() => setComingOpen(false)} />
+
+          <aside className="cj-lb-rail">
+            <section className="cj-lb-profile-card">
+              <div className="cj-lb-card-label"><Award size={17} /> YOUR POSITION</div>
+              {current ? (
+                <>
+                  <Avatar name={current.name} src={current.avatarUrl} size="large" />
+                  <strong>{displayName(current.name)}</strong>
+                  <span className="cj-lb-your-points">{points(current.points)} <small>PTS</small></span>
+                  <p>{current.rank ? `Rank #${current.rank}` : "Not currently in the top 50"}</p>
+                </>
+              ) : (
+                <div className="cj-lb-guest"><Users size={22} /><span>Sign in to see your position.</span></div>
+              )}
+            </section>
+
+            <section className="cj-lb-stats-card">
+              <h2><Zap size={19} /> Community Stats</h2>
+              <div><Users size={18} /><span>Registered members</span><b>{points(board.data?.totalMembers)}</b></div>
+              <div><Trophy size={18} /><span>Top score</span><b>{points(entries[0]?.points)}</b></div>
+              <div><Shield size={18} /><span>Top member rank</span><b>{entries[0] ? (rankLabels[entries[0].memberRank] ?? "Learner") : "—"}</b></div>
+            </section>
+
+            <section className="cj-lb-note">
+              <b>“</b>
+              <Trophy size={23} />
+              <strong>Earn your place.</strong>
+              <p>Complete courses, challenges and practical activities to build your verified points.</p>
+              <span>LEARN · PRACTICE · PROVE</span>
+            </section>
+          </aside>
+        </div>
+      </section>
+      <ComingSoonModal open={comingOpen} onClose={() => setComingOpen(false)} />
     </>
   );
 }
