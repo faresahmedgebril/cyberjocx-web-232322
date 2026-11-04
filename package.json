@@ -18,7 +18,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "build:cloudflare-worker": "esbuild ./server/cloudflare-worker.ts --bundle --platform=node --format=esm --target=es2022 --outfile=dist/cloudflare-worker.js --external:cloudflare:node"
+    "build:cloudflare-worker": "esbuild ./server/cloudflare-worker.ts --bundle --platform=node --format=esm --target=es2022 --outfile=dist/cloudflare-worker.js --external:cloudflare:node --external:./vite"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.693.0",
