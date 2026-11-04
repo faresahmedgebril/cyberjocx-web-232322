@@ -1,6 +1,6 @@
 import { boolean, index, integer, pgEnum, pgTable, serial, text, timestamp, unique, varchar } from "drizzle-orm/pg-core";
 
-export const usersRolePgEnum = pgEnum("users_role_enum", ["user", "instructor", "admin"]);
+export const usersRolePgEnum = pgEnum("users_role_enum", ["user", "admin", "instructor"]);
 export const usersMemberRankPgEnum = pgEnum("users_memberRank_enum", ["learner", "contributor", "analyst", "mentor", "elite"]);
 export const coursesLevelPgEnum = pgEnum("courses_level_enum", ["beginner", "intermediate", "advanced"]);
 export const cvesSeverityPgEnum = pgEnum("cves_severity_enum", ["critical", "high", "medium", "low"]);
