@@ -10,16 +10,19 @@ flowchart TD
     GH -->|HTTPS + credentials| CF["Cloudflare Worker\ncyberjocx-api"]
     CF --> EX["Express-compatible API\nREST Auth + tRPC"]
     EX --> MW["Middleware\nCORS · Origin checks · Rate limits"]
-    MW --> ROUTER["Application routers\nZod input validation"]
+    MW --> DB_SCOPE["Request DB scope\\nAsyncLocalStorage"]
+    DB_SCOPE --> ROUTER["Application routers\\nZod input validation"]
     ROUTER --> AUTH["Auth & session services"]
     ROUTER --> DOMAIN["Learning · CVE · Malware\nCommunity · Market · Profile"]
     ROUTER --> AI["NEXUS AI service"]
     ROUTER --> LB["Leaderboard router"]
     ROUTER --> SETTINGS["Profile preferences"]
-    AUTH --> HD["Cloudflare Hyperdrive"]
-    DOMAIN --> HD
-    LB --> HD
-    SETTINGS --> HD
+    AUTH --> DB_SCOPE["Cloudflare Hyperdrive"]
+    DOMAIN --> DB_SCOPE
+    LB --> DB_SCOPE
+    SETTINGS --> DB_SCOPE
+    DB_SCOPE --> PG_CLIENT["pg.Client\\nOne lazy client per Worker request"]
+    PG_CLIENT --> HD["Cloudflare Hyperdrive\\nupstream connection pooling"]
     HD --> NEON["Neon PostgreSQL\nCyberJocx Production"]
     AI --> PROVIDER["Configured AI provider"]
     GH --> ASSETS["Static assets\nGitHub Pages artifact"]
