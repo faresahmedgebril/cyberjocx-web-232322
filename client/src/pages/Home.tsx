@@ -1,11 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { startLogin } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { Streamdown } from "streamdown";
 import {
-  Activity, ArrowLeft, ArrowUpRight, BookOpen, Bot, Boxes, BrainCircuit, Bug, Check, ChevronLeft, CircleUserRound, Code2, Cpu, Database, FileCode2, Filter, Gauge, Heart, LayoutDashboard, Library, LockKeyhole, LogOut, Menu, MessageSquare, Network, Plus, Radio, Search, Send, Settings2, ShieldAlert, ShoppingBag, ShoppingCart, Sparkles, Terminal, Trophy, UserPlus, Users, Wrench, X, Zap,
+  Activity, ArrowLeft, ArrowUpRight, BookOpen, Bot, Boxes, BrainCircuit, Bug, Check, ChevronLeft, CircleUserRound, Code2, Cpu, Database, FileCode2, Filter, Gauge, Heart, LayoutDashboard, Library, LockKeyhole, LogOut, Menu, MessageSquare, Network, Plus, Radio, Search, Send, Settings2, ShieldAlert, ShoppingBag, ShoppingCart, Sparkles, Terminal, Trophy, UserPlus, Users, Wrench, X, Zap, Target, ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import FigmaDashboard from "@/components/FigmaDashboard";
@@ -24,10 +24,10 @@ function safeExternalUrl(value: unknown): string | undefined {
   }
 }
 
-type Section = "dashboard" | "profile" | "learning" | "tracks" | "cves" | "malware" | "tools" | "community" | "market" | "leaderboard" | "settings" | "ai" | "admin";
+type Section = "dashboard" | "profile" | "learning" | "tracks" | "cves" | "malware" | "tools" | "community" | "market" | "leaderboard" | "settings" | "ai" | "admin" | "instructor" | "ctf" | "labs";
 
 function SectionIcon({ section }: { section: Section }) {
-  const icons = { dashboard: LayoutDashboard, profile: CircleUserRound, learning: Library, tracks: Network, cves: ShieldAlert, malware: Bug, tools: Wrench, community: Users, market: ShoppingBag, leaderboard: Trophy, settings: Settings2, ai: Bot, admin: Gauge };
+  const icons = { dashboard: LayoutDashboard, profile: CircleUserRound, learning: Library, tracks: Network, cves: ShieldAlert, malware: Bug, tools: Wrench, community: Users, market: ShoppingBag, leaderboard: Trophy, settings: Settings2, ai: Bot, admin: Gauge, instructor: BookOpen, ctf: Terminal, labs: Boxes };
   const Icon = icons[section];
   return <Icon size={17} strokeWidth={1.8} />;
 }
@@ -69,7 +69,7 @@ export default function Home() {
   const friendRequestsQuery = trpc.community.friendRequests.useQuery(undefined, { enabled: isAuthenticated });
   const booksQuery = trpc.market.booksAdvanced.useQuery(bookInput);
   const cartQuery = trpc.market.cart.useQuery(undefined, { enabled: isAuthenticated });
-  const notificationsQuery = trpc.notifications.list.useQuery(undefined, { enabled: isAuthenticated });
+  const notificationsQuery = trpc.notifications.list.useQuery(undefined, { enabled: isAuthenticated, refetchInterval: isAuthenticated ? 30_000 : false, refetchOnWindowFocus: true });
   const nvdStatusQuery = trpc.nvd.status.useQuery();
   const malwareQuery = trpc.malware.list.useQuery({ search: malwareSearch || undefined, category: malwareCategory === "all" ? undefined : malwareCategory });
   const createPost = trpc.community.create.useMutation({ onSuccess: () => { setPostText(""); postsQuery.refetch(); toast.success("تم بث الإشارة إلى المجتمع"); } });
@@ -81,6 +81,8 @@ export default function Home() {
   const addToCart = trpc.market.addToCart.useMutation({ onSuccess: () => { cartQuery.refetch(); toast.success("تمت إضافة العنصر إلى السلة"); } });
   const removeFromCart = trpc.market.removeFromCart.useMutation({ onSuccess: () => cartQuery.refetch() });
   const askAI = trpc.ai.ask.useMutation({ onSuccess: data => { setAiMessages(messages => [...messages, { role: "assistant", content: data.answer }]); }, onError: () => toast.error("تعذر الوصول إلى NEXUS الآن") });
+  const markNotificationRead = trpc.notifications.markRead.useMutation({ onSuccess: () => notificationsQuery.refetch() });
+  const markAllNotificationsRead = trpc.notifications.markAllRead.useMutation({ onSuccess: () => notificationsQuery.refetch() });
 
   const courses = coursesQuery.data ?? [];
   const cves = paginatedCvesQuery.data?.items ?? cvesQuery.data ?? [];
@@ -104,12 +106,13 @@ export default function Home() {
     { id: "ai", label: "NEXUS AI", meta: "AI" },
     { id: "settings", label: "الإعدادات", meta: "CFG" },
   ];
+  if (user?.role === "instructor" || user?.role === "admin") navItems.push({ id: "instructor", label: "Instructor Studio", meta: "TEACH" });
   if (user?.role === "admin") navItems.push({ id: "admin", label: "غرفة المدير", meta: "A" });
 
   const navigate = (target: Section) => { setSection(target); setMobileOpen(false); };
-  const figmaTargets: Record<string, Section> = { dashboard: "dashboard", profile: "profile", learning: "learning", tracks: "tracks", cves: "cves", malware: "malware", tools: "tools", community: "community", market: "market", leaderboard: "leaderboard", settings: "settings", ai: "ai" };
+  const figmaTargets: Record<string, Section> = { dashboard: "dashboard", profile: "profile", learning: "learning", tracks: "tracks", cves: "cves", malware: "malware", tools: "tools", community: "community", market: "market", leaderboard: "leaderboard", settings: "settings", ai: "ai", admin: "admin", instructor: "instructor", ctf: "ctf", labs: "labs" };
   const handleFigmaNavigate = (target: string) => { const destination = figmaTargets[target]; if (destination) navigate(destination); else toast.info(`${target} module is not available yet.`); };
-  const titleMap: Record<Section, string> = { dashboard: "CYBERJOCX", profile: "YOUR PROFILE", learning: "مسارات التعلّم", tracks: "مساراتك التعليمية", cves: "مركز الثغرات CVE", malware: "مركز Malware", tools: "دليل الأدوات", community: "المجتمع", market: "مكتبة CyberJocx", leaderboard: "LEADERBOARD", settings: "SETTINGS", ai: "NEXUS", admin: "إدارة المنصة" };
+  const titleMap: Record<Section, string> = { dashboard: "CYBERJOCX", profile: "YOUR PROFILE", learning: "مسارات التعلّم", tracks: "مساراتك التعليمية", cves: "مركز الثغرات CVE", malware: "مركز Malware", tools: "دليل الأدوات", community: "المجتمع", market: "مكتبة CyberJocx", leaderboard: "LEADERBOARD", settings: "SETTINGS", ai: "NEXUS", admin: "إدارة المنصة", instructor: "INSTRUCTOR STUDIO", ctf: "CTF ARENA", labs: "PRACTICE LABS" };
 
   if (loading) return (
     <div className="launch-loader" role="status" aria-live="polite">
@@ -139,68 +142,50 @@ export default function Home() {
     </div>
   );
 
-  if (section === "dashboard" || section === "leaderboard") {
-    const displayUserName = user?.name?.trim() || user?.email?.split("@")[0]?.trim() || (isAuthenticated ? "GHOST_OPERATOR" : "Guest");
-    return (
-      <FigmaDashboard
-        stats={{ points: stats.points, coursesCompleted: stats.coursesCompleted, activeCourses: stats.activeCourses, cvesTracked: stats.cvesTracked || cves.length }}
-        learningCourses={courses.map((course: any) => ({ id: course.id, title: course.title, category: course.category, level: course.level, progress: course.progress }))}
-        userName={displayUserName}
-        userAvatarUrl={user?.avatarUrl ?? null}
-        activePage={section === "leaderboard" ? "Leaderboard" : "Home"}
-        pageContent={section === "leaderboard" ? (
-          <LeaderboardView
-            stats={{ points: isAuthenticated ? stats.points : null, coursesCompleted: isAuthenticated ? stats.coursesCompleted : null, cvesTracked: isAuthenticated ? (stats.cvesTracked || cves.length) : null }}
-            userName={displayUserName}
-            onSignIn={() => isAuthenticated ? navigate("profile") : startLogin()}
-          />
-        ) : undefined}
-        onNavigate={handleFigmaNavigate}
-        onOpenAuth={() => isAuthenticated ? navigate("profile") : startLogin()}
-        onLogout={() => { void logout(); }}
-      />
-    );
-  }
+  const displayUserName = user?.name?.trim() || user?.email?.split("@")[0]?.trim() || (isAuthenticated ? "GHOST_OPERATOR" : "Guest");
+  const pageContent = section === "dashboard" ? undefined : (
+    <section className="cj-dashboard-page-content">
+      <header className="cj-dashboard-page-heading">
+        <div><span>// CYBERJOCX CONTROL SURFACE</span><h1>{titleMap[section]}</h1><p>كل أدوات التعلم والممارسة وإدارة حسابك في مساحة واحدة.</p></div>
+      </header>
+      {syncError && <div className="system-alert"><ShieldAlert size={15} /><span>{authError ? "AUTH WARNING // تعذر إكمال جلسة الدخول. سجّل الدخول مرة أخرى أو أنشئ حسابًا جديدًا." : "SYNC WARNING // تعذر مزامنة بعض البيانات. حاول التحديث مرة أخرى."}</span></div>}
+      {section === "profile" && <ProfileView user={user} />}
+      {section === "learning" && <LearningView courses={courses} roadmaps={roadmapsQuery.data ?? []} tracks={tracksQuery.data ?? []} loading={coursesQuery.isLoading || roadmapsQuery.isLoading || tracksQuery.isLoading} error={coursesQuery.error || roadmapsQuery.error || tracksQuery.error} search={courseSearch} setSearch={setCourseSearch} onStart={course => isAuthenticated ? progressMutation.mutate({ courseId: course.id, progress: 10 }) : startLogin()} />}
+      {section === "tracks" && <TracksView tracks={tracksQuery.data ?? []} loading={tracksQuery.isLoading} error={tracksQuery.error} />}
+      {section === "cves" && <CvesView cves={cves} loading={cvesQuery.isLoading || paginatedCvesQuery.isLoading} error={cvesQuery.error || paginatedCvesQuery.error} search={cveSearch} setSearch={value => { setCveSearch(value); setCvePage(1); }} severity={severity} setSeverity={value => { setSeverity(value); setCvePage(1); }} page={cvePage} totalPages={paginatedCvesQuery.data?.totalPages ?? 0} onPage={setCvePage} lastUpdated={nvdStatusQuery.data?.lastCompletedAt ? new Date(nvdStatusQuery.data.lastCompletedAt).toLocaleString("ar-EG") : nvdStatusQuery.data?.lastStatus ?? "لم تبدأ بعد"} />}
+      {section === "malware" && <MalwareView items={malwareQuery.data ?? []} loading={malwareQuery.isLoading} error={malwareQuery.error} search={malwareSearch} setSearch={setMalwareSearch} category={malwareCategory} setCategory={setMalwareCategory} />}
+      {section === "tools" && <ToolsView tools={tools} loading={toolsQuery.isLoading} error={toolsQuery.error} search={toolSearch} setSearch={setToolSearch} category={toolCategory} setCategory={setToolCategory} sort={toolSort} setSort={setToolSort} />}
+      {section === "community" && <CommunityView posts={postsQuery.data ?? []} requests={friendRequestsQuery.data ?? []} loading={postsQuery.isLoading} error={postsQuery.error} postText={postText} setPostText={setPostText} onPost={() => isAuthenticated ? createPost.mutate({ content: postText }) : startLogin()} onLike={postId => isAuthenticated ? likePost.mutate({ postId }) : startLogin()} onFollow={userId => isAuthenticated ? followUser.mutate({ userId }) : startLogin()} onFriend={userId => isAuthenticated ? sendFriendRequest.mutate({ userId }) : startLogin()} onRespond={(requestId, accept) => respondFriendRequest.mutate({ requestId, accept })} />}
+      {section === "market" && <MarketView books={booksQuery.data ?? []} loading={booksQuery.isLoading} error={booksQuery.error} cartItems={cartQuery.data ?? []} cartCount={cartCount} onAdd={bookId => isAuthenticated ? addToCart.mutate({ bookId }) : startLogin()} onRemove={itemId => removeFromCart.mutate({ itemId })} search={bookSearch} setSearch={setBookSearch} category={bookCategory} setCategory={setBookCategory} maxPoints={bookMaxPoints} setMaxPoints={setBookMaxPoints} sort={bookSort} setSort={setBookSort} />}
+      {section === "leaderboard" && <LeaderboardView stats={{ points: isAuthenticated ? stats.points : null, coursesCompleted: isAuthenticated ? stats.coursesCompleted : null, cvesTracked: isAuthenticated ? (stats.cvesTracked || cves.length) : null }} userName={displayUserName} onSignIn={() => isAuthenticated ? navigate("profile") : startLogin()} />}
+      {section === "settings" && <SettingsView user={user} isAuthenticated={isAuthenticated} onOpenProfile={() => navigate("profile")} />}
+      {section === "ai" && <NexusAssistantView messages={aiMessages} input={aiInput} setInput={setAiInput} onAsk={() => { const message = aiInput.trim(); if (!message || !isAuthenticated || askAI.isPending) return; setAiMessages(messages => [...messages, { role: "user", content: message }]); askAI.mutate({ message, history: aiMessages.slice(-12) }); setAiInput(""); }} onNewChat={() => { setAiMessages([]); setAiInput(""); }} isLoading={askAI.isPending} isAuthenticated={isAuthenticated} onSignIn={startLogin} />}
+      {section === "admin" && (user?.role === "admin" ? <><AdminView /><AdminWorkflowPanel /></> : <ModuleState title="لوحة الإدارة مخصصة لحساب المدير فقط." error />)}
+      {section === "instructor" && (user?.role === "instructor" || user?.role === "admin" ? <InstructorView /> : <ModuleState title="مساحة المدرّس مخصصة للحسابات المعتمدة فقط." error />)}
+      {section === "ctf" && <CtfView isAuthenticated={isAuthenticated} onSignIn={startLogin} />}
+      {section === "labs" && <LabsView isAuthenticated={isAuthenticated} onSignIn={startLogin} />}
+    </section>
+  );
 
   return (
-    <div className="app-shell">
-      <aside className={`side-panel ${mobileOpen ? "is-open" : ""}`}>
-        <div className="brand-block">
-          <div className="brand-mark"><span>◩</span><span>◫</span></div>
-          <div><div className="brand-name"><span className="brand-accent">C</span>YBER<span className="brand-accent">J</span>OCX</div><div className="brand-sub">SECURITY // LEARNING OS</div></div>
-          <button className="mobile-close" onClick={() => setMobileOpen(false)}><X size={18} /></button>
-        </div>
-        <div className="status-chip"><span className="pulse-dot" /> CYBERJOCX <b>ONLINE</b></div>
-        <div className="nav-caption">// NAVIGATION</div>
-        <nav className="main-nav">
-          {navItems.map(item => <button key={item.id} className={`nav-item ${section === item.id ? "active" : ""}`} onClick={() => navigate(item.id)}><SectionIcon section={item.id} /><span>{item.label}</span><em>{item.meta}</em></button>)}
-        </nav>
-        <div className="sidebar-terminal"><div className="terminal-title"><Terminal size={13} /> LIVE FEED</div><p><span>&gt;</span> threat intel stream connected</p><p><span>&gt;</span> 4 new learning nodes</p><p><span>&gt;</span> encryption layer active</p></div>
-        <div className="side-footer"><div className="mini-avatar">{user?.name?.[0] ?? "G"}</div><div className="user-meta"><strong>{user?.name ?? "GHOST_OPERATOR"}</strong><span>{user?.role === "admin" ? "ADMIN // ROOT" : "FIELD AGENT"}</span></div>{isAuthenticated ? <button className="icon-button" title="تسجيل الخروج" onClick={() => logout()}><LogOut size={15} /></button> : <button className="icon-button" title="تسجيل الدخول" onClick={() => startLogin()}><LockKeyhole size={15} /></button>}</div>
-      </aside>
-      {mobileOpen && <button className="mobile-overlay" onClick={() => setMobileOpen(false)} aria-label="إغلاق القائمة" />}
-      <main className="main-panel">
-        <header className="topbar"><button className="mobile-menu" onClick={() => setMobileOpen(true)}><Menu size={19} /></button><div className="breadcrumb"><span>CYBERJOCX</span><ChevronLeft size={14} /><b>{titleMap[section]}</b></div><div className="topbar-actions"><span className="top-time">SYSTEM // READY</span><button className="alert-button" onClick={() => toast.info(unreadCount ? `${unreadCount} إشعارات غير مقروءة` : "لا توجد إشعارات جديدة")}><Radio size={16} /><span className="alert-ping" /></button><button className="profile-trigger" onClick={() => navigate("profile")}><span className="mini-avatar">{user?.name?.[0] ?? "G"}</span><span>{user?.name ?? "GHOST_OPERATOR"}</span></button></div></header>
-        <div className="content-wrap">
-          <div className="page-heading"><div><div className="eyebrow"><span /> WELCOME TO CYBERJOCX</div><h1>{titleMap[section]}</h1><p>محتوى واضح وخطوات عملية تساعدك على التعلّم وبناء خبرة قابلة للقياس.</p></div></div>
-          {syncError && <div className="system-alert"><ShieldAlert size={15} /><span>{authError ? "AUTH WARNING // تعذر إكمال جلسة الدخول. سجّل الدخول مرة أخرى أو أنشئ حسابًا جديدًا." : "SYNC WARNING // تعذر مزامنة بعض الإشارات. ستظهر آخر نسخة متاحة ويمكن إعادة المحاولة تلقائيًا."}</span></div>}
-                    {section === "profile" && <ProfileView user={user} />}
-          {section === "learning" && <LearningView courses={courses} roadmaps={roadmapsQuery.data ?? []} tracks={tracksQuery.data ?? []} loading={coursesQuery.isLoading || roadmapsQuery.isLoading || tracksQuery.isLoading} error={coursesQuery.error || roadmapsQuery.error || tracksQuery.error} search={courseSearch} setSearch={setCourseSearch} onStart={course => isAuthenticated ? progressMutation.mutate({ courseId: course.id, progress: 10 }) : startLogin()} />}
-          {section === "tracks" && <TracksView tracks={tracksQuery.data ?? []} loading={tracksQuery.isLoading} error={tracksQuery.error} />}
-          {section === "cves" && <CvesView cves={cves} loading={cvesQuery.isLoading || paginatedCvesQuery.isLoading} error={cvesQuery.error || paginatedCvesQuery.error} search={cveSearch} setSearch={value => { setCveSearch(value); setCvePage(1); }} severity={severity} setSeverity={value => { setSeverity(value); setCvePage(1); }} page={cvePage} totalPages={paginatedCvesQuery.data?.totalPages ?? 0} onPage={setCvePage} lastUpdated={nvdStatusQuery.data?.lastCompletedAt ? new Date(nvdStatusQuery.data.lastCompletedAt).toLocaleString("ar-EG") : nvdStatusQuery.data?.lastStatus ?? "لم تبدأ بعد"} />}
-          {section === "malware" && <MalwareView items={malwareQuery.data ?? []} loading={malwareQuery.isLoading} error={malwareQuery.error} search={malwareSearch} setSearch={setMalwareSearch} category={malwareCategory} setCategory={setMalwareCategory} />}
-          {section === "tools" && <ToolsView tools={tools} loading={toolsQuery.isLoading} error={toolsQuery.error} search={toolSearch} setSearch={setToolSearch} category={toolCategory} setCategory={setToolCategory} sort={toolSort} setSort={setToolSort} />}
-          {section === "community" && <CommunityView posts={postsQuery.data ?? []} requests={friendRequestsQuery.data ?? []} loading={postsQuery.isLoading} error={postsQuery.error} postText={postText} setPostText={setPostText} onPost={() => isAuthenticated ? createPost.mutate({ content: postText }) : startLogin()} onLike={postId => isAuthenticated ? likePost.mutate({ postId }) : startLogin()} onFollow={userId => isAuthenticated ? followUser.mutate({ userId }) : startLogin()} onFriend={userId => isAuthenticated ? sendFriendRequest.mutate({ userId }) : startLogin()} onRespond={(requestId, accept) => respondFriendRequest.mutate({ requestId, accept })} />}
-          {section === "market" && <MarketView books={booksQuery.data ?? []} loading={booksQuery.isLoading} error={booksQuery.error} cartItems={cartQuery.data ?? []} cartCount={cartCount} onAdd={bookId => isAuthenticated ? addToCart.mutate({ bookId }) : startLogin()} onRemove={itemId => removeFromCart.mutate({ itemId })} search={bookSearch} setSearch={setBookSearch} category={bookCategory} setCategory={setBookCategory} maxPoints={bookMaxPoints} setMaxPoints={setBookMaxPoints} sort={bookSort} setSort={setBookSort} />}
-          {section === "settings" && <SettingsView user={user} isAuthenticated={isAuthenticated} onOpenProfile={() => navigate("profile")} />}
-          {section === "ai" && <NexusAssistantView messages={aiMessages} input={aiInput} setInput={setAiInput} onAsk={() => { const message = aiInput.trim(); if (!message || !isAuthenticated || askAI.isPending) return; setAiMessages(messages => [...messages, { role: "user", content: message }]); askAI.mutate({ message, history: aiMessages.slice(-12) }); setAiInput(""); }} onNewChat={() => { setAiMessages([]); setAiInput(""); }} isLoading={askAI.isPending} isAuthenticated={isAuthenticated} onSignIn={startLogin} />}
-          {section === "admin" && <AdminView />} 
-        </div>
-        <button className="nexus-float" onClick={() => navigate("ai")} aria-label="فتح محادثة NEXUS"><span className="nexus-bot"><Bot size={23} /></span><span className="nexus-float-label">NEXUS<br /><small>اسألني</small></span></button>
-      </main>
-    </div>
+    <FigmaDashboard
+      stats={{ points: stats.points, coursesCompleted: stats.coursesCompleted, activeCourses: stats.activeCourses, cvesTracked: stats.cvesTracked || cves.length }}
+      learningCourses={courses.map((course: any) => ({ id: course.id, title: course.title, category: course.category, level: course.level, progress: course.progress, availabilityStatus: course.availabilityStatus }))}
+      userName={displayUserName}
+      userAvatarUrl={user?.avatarUrl ?? null}
+      userRole={user?.role ?? null}
+      activePage={({ dashboard: "Home", profile: "Profile", learning: "Courses", tracks: "Roadmap", cves: "CVE Center", malware: "Malware", tools: "Labs", community: "Community", market: "Market", leaderboard: "Leaderboard", settings: "Settings", ai: "AI Assistant", admin: "Admin Console", instructor: "Instructor Studio", ctf: "CTF", labs: "Labs" } satisfies Record<Section, string>)[section]}
+      pageContent={pageContent}
+      notifications={notificationsQuery.data ?? []}
+      onNotificationRead={id => markNotificationRead.mutate({ id })}
+      onNotificationReadAll={() => markAllNotificationsRead.mutate()}
+      onNavigate={handleFigmaNavigate}
+      onOpenAuth={() => isAuthenticated ? navigate("profile") : startLogin()}
+      onLogout={() => { void logout(); }}
+    />
   );
 }
+
 
 function ModuleState({ title, error, empty = false }: { title: string; error?: unknown; empty?: boolean }) {
   return <div className="empty-state panel-card"><Activity size={27} /><h3>{error ? "Signal unavailable" : empty ? "No nodes indexed" : "Syncing matrix..."}</h3><p>{error ? "تعذر الوصول إلى قاعدة البيانات. تحقق من الاتصال وحاول مرة أخرى." : empty ? title : "جارٍ تحميل البيانات الدائمة من طبقة المعرفة..."}</p></div>;
@@ -240,7 +225,7 @@ function LearningView({ courses, roadmaps, tracks, loading, error, search, setSe
   if (error) return <ModuleState title="تعذر تحميل مسارات التعلم." error={error} />;
   if (!courses.length) return <ModuleState title="لم تتم فهرسة أي دورة بعد." empty />;
   const trackForCourse = selectedCourseId ? tracks.find(track => track.courses?.some((course: any) => course.id === selectedCourseId)) : undefined;
-  return <section className="module-stack"><div className="module-toolbar"><div className="search-box"><Search size={17} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="ابحث في المسارات..." /></div><span className="result-count">{courses.length} NODES FOUND</span></div><div className="learning-banner panel-card"><div><div className="section-tag">// CAREER ROADMAPS</div><h2>{roadmaps[0]?.title ?? "Build your operator path."}</h2><p>اضغط على أي دورة لمشاهدة roadmap كامل للمسار، ومستويات الخبرة، ومتطلبات العبور.</p></div><div className="roadmap-steps">{roadmaps[0]?.courses?.length ? roadmaps[0].courses.slice(0, 3).map((course: any, index: number) => <span key={course.id} className={course.progress >= 100 ? "done" : index === 0 ? "active" : ""}>{`0${index + 1}`} / {course.title} <b>{course.progress}%</b></span>) : <span>01 / ROADMAP EMPTY</span>}</div></div><div className="course-cards">{courses.map((course, index) => <article className="course-card panel-card" key={course.id} onClick={() => setSelectedCourseId(course.id)} onKeyDown={event => event.key === "Enter" && setSelectedCourseId(course.id)} role="button" tabIndex={0}><div className={`course-art art-${(index % 3) + 1}`}><span className="art-code">{`0${index + 1}`}</span><div className="art-grid" /><div className="art-icon">{index === 0 ? <Code2 size={34} /> : index === 1 ? <Network size={34} /> : <BrainCircuit size={34} />}</div></div><div className="course-card-content"><div className="course-row-meta">{course.category} <span>•</span> {course.level}</div><h3>{course.title}</h3><p>{course.description}</p><div className="course-card-foot"><span><BookOpen size={14} /> {course.lessons} lessons</span><span><Activity size={14} /> {Math.round(course.durationMinutes / 60)}h</span><button className="small-button" onClick={event => { event.stopPropagation(); onStart(course); }}>START NODE <ArrowUpRight size={13} /></button></div></div></article>)}</div>{selectedCourseId !== null && <div className="modal-backdrop" onClick={() => setSelectedCourseId(null)}><div className="detail-modal panel-card" onClick={event => event.stopPropagation()}><button className="modal-close" onClick={() => setSelectedCourseId(null)}><X size={16} /></button><div className="section-tag">// COURSE NODE {courseDetail.isLoading ? "SYNCING" : "LOADED"}</div><h2>{courseDetail.data?.title ?? "Course detail"}</h2><p>{courseDetail.data?.description ?? "جارٍ تحميل تفاصيل عقدة التعلم..."}</p><div className="detail-meta"><span>{courseDetail.data?.category ?? "LEARNING"}</span><span>{courseDetail.data?.level ?? "FIELD"}</span><span>{courseDetail.data?.lessons ?? "--"} lessons</span></div><div className="modal-actions"><button className="primary-button" onClick={() => { const course = courseDetail.data ?? courses.find(item => item.id === selectedCourseId); if (course) onStart(course); }}><Zap size={15} /> ابدأ الدورة</button>{trackForCourse && <button className="small-button" onClick={() => { setPersonalRoadmap(""); setRoadmapTrackId(trackForCourse.id); }}>عرض Roadmap المسار <ArrowUpRight size={13} /></button>}</div></div></div>}{roadmapTrackId !== null && <div className="modal-backdrop" onClick={() => setRoadmapTrackId(null)}><div className="detail-modal panel-card roadmap-modal" onClick={event => event.stopPropagation()}><button className="modal-close" onClick={() => setRoadmapTrackId(null)}><X size={16} /></button><div className="section-tag">// FULL TRACK ROADMAP</div><h2>{roadmapDetail.data?.track.title ?? "جارٍ تحميل المسار"}</h2><p>خطة واضحة من المبتدئ حتى الاحتراف. أكمل متطلبات المستوى واختباره لتحصل على شهادته.</p><button className="secondary-button" disabled={personalizeRoadmap.isPending} onClick={() => personalizeRoadmap.mutate({ trackId: roadmapTrackId })}><Bot size={15} /> {personalizeRoadmap.isPending ? "NEXUS يجهز الخطة..." : "خصص الخطة مع NEXUS"}</button>{personalRoadmap && <div className="nexus-roadmap panel-card"><div className="section-tag">// NEXUS PERSONAL PLAN</div><Streamdown>{personalRoadmap}</Streamdown></div>}<div className="level-roadmap">{roadmapDetail.data?.levels.map((level: any) => <article key={level.id} className={`level-node ${level.active ? "active" : ""} ${level.completed ? "completed" : ""}`}><div className="level-node-head"><b>{String(level.orderIndex).padStart(2, "0")}</b><div><h3>{level.title}</h3><span>{level.certificateName}</span></div>{level.completed && <Check size={17} />}</div><p>{level.description}</p><div className="level-requirements"><strong>للتجاوز:</strong> {level.requirements}</div>{level.modules.map((module: any) => <div className="video-module" key={module.id}><div><strong>{module.title}</strong><p>{module.description}</p><small>{module.actionItems}</small></div>{module.videoUrl && <a href={module.videoUrl} target="_blank" rel="noreferrer" className="small-button"><Activity size={13} /> شاهد الفيديو</a>}</div>)}{level.quiz && <div className="level-quiz"><button className="small-button" onClick={() => setOpenLevelQuizId(openLevelQuizId === level.quiz.id ? null : level.quiz.id)}>{level.certificate ? "عرض شهادتك" : "اختبار المستوى"} <Check size={13} /></button>{openLevelQuizId === level.quiz.id && <div className="quiz-panel"><h3>{level.quiz.title}</h3>{level.quiz.questions.map((question: any, index: number) => <fieldset key={question.id}><legend>{index + 1}. {question.prompt}</legend>{JSON.parse(question.optionsJson).map((option: string, optionIndex: number) => <label key={option}><input type="radio" name={`level-${level.quiz.id}-${question.id}`} checked={(levelQuizAnswers[level.quiz.id] ?? [])[index] === optionIndex} onChange={() => setLevelQuizAnswers(current => ({ ...current, [level.quiz.id]: (() => { const next = [...(current[level.quiz.id] ?? [])]; next[index] = optionIndex; return next; })() }))} /> {option}</label>)}</fieldset>)}<button className="primary-button compact" disabled={submitLevelQuiz.isPending || (levelQuizAnswers[level.quiz.id] ?? []).length !== level.quiz.questions.length} onClick={() => submitLevelQuiz.mutate({ quizId: level.quiz.id, answers: levelQuizAnswers[level.quiz.id] ?? [] })}>إرسال الإجابات</button>{level.certificate && <div className="certificate-card"><Check size={18} /><div><strong>شهادة المستوى صادرة</strong><span>{level.certificate.certificateCode}</span></div></div>}</div>}</div>}</article>)}</div></div></div>}</section>;
+  return <section className="module-stack"><div className="module-toolbar"><div className="search-box"><Search size={17} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="ابحث في المسارات..." /></div><span className="result-count">{courses.length} NODES FOUND</span></div><div className="learning-banner panel-card"><div><div className="section-tag">// CAREER ROADMAPS</div><h2>{roadmaps[0]?.title ?? "Build your operator path."}</h2><p>اضغط على أي دورة لمشاهدة roadmap كامل للمسار، ومستويات الخبرة، ومتطلبات العبور.</p></div><div className="roadmap-steps">{roadmaps[0]?.courses?.length ? roadmaps[0].courses.slice(0, 3).map((course: any, index: number) => <span key={course.id} className={course.progress >= 100 ? "done" : index === 0 ? "active" : ""}>{`0${index + 1}`} / {course.title} <b>{course.progress}%</b></span>) : <span>01 / ROADMAP EMPTY</span>}</div></div><div className="course-cards">{courses.map((course, index) => <article className="course-card panel-card" key={course.id} onClick={() => setSelectedCourseId(course.id)} onKeyDown={event => event.key === "Enter" && setSelectedCourseId(course.id)} role="button" tabIndex={0}><div className={`course-art art-${(index % 3) + 1}`}><span className="art-code">{`0${index + 1}`}</span><span className="course-coming-soon-badge">COMING SOON</span><div className="art-grid" /><div className="art-icon">{index === 0 ? <Code2 size={34} /> : index === 1 ? <Network size={34} /> : <BrainCircuit size={34} />}</div></div><div className="course-card-content"><div className="course-row-meta">{course.category} <span>•</span> {course.level}</div><h3>{course.title}</h3><p>{course.description}</p><div className="course-card-foot"><span><BookOpen size={14} /> {course.lessons} lessons</span><span><Activity size={14} /> {Math.round(course.durationMinutes / 60)}h</span><button className="small-button" type="button" disabled={course.availabilityStatus === "coming-soon"} onClick={event => { event.stopPropagation(); if (course.availabilityStatus !== "coming-soon") onStart(course); }}>{course.availabilityStatus === "coming-soon" ? "COMING SOON" : <>START NODE <ArrowUpRight size={13} /></>}</button></div></div></article>)}</div>{selectedCourseId !== null && <div className="modal-backdrop" onClick={() => setSelectedCourseId(null)}><div className="detail-modal panel-card" onClick={event => event.stopPropagation()}><button className="modal-close" onClick={() => setSelectedCourseId(null)}><X size={16} /></button><div className="section-tag">// COURSE NODE {courseDetail.isLoading ? "SYNCING" : "LOADED"}</div><h2>{courseDetail.data?.title ?? "Course detail"}</h2><p>{courseDetail.data?.description ?? "جارٍ تحميل تفاصيل عقدة التعلم..."}</p><div className="detail-meta"><span className="course-coming-soon-pill">COMING SOON</span><span>{courseDetail.data?.category ?? "LEARNING"}</span><span>{courseDetail.data?.level ?? "FIELD"}</span><span>{courseDetail.data?.lessons ?? "--"} lessons</span></div><div className="modal-actions"><button className="primary-button" type="button" disabled={(courseDetail.data ?? courses.find(item => item.id === selectedCourseId))?.availabilityStatus === "coming-soon"} onClick={() => { const course = courseDetail.data ?? courses.find(item => item.id === selectedCourseId); if (course && course.availabilityStatus !== "coming-soon") onStart(course); }}>{(courseDetail.data ?? courses.find(item => item.id === selectedCourseId))?.availabilityStatus === "coming-soon" ? "COMING SOON" : <><Zap size={15} /> ابدأ الدورة</>}</button>{trackForCourse && <button className="small-button" onClick={() => { setPersonalRoadmap(""); setRoadmapTrackId(trackForCourse.id); }}>عرض Roadmap المسار <ArrowUpRight size={13} /></button>}</div></div></div>}{roadmapTrackId !== null && <div className="modal-backdrop" onClick={() => setRoadmapTrackId(null)}><div className="detail-modal panel-card roadmap-modal" onClick={event => event.stopPropagation()}><button className="modal-close" onClick={() => setRoadmapTrackId(null)}><X size={16} /></button><div className="section-tag">// FULL TRACK ROADMAP</div><h2>{roadmapDetail.data?.track.title ?? "جارٍ تحميل المسار"}</h2><p>خطة واضحة من المبتدئ حتى الاحتراف. أكمل متطلبات المستوى واختباره لتحصل على شهادته.</p><button className="secondary-button" disabled={personalizeRoadmap.isPending} onClick={() => personalizeRoadmap.mutate({ trackId: roadmapTrackId })}><Bot size={15} /> {personalizeRoadmap.isPending ? "NEXUS يجهز الخطة..." : "خصص الخطة مع NEXUS"}</button>{personalRoadmap && <div className="nexus-roadmap panel-card"><div className="section-tag">// NEXUS PERSONAL PLAN</div><Streamdown>{personalRoadmap}</Streamdown></div>}<div className="level-roadmap">{roadmapDetail.data?.levels.map((level: any) => <article key={level.id} className={`level-node ${level.active ? "active" : ""} ${level.completed ? "completed" : ""}`}><div className="level-node-head"><b>{String(level.orderIndex).padStart(2, "0")}</b><div><h3>{level.title}</h3><span>{level.certificateName}</span></div>{level.completed && <Check size={17} />}</div><p>{level.description}</p><div className="level-requirements"><strong>للتجاوز:</strong> {level.requirements}</div>{level.modules.map((module: any) => <div className="video-module" key={module.id}><div><strong>{module.title}</strong><p>{module.description}</p><small>{module.actionItems}</small></div>{module.videoUrl && <a href={module.videoUrl} target="_blank" rel="noreferrer" className="small-button"><Activity size={13} /> شاهد الفيديو</a>}</div>)}{level.quiz && <div className="level-quiz"><button className="small-button" onClick={() => setOpenLevelQuizId(openLevelQuizId === level.quiz.id ? null : level.quiz.id)}>{level.certificate ? "عرض شهادتك" : "اختبار المستوى"} <Check size={13} /></button>{openLevelQuizId === level.quiz.id && <div className="quiz-panel"><h3>{level.quiz.title}</h3>{level.quiz.questions.map((question: any, index: number) => <fieldset key={question.id}><legend>{index + 1}. {question.prompt}</legend>{JSON.parse(question.optionsJson).map((option: string, optionIndex: number) => <label key={option}><input type="radio" name={`level-${level.quiz.id}-${question.id}`} checked={(levelQuizAnswers[level.quiz.id] ?? [])[index] === optionIndex} onChange={() => setLevelQuizAnswers(current => ({ ...current, [level.quiz.id]: (() => { const next = [...(current[level.quiz.id] ?? [])]; next[index] = optionIndex; return next; })() }))} /> {option}</label>)}</fieldset>)}<button className="primary-button compact" disabled={submitLevelQuiz.isPending || (levelQuizAnswers[level.quiz.id] ?? []).length !== level.quiz.questions.length} onClick={() => submitLevelQuiz.mutate({ quizId: level.quiz.id, answers: levelQuizAnswers[level.quiz.id] ?? [] })}>إرسال الإجابات</button>{level.certificate && <div className="certificate-card"><Check size={18} /><div><strong>شهادة المستوى صادرة</strong><span>{level.certificate.certificateCode}</span></div></div>}</div>}</div>}</article>)}</div></div></div>}</section>;
 }
 
 function TracksView({ tracks, loading, error }: { tracks: any[]; loading: boolean; error?: unknown }) {
@@ -299,6 +284,229 @@ function MalwareView({ items, loading, error, search, setSearch, category, setCa
   return <section className="module-stack"><div className="module-toolbar"><div className="search-box wide"><Search size={17} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="ابحث باسم العائلة أو التقنية أو الوصف..." /></div><div className="filter-tabs"><Filter size={15} />{categories.map(value => <button key={value} className={category === value ? "active" : ""} onClick={() => setCategory(value)}>{value === "all" ? "الكل" : value}</button>)}</div><span className="result-count">{items.length} FAMILIES</span></div><div className="intel-banner panel-card"><div className="intel-glyph"><Bug size={28} /></div><div><div className="section-tag">// MALWARE INTELLIGENCE</div><h2>افهم السلوك قبل بناء الدفاع.</h2><p>مركز داخلي للعائلات الخبيثة والتقنيات المرتبطة بها، مخصص للبحث والتحليل والدفاع القانوني.</p></div></div>{items.length ? <div className="tools-grid">{items.map(item => <article className="tool-card panel-card" key={item.id} onClick={() => setSelectedId(item.id)} role="button" tabIndex={0} onKeyDown={event => event.key === "Enter" && setSelectedId(item.id)}><div className="tool-card-top"><div className="tool-icon tool-1"><Bug size={20} /></div><span className={`severity-pill ${item.severity}`}>{item.severity}</span></div><h3>{item.name}</h3><p>{item.description}</p><div className="command-line"><span>MITRE</span>{item.mitreTechniques}</div><div className="detail-meta"><span>TARGETS: {item.targets}</span></div><button className="tool-link" onClick={event => { event.stopPropagation(); setSelectedId(item.id); }}>عرض التفاصيل <ArrowUpRight size={13} /></button></article>)}</div> : <ModuleState title="لم تُفهرس عائلات Malware بهذه الفلاتر بعد." empty />}{selectedId !== null && <div className="modal-backdrop" onClick={() => setSelectedId(null)}><div className="detail-modal panel-card" onClick={event => event.stopPropagation()}><button className="modal-close" onClick={() => setSelectedId(null)}><X size={16} /></button><div className="section-tag">// MALWARE PROFILE</div><h2>{detail.data?.name ?? "جارٍ التحميل"}</h2><p>{detail.data?.description}</p><div className="detail-meta"><span>{detail.data?.category}</span><span>{detail.data?.severity}</span><span>{detail.data?.targets}</span></div><div className="command-line"><span>MITRE TECHNIQUES</span>{detail.data?.mitreTechniques}</div>{safeExternalUrl(detail.data?.sourceUrl) && <a href={safeExternalUrl(detail.data?.sourceUrl)} target="_blank" rel="noopener noreferrer" className="primary-button">فتح المرجع <ArrowUpRight size={14} /></a>}</div></div>}</section>;
 }
 
+function CtfView({ isAuthenticated, onSignIn }: { isAuthenticated: boolean; onSignIn: () => void }) {
+  const events = trpc.ctf.events.useQuery();
+  const [eventId, setEventId] = useState<number | null>(null);
+  const [challengeId, setChallengeId] = useState<number | null>(null);
+  const [flag, setFlag] = useState("");
+  const event = trpc.ctf.event.useQuery({ eventId: eventId ?? 0 }, { enabled: eventId !== null });
+  const submit = trpc.ctf.submit.useMutation({
+    onSuccess: result => {
+      setFlag("");
+      toast[result.correct ? "success" : "error"](result.correct ? `Correct flag · +${result.awardedXp} XP` : "Flag not accepted. Check the challenge and try again.");
+      void event.refetch();
+    },
+    onError: error => toast.error(error.message || "Unable to submit this flag."),
+  });
+
+  useEffect(() => {
+    if (eventId === null && events.data?.length) setEventId(events.data[0].id);
+  }, [eventId, events.data]);
+
+  const challenges = event.data?.challenges ?? [];
+  const activeChallenge = challenges.find(item => item.challenge.id === challengeId) ?? challenges[0] ?? null;
+  useEffect(() => {
+    if (activeChallenge && challengeId !== activeChallenge.challenge.id) setChallengeId(activeChallenge.challenge.id);
+  }, [activeChallenge, challengeId]);
+
+  if (events.isLoading) return <ModuleState title="جارٍ تحميل فعاليات CTF..." />;
+  if (events.error) return <ModuleState title="تعذر تحميل فعاليات CTF." error={events.error} />;
+  if (!events.data?.length) return <section className="cj-ctf-page module-stack"><div className="learning-banner panel-card"><div><div className="section-tag">// CYBERJOCX CTF ARENA</div><h2>ميدان التحديات</h2><p>لا توجد فعالية CTF نشطة حاليًا. ستظهر التحديات هنا عند تفعيل فعالية من الإدارة.</p></div></div><ModuleState title="لا توجد فعاليات نشطة حاليًا." empty /></section>;
+
+  return (
+    <section className="cj-ctf-page module-stack">
+      <header className="cj-ctf-hero panel-card">
+        <div><div className="section-tag">// THINK · EXPLOIT · GET FLAGS</div><h2>{event.data?.event.title ?? events.data.find(item => item.id === eventId)?.title ?? "CTF Arena"}</h2><p>{event.data?.event.description ?? "اختر فعالية ثم نفّذ التحديات وسجّل الأعلام الصحيحة لجمع النقاط."}</p></div>
+        <div className="cj-ctf-event-select"><label>ACTIVE EVENT</label><select value={eventId ?? ""} onChange={value => { setEventId(Number(value)); setChallengeId(null); }}><option value="" disabled>Choose event</option>{events.data.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></div>
+      </header>
+
+      <div className="cj-ctf-layout">
+        <aside className="cj-ctf-challenge-list panel-card">
+          <div className="cj-ctf-card-heading"><Terminal size={18} /><strong>Challenge sequence</strong><span>{challenges.length} tasks</span></div>
+          {challenges.map((item,index) => (
+            <button type="button" key={item.challenge.id} className={activeChallenge?.challenge.id===item.challenge.id?"is-active":""} onClick={() => {setChallengeId(item.challenge.id);setFlag("");}}>
+              <b>{String(index+1).padStart(2,"0")}</b><span><strong>{item.challenge.title}</strong><small>{item.category} · {item.challenge.difficulty}</small></span><em>{item.challenge.points} XP</em>
+            </button>
+          ))}
+        </aside>
+
+        <div className="cj-ctf-task panel-card">
+          {event.isLoading ? <ModuleState title="جارٍ تحميل تفاصيل الفعالية..." /> : event.error ? <ModuleState title="تعذر تحميل التحديات." error={event.error} /> : activeChallenge ? (
+            <>
+              <div className="cj-ctf-task-head"><div><span>CHALLENGE {String(challenges.findIndex(item=>item.challenge.id===activeChallenge.challenge.id)+1).padStart(2,"0")}</span><h3>{activeChallenge.challenge.title}</h3></div><span className={`cj-ctf-difficulty ${activeChallenge.challenge.difficulty}`}>{activeChallenge.challenge.difficulty}</span></div>
+              <div className="cj-ctf-objective"><strong><Target size={16}/> Objective</strong><p>{activeChallenge.challenge.description}</p></div>
+              <div className="cj-ctf-meta"><span>{activeChallenge.category}</span><span>{activeChallenge.challenge.points.toLocaleString()} XP</span><span>{challenges.length} challenges in event</span></div>
+              <form className="cj-ctf-submit" onSubmit={event => {event.preventDefault();if(!isAuthenticated){onSignIn();return;}if(flag.trim())submit.mutate({eventId:eventId!,challengeId:activeChallenge.challenge.id,flag:flag.trim()});}}>
+                <label htmlFor="ctf-flag-input">Submit Flag</label>
+                <div><input id="ctf-flag-input" value={flag} onChange={event=>setFlag(event.target.value)} placeholder="HTB{...}" autoComplete="off" spellCheck={false}/><button type="submit" disabled={!flag.trim()||submit.isPending}>{!isAuthenticated?"Sign in":"Submit"} <Send size={14}/></button></div>
+                <small>يتم التحقق من العلم على الخادم. لا تعرض الواجهة الإجابة الصحيحة أو hash التخزين.</small>
+              </form>
+            </>
+          ) : <ModuleState title="لا توجد تحديات مرتبطة بهذه الفعالية." empty />}
+        </div>
+
+        <aside className="cj-ctf-side">
+          <section className="panel-card cj-ctf-info"><div className="cj-ctf-card-heading"><ShieldCheck size={18}/><strong>Environment info</strong></div><p>لا يتم عرض عنوان IP أو تفاصيل جهاز افتراضي إلا بعد توفير بيئة فعلية مرتبطة بالتحدي.</p><div><span>Event</span><b>{event.data?.event.title ?? "Loading..."}</b></div><div><span>Challenge</span><b>{activeChallenge?.challenge.difficulty ?? "—"}</b></div></section>
+          <section className="panel-card cj-ctf-terminal"><div className="cj-ctf-card-heading"><Terminal size={18}/><strong>Practice terminal</strong></div><div className="cj-ctf-terminal-body"><span>cyberjocx@operator:~$</span><p>Terminal access becomes available when a provisioned lab is linked to this challenge.</p><i>Environment not attached</i></div></section>
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+function LabsView({ isAuthenticated, onSignIn }: { isAuthenticated: boolean; onSignIn: () => void }) {
+  const templates = trpc.labs.templates.useQuery();
+  const instances = trpc.labs.myInstances.useQuery(undefined, { enabled: isAuthenticated, refetchInterval: isAuthenticated ? 15_000 : false });
+  const [startingTemplate, setStartingTemplate] = useState<number | null>(null);
+  const start = trpc.labs.start.useMutation({
+    onSuccess: () => { setStartingTemplate(null); void instances.refetch(); toast.success("تم إنشاء طلب البيئة. ستظهر حالتها هنا عند جاهزيتها."); },
+    onError: error => { setStartingTemplate(null); toast.error(error.message || "تعذر بدء البيئة."); },
+  });
+  const submitFlag = trpc.labs.submitFlag.useMutation({
+    onSuccess: result => { toast[result.correct ? "success" : "error"](result.correct ? "تم تأكيد العلم." : "العلم غير صحيح."); void instances.refetch(); },
+    onError: error => toast.error(error.message || "تعذر التحقق من العلم."),
+  });
+  const [flags,setFlags]=useState<Record<number,string>>({});
+  const safeStatus=(status:string)=>status.toLowerCase().replaceAll("_"," ");
+
+  return (
+    <section className="cj-labs-page module-stack">
+      <header className="learning-banner panel-card"><div><div className="section-tag">// SAFE VIRTUAL PRACTICE ENVIRONMENTS</div><h2>Practice Labs</h2><p>ابدأ بيئة تدريب فعلية، تابع حالة التشغيل، وأرسل العلم عند تجهيز المختبر. لا نعرض عنوان اتصال تجريبي أو غير مرتبط ببيئتك.</p></div><div className="roadmap-steps"><span className="active">01 / REQUEST</span><span>02 / PROVISION</span><span>03 / PRACTICE</span></div></header>
+      {!isAuthenticated && <div className="system-alert"><LockKeyhole size={15}/><span>سجّل الدخول لبدء بيئة تدريب وتتبع جلساتك.</span><button className="small-button" onClick={onSignIn}>Sign in</button></div>}
+      {templates.isLoading ? <ModuleState title="جارٍ تحميل قوالب المختبرات..." /> : templates.error ? <ModuleState title="تعذر تحميل قوالب المختبرات." error={templates.error}/> : !templates.data?.length ? <ModuleState title="لم يتم تفعيل أي قالب مختبر حتى الآن." empty/> : (
+        <div className="cj-labs-grid">{templates.data.map(template=>(
+          <article className="cj-lab-template panel-card" key={template.id}>
+            <div className="cj-lab-template-top"><span><Boxes size={23}/></span><em>{template.cpuLimit} vCPU</em></div>
+            <div className="section-tag">// {template.slug}</div><h3>{template.name}</h3><p>{template.description}</p>
+            <div className="cj-lab-specs"><span>{template.memoryMb} MB RAM</span><span>{template.diskMb} MB Disk</span><span>{Math.round(template.ttlSeconds/60)} min TTL</span></div>
+            <button className="primary-button compact" type="button" disabled={!isAuthenticated||start.isPending} onClick={()=>{if(!isAuthenticated){onSignIn();return;}setStartingTemplate(template.id);start.mutate({templateId:template.id});}}>{startingTemplate===template.id&&start.isPending?"Requesting...":"Launch environment"} <ArrowUpRight size={14}/></button>
+          </article>
+        ))}</div>
+      )}
+      <section className="cj-lab-sessions panel-card">
+        <div className="card-head"><div><div className="section-tag">// YOUR ACTIVE SESSIONS</div><h3>My lab instances</h3></div><span>{instances.data?.length??0} sessions</span></div>
+        {!isAuthenticated ? <p className="empty-state">سجّل الدخول لعرض جلساتك.</p> : instances.isLoading ? <ModuleState title="جارٍ تحميل جلسات المختبر..." /> : !instances.data?.length ? <ModuleState title="لا توجد جلسات مختبر بعد." empty/> : instances.data.map(instance=>(
+          <div className="cj-lab-session" key={instance.id}>
+            <div><strong>{instance.templateName}</strong><small>{instance.instanceId.slice(0,12)} · expires {new Date(instance.expiresAt).toLocaleString()}</small></div>
+            <span className={`cj-lab-status status-${instance.status.toLowerCase()}`}>{safeStatus(instance.status)}</span>
+            {safeExternalUrl(instance.targetUrl) ? <a className="small-button" href={safeExternalUrl(instance.targetUrl)} target="_blank" rel="noreferrer">Open environment <ArrowUpRight size={13}/></a> : <span className="cj-lab-pending">Environment endpoint pending</span>}
+            {instance.status==="READY"&&<form className="cj-lab-flag" onSubmit={event=>{event.preventDefault();const value=flags[instance.id]?.trim();if(value)submitFlag.mutate({instanceId:instance.id,flag:value});}}><input value={flags[instance.id]??""} onChange={event=>setFlags(old=>({...old,[instance.id]:event.target.value}))} placeholder="HTB{...}" autoComplete="off"/><button type="submit" disabled={!flags[instance.id]?.trim()||submitFlag.isPending}>Verify flag</button></form>}
+          </div>
+        ))}
+      </section>
+    </section>
+  );
+}
+
+function InstructorView() {
+  const dashboard = trpc.instructor.dashboard.useQuery(undefined, { refetchInterval: 30_000 });
+  const [course, setCourse] = useState({ title: "", slug: "", description: "", category: "Cybersecurity", level: "beginner" as "beginner"|"intermediate"|"advanced", lessons: "8", durationMinutes: "240" });
+  const [requestingCourseId, setRequestingCourseId] = useState<number | null>(null);
+  const [changeDescription, setChangeDescription] = useState("");
+  const submitCourse = trpc.instructor.submitCourse.useMutation({
+    onSuccess: () => { setCourse({ title:"",slug:"",description:"",category:"Cybersecurity",level:"beginner",lessons:"8",durationMinutes:"240" }); void dashboard.refetch(); toast.success("تم إرسال الدورة كمسودة لمراجعة المالك قبل النشر."); },
+    onError: error => toast.error(error.message || "تعذر إرسال الدورة."),
+  });
+  const requestUpdate = trpc.instructor.requestCourseUpdate.useMutation({
+    onSuccess: () => { setRequestingCourseId(null); setChangeDescription(""); void dashboard.refetch(); toast.success("تم إرسال طلب التعديل للموافقة."); },
+    onError: error => toast.error(error.message || "تعذر إرسال طلب التعديل."),
+  });
+  const data = dashboard.data;
+  const totals = data?.totals ?? { courses:0,published:0,students:0,averageProgress:0 };
+
+  return (
+    <section className="cj-instructor-page module-stack">
+      <header className="admin-hero panel-card"><div className="section-tag">// INSTRUCTOR WORKSPACE</div><h2>Teach. Track. Improve.</h2><p>تابع طلابك ودوراتك، وقدّم المحتوى للمراجعة. نشر الدورة وتعديل المحتوى المنشور يظلان تحت موافقة مالك المنصة.</p></header>
+      {dashboard.error && <ModuleState title="تعذر تحميل مساحة المدرّس." error={dashboard.error}/>}
+      <div className="admin-metrics">
+        <div className="admin-metric panel-card"><BookOpen size={18}/><strong>{totals.courses}</strong><span>MY COURSES</span></div>
+        <div className="admin-metric panel-card"><Check size={18}/><strong>{totals.published}</strong><span>PUBLISHED</span></div>
+        <div className="admin-metric panel-card"><Users size={18}/><strong>{totals.students}</strong><span>UNIQUE STUDENTS</span></div>
+        <div className="admin-metric panel-card"><Activity size={18}/><strong>{totals.averageProgress}%</strong><span>AVERAGE PROGRESS</span></div>
+      </div>
+
+      <section className="admin-editor panel-card">
+        <div className="card-head"><div><div className="section-tag">// SUBMIT NEW COURSE</div><h3>Create a draft for owner review</h3></div><span className="status-chip">NOT PUBLISHED</span></div>
+        <div className="admin-form-grid">
+          <label className="admin-field"><span>COURSE TITLE</span><input value={course.title} onChange={event=>setCourse(old=>({...old,title:event.target.value}))} placeholder="Web Application Security"/></label>
+          <label className="admin-field"><span>SLUG</span><input value={course.slug} onChange={event=>setCourse(old=>({...old,slug:event.target.value.toLowerCase().replace(/[^a-z0-9-]+/g,"-")}))} placeholder="web-application-security"/></label>
+          <label className="admin-field"><span>CATEGORY</span><input value={course.category} onChange={event=>setCourse(old=>({...old,category:event.target.value}))} placeholder="Cybersecurity"/></label>
+          <label className="admin-field"><span>LEVEL</span><select value={course.level} onChange={event=>setCourse(old=>({...old,level:event.target.value as typeof old.level}))}><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></label>
+          <label className="admin-field"><span>LESSONS</span><input type="number" min="1" max="500" value={course.lessons} onChange={event=>setCourse(old=>({...old,lessons:event.target.value}))}/></label>
+          <label className="admin-field"><span>DURATION (MINUTES)</span><input type="number" min="1" value={course.durationMinutes} onChange={event=>setCourse(old=>({...old,durationMinutes:event.target.value}))}/></label>
+          <label className="admin-field full"><span>DESCRIPTION (AT LEAST 20 CHARACTERS)</span><textarea value={course.description} onChange={event=>setCourse(old=>({...old,description:event.target.value}))} placeholder="Describe the learning outcomes, scope, and practical work."/></label>
+        </div>
+        <button className="primary-button" type="button" disabled={submitCourse.isPending||!course.title.trim()||!course.slug.trim()||course.description.trim().length<20} onClick={()=>submitCourse.mutate({...course,lessons:Number(course.lessons),durationMinutes:Number(course.durationMinutes)})}><Send size={15}/> Submit for approval</button>
+      </section>
+
+      <section className="admin-table panel-card">
+        <div className="card-head"><div><div className="section-tag">// YOUR COURSES</div><h3>Course performance</h3></div><span>{totals.courses} courses</span></div>
+        {dashboard.isLoading ? <ModuleState title="جارٍ تحميل دوراتك..." /> : !data?.courses.length ? <ModuleState title="لم ترسل أي دورة بعد." empty/> : data.courses.map(item=>(
+          <article className="cj-instructor-course-row" key={item.id}>
+            <div><strong>{item.title}</strong><small>{item.category} · {item.level} · {item.lessons} lessons</small></div>
+            <span className={item.isPublished?"status-published":"status-draft"}>{item.isPublished?"Published":"Draft / Pending"}</span>
+            {item.isPublished&&<button className="small-button" type="button" onClick={()=>{setRequestingCourseId(item.id);setChangeDescription("");}}>Request update</button>}
+          </article>
+        ))}
+      </section>
+
+      {requestingCourseId!==null&&<section className="admin-editor panel-card">
+        <div className="card-head"><div><div className="section-tag">// OWNER APPROVAL REQUIRED</div><h3>Request course changes</h3></div><button className="small-button" type="button" onClick={()=>setRequestingCourseId(null)}>Cancel</button></div>
+        <label className="admin-field full"><span>PROPOSED DESCRIPTION</span><textarea value={changeDescription} onChange={event=>setChangeDescription(event.target.value)} placeholder="اكتب الوصف الجديد للدورة أو التغييرات المطلوبة..."/></label>
+        <button className="primary-button" disabled={requestUpdate.isPending||changeDescription.trim().length<20} onClick={()=>requestUpdate.mutate({courseId:requestingCourseId,changes:{description:changeDescription.trim()}})}><Send size={15}/> Send update request</button>
+      </section>}
+
+      <section className="admin-table panel-card">
+        <div className="card-head"><div><div className="section-tag">// STUDENT PERFORMANCE</div><h3>Progress and activity</h3></div><span>{data?.students.length??0} progress records</span></div>
+        {!data?.students.length ? <ModuleState title="لا توجد سجلات تقدم للطلاب في دوراتك حتى الآن." empty/> : data.students.map((student,index)=>(
+          <div className="cj-instructor-student-row" key={`${student.courseId}-${student.userId}-${index}`}>
+            <div><strong>{student.studentName||"CyberJocx learner"}</strong><small>{student.studentEmail||"Email unavailable"} · {data.courses.find(course=>course.id===student.courseId)?.title??"Course"}</small></div>
+            <span>{student.progress}%</span><b>{student.completed?"Completed":"In progress"}</b>
+          </div>
+        ))}
+      </section>
+
+      <section className="cj-instructor-bottom-grid">
+        <div className="panel-card instructor-info-card"><div className="section-tag">// COURSE CHANGE REQUESTS</div><h3>Review status</h3>{data?.requests.length?data.requests.map(request=><div className="cj-instructor-request" key={request.id}><strong>{request.courseTitle}</strong><span>{request.status}</span><small>{new Date(request.requestedAt).toLocaleString()}</small>{request.reviewNote&&<p>{request.reviewNote}</p>}</div>):<p>No update requests yet.</p>}</div>
+        <div className="panel-card instructor-info-card"><div className="section-tag">// EARNINGS & GROWTH</div><h3>Financial reporting</h3><p>عدد الطلاب ومتوسط التقدم محسوبان من سجلات المنصة الحالية. الأرباح والمدفوعات غير متاحة بعد لأن بوابة الدفع وجدول المعاملات غير مربوطين.</p><span className="instructor-unavailable">Earnings not connected</span></div>
+      </section>
+    </section>
+  );
+}
+
+function AdminWorkflowPanel() {
+  const queue = trpc.admin.courseReviewQueue.useQuery(undefined,{refetchInterval:30_000});
+  const accounts = trpc.admin.users.useQuery(undefined,{refetchInterval:60_000});
+  const audit = trpc.admin.audit.useQuery(undefined,{refetchInterval:60_000});
+  const publish = trpc.admin.publishCourse.useMutation({onSuccess:()=>{void queue.refetch();toast.success("تم نشر الدورة وإرسال إشعار لكل المستخدمين.");},onError:error=>toast.error(error.message)});
+  const review = trpc.admin.reviewCourseChange.useMutation({onSuccess:()=>{void queue.refetch();void audit.refetch();toast.success("تم تسجيل قرار المراجعة.");},onError:error=>toast.error(error.message)});
+  const setRole = trpc.admin.setUserRole.useMutation({onSuccess:()=>{void accounts.refetch();void audit.refetch();toast.success("تم تحديث صلاحية الحساب.");},onError:error=>toast.error(error.message)});
+
+  return (
+    <section className="cj-admin-workflow module-stack">
+      <section className="admin-table panel-card">
+        <div className="card-head"><div><div className="section-tag">// OWNER APPROVAL QUEUE</div><h3>Course publication and change requests</h3></div><span>{(queue.data?.drafts.length??0)+(queue.data?.changes.length??0)} pending</span></div>
+        {queue.error ? <ModuleState title="قائمة الموافقات متاحة لحساب مالك المنصة فقط." error={queue.error}/> : queue.isLoading ? <ModuleState title="جارٍ تحميل قائمة الموافقات..."/> : (
+          <>
+            <div className="cj-admin-queue-group"><h4>Draft courses awaiting publication</h4>{queue.data?.drafts.length?queue.data.drafts.map(item=><div className="cj-admin-review-row" key={item.id}><div><strong>{item.title}</strong><small>{item.category} · {item.level} · {item.instructor}</small></div><button className="primary-button compact" disabled={publish.isPending} onClick={()=>publish.mutate({id:item.id})}>Approve & publish</button></div>):<p>No draft courses waiting.</p>}</div>
+            <div className="cj-admin-queue-group"><h4>Instructor update requests</h4>{queue.data?.changes.length?queue.data.changes.map(item=><div className="cj-admin-review-row is-change" key={item.id}><div><strong>{item.courseTitle}</strong><small>{item.instructorName||item.instructorEmail||"Instructor"} · {new Date(item.requestedAt).toLocaleString()}</small><pre>{item.changesJson}</pre></div><div className="cj-admin-review-actions"><button className="primary-button compact" disabled={review.isPending} onClick={()=>review.mutate({requestId:item.id,decision:"approve"})}>Approve</button><button className="small-button" disabled={review.isPending} onClick={()=>review.mutate({requestId:item.id,decision:"reject",note:"Please revise the requested change and resubmit."})}>Reject</button></div></div>):<p>No pending update requests.</p>}</div>
+          </>
+        )}
+      </section>
+
+      <section className="admin-table panel-card">
+        <div className="card-head"><div><div className="section-tag">// ACCESS MANAGEMENT</div><h3>Instructor accounts</h3></div><span>Owner only</span></div>
+        {accounts.error ? <ModuleState title="إدارة الأدوار متاحة لحساب المالك فقط." error={accounts.error}/> : accounts.data?.map(account=><div className="cj-admin-review-row" key={account.id}><div><strong>{account.name||"Unnamed account"}</strong><small>{account.email||`User #${account.id}`} · {account.role}</small></div>{account.role==="admin"?<span className="status-published">Platform admin</span>:<button className="small-button" disabled={setRole.isPending} onClick={()=>setRole.mutate({userId:account.id,role:account.role==="instructor"?"user":"instructor"})}>{account.role==="instructor"?"Remove instructor":"Grant instructor"}</button>}</div>)}
+      </section>
+
+      <section className="admin-table panel-card">
+        <div className="card-head"><div><div className="section-tag">// AUDIT LOG</div><h3>Recorded owner actions</h3></div><span>{audit.data?.length??0} entries</span></div>
+        {audit.error ? <p>Audit log is available to the configured owner account only.</p> : audit.data?.length ? audit.data.map(item=><div className="audit-row" key={item.id}><span>#{item.id}</span><strong>{item.action} · {item.resourceType} #{item.resourceId??"—"}</strong><em>{new Date(item.createdAt).toLocaleString()}</em><Check size={15}/></div>) : <p>No owner actions have been recorded yet.</p>}
+      </section>
+    </section>
+  );
+}
+
 function AdminView() {
   const [mode, setMode] = useState<"course" | "tool" | "cve">("course");
   const [form, setForm] = useState<Record<string, string>>({});
@@ -318,5 +526,5 @@ function AdminView() {
   };
   const field = (key: string, label: string, placeholder: string) => <label className="admin-field"><span>{label}</span><input value={form[key] ?? ""} onChange={event => update(key, event.target.value)} placeholder={placeholder} /></label>;
   const stats = adminStats.data ?? { users: 0, courses: 0, cves: 0, tools: 0, posts: 0 };
-  return <section className="admin-layout"><div className="admin-hero panel-card"><div className="section-tag">// ROOT ACCESS GRANTED</div><h2>Control the knowledge layer.</h2><p>إدارة المحتوى ومراجعة نبض المنصة من نقطة تحكم واحدة.</p><div className="admin-actions"><button className={`primary-button ${mode === "course" ? "" : "secondary-button"}`} onClick={() => setMode("course")}><BookOpen size={16} /> COURSE NODE</button><button className={`primary-button ${mode === "tool" ? "" : "secondary-button"}`} onClick={() => setMode("tool")}><Wrench size={16} /> TOOL NODE</button><button className={`primary-button ${mode === "cve" ? "" : "secondary-button"}`} onClick={() => setMode("cve")}><Bug size={16} /> CVE SIGNAL</button></div></div><div className="admin-metrics"><div className="admin-metric panel-card"><Users size={18} /><strong>{stats.users.toLocaleString()}</strong><span>REGISTERED OPERATORS</span></div><div className="admin-metric panel-card"><BookOpen size={18} /><strong>{stats.courses}</strong><span>COURSE NODES</span></div><div className="admin-metric panel-card"><Bug size={18} /><strong>{stats.cves.toLocaleString()}</strong><span>CVE SIGNALS</span></div><div className="admin-metric panel-card"><Wrench size={18} /><strong>{stats.tools}</strong><span>TOOL REPOSITORY</span></div></div><div className="admin-editor panel-card"><div className="card-head"><div><div className="section-tag">// WRITE TO KNOWLEDGE LAYER</div><h3>Publish {mode === "course" ? "course" : mode === "tool" ? "tool" : "CVE"} node</h3></div><span className="status-chip"><span className="pulse-dot" /> VALIDATED</span></div><div className="admin-form-grid">{mode === "course" && <>{field("title", "TITLE", "Threat Hunting Protocol")} {field("slug", "SLUG", "threat-hunting-protocol")} {field("category", "CATEGORY", "THREAT INTEL")} {field("instructor", "INSTRUCTOR", "NEXUS LAB")} {field("lessons", "LESSONS", "12")} {field("durationMinutes", "DURATION MINUTES", "360")}</>}{mode === "tool" && <>{field("name", "NAME", "Nmap")} {field("category", "CATEGORY", "RECON")} {field("commands", "COMMANDS", "nmap -sV --script safe target")} {field("downloadUrl", "REPOSITORY URL", "https://...")}</>}{mode === "cve" && <>{field("cveNumber", "CVE NUMBER", "CVE-2026-0000")} {field("title", "TITLE", "Critical signal title")} {field("severity", "SEVERITY", "critical")} {field("cvss", "CVSS", "9.8")} {field("affected", "AFFECTED PRODUCT", "Product / version")} {field("publishedDate", "PUBLISHED DATE", "2026-08-23")}</>}<label className="admin-field full"><span>DESCRIPTION</span><textarea value={form.description ?? ""} onChange={event => update("description", event.target.value)} placeholder="اكتب ملخصًا دقيقًا وقابلًا للتدقيق..." /></label></div><button className="primary-button" onClick={submit} disabled={createCourse.isPending || createTool.isPending || createCve.isPending}><Send size={15} /> PUBLISH TO MATRIX</button></div><div className="admin-table panel-card"><div className="card-head"><div><div className="section-tag">// CONTENT REGISTRY</div><h3>Current knowledge nodes</h3></div><span className="status-chip"><span className="pulse-dot" /> {adminContent.isLoading ? "SYNCING" : "LIVE"}</span></div><div className="registry-grid"><div><span className="registry-label">COURSES</span>{!adminContent.data?.courses.length && <div className="registry-empty">NO COURSE NODES</div>}{adminContent.data?.courses.map(item => <div className="registry-row" key={item.id}><strong>{item.title}</strong><span>{item.category}</span><button onClick={() => deleteCourse.mutate({ id: item.id })}><X size={13} /></button></div>)}</div><div><span className="registry-label">TOOLS</span>{adminContent.data?.tools.map(item => <div className="registry-row" key={item.id}><strong>{item.name}</strong><span>{item.category}</span><button onClick={() => deleteTool.mutate({ id: item.id })}><X size={13} /></button></div>)}</div><div><span className="registry-label">CVE SIGNALS</span>{adminContent.data?.cves.map(item => <div className="registry-row" key={item.id}><strong>{item.cveNumber}</strong><span>{item.severity}</span><button onClick={() => deleteCve.mutate({ id: item.id })}><X size={13} /></button></div>)}</div></div></div><div className="admin-table panel-card"><div className="card-head"><div><div className="section-tag">// RECENT ADMIN ACTIVITY</div><h3>Audit stream</h3></div><span className="status-chip"><span className="pulse-dot" /> MONITORING</span></div>{["Knowledge layer synchronized", "High-risk CVE notification pipeline ready", "Tool repository link verified", "Community signal review queue updated"].map((item, index) => <div className="audit-row" key={item}><span>0{index + 1}</span><strong>{item}</strong><em>{index + 2}m ago</em><Check size={15} /></div>)}</div></section>;
+  return <section className="admin-layout"><div className="admin-hero panel-card"><div className="section-tag">// ROOT ACCESS GRANTED</div><h2>Control the knowledge layer.</h2><p>إدارة المحتوى ومراجعة نبض المنصة من نقطة تحكم واحدة.</p><div className="admin-actions"><button className={`primary-button ${mode === "course" ? "" : "secondary-button"}`} onClick={() => setMode("course")}><BookOpen size={16} /> COURSE NODE</button><button className={`primary-button ${mode === "tool" ? "" : "secondary-button"}`} onClick={() => setMode("tool")}><Wrench size={16} /> TOOL NODE</button><button className={`primary-button ${mode === "cve" ? "" : "secondary-button"}`} onClick={() => setMode("cve")}><Bug size={16} /> CVE SIGNAL</button></div></div><div className="admin-metrics"><div className="admin-metric panel-card"><Users size={18} /><strong>{stats.users.toLocaleString()}</strong><span>REGISTERED OPERATORS</span></div><div className="admin-metric panel-card"><BookOpen size={18} /><strong>{stats.courses}</strong><span>COURSE NODES</span></div><div className="admin-metric panel-card"><Bug size={18} /><strong>{stats.cves.toLocaleString()}</strong><span>CVE SIGNALS</span></div><div className="admin-metric panel-card"><Wrench size={18} /><strong>{stats.tools}</strong><span>TOOL REPOSITORY</span></div></div><div className="admin-editor panel-card"><div className="card-head"><div><div className="section-tag">// WRITE TO KNOWLEDGE LAYER</div><h3>Publish {mode === "course" ? "course" : mode === "tool" ? "tool" : "CVE"} node</h3></div><span className="status-chip"><span className="pulse-dot" /> VALIDATED</span></div><div className="admin-form-grid">{mode === "course" && <>{field("title", "TITLE", "Threat Hunting Protocol")} {field("slug", "SLUG", "threat-hunting-protocol")} {field("category", "CATEGORY", "THREAT INTEL")} {field("instructor", "INSTRUCTOR", "NEXUS LAB")} {field("lessons", "LESSONS", "12")} {field("durationMinutes", "DURATION MINUTES", "360")}</>}{mode === "tool" && <>{field("name", "NAME", "Nmap")} {field("category", "CATEGORY", "RECON")} {field("commands", "COMMANDS", "nmap -sV --script safe target")} {field("downloadUrl", "REPOSITORY URL", "https://...")}</>}{mode === "cve" && <>{field("cveNumber", "CVE NUMBER", "CVE-2026-0000")} {field("title", "TITLE", "Critical signal title")} {field("severity", "SEVERITY", "critical")} {field("cvss", "CVSS", "9.8")} {field("affected", "AFFECTED PRODUCT", "Product / version")} {field("publishedDate", "PUBLISHED DATE", "2026-08-23")}</>}<label className="admin-field full"><span>DESCRIPTION</span><textarea value={form.description ?? ""} onChange={event => update("description", event.target.value)} placeholder="اكتب ملخصًا دقيقًا وقابلًا للتدقيق..." /></label></div><button className="primary-button" onClick={submit} disabled={createCourse.isPending || createTool.isPending || createCve.isPending}><Send size={15} /> PUBLISH TO MATRIX</button></div><div className="admin-table panel-card"><div className="card-head"><div><div className="section-tag">// CONTENT REGISTRY</div><h3>Current knowledge nodes</h3></div><span className="status-chip"><span className="pulse-dot" /> {adminContent.isLoading ? "SYNCING" : "LIVE"}</span></div><div className="registry-grid"><div><span className="registry-label">COURSES</span>{!adminContent.data?.courses.length && <div className="registry-empty">NO COURSE NODES</div>}{adminContent.data?.courses.map(item => <div className="registry-row" key={item.id}><strong>{item.title}</strong><span>{item.category}</span><button onClick={() => deleteCourse.mutate({ id: item.id })}><X size={13} /></button></div>)}</div><div><span className="registry-label">TOOLS</span>{adminContent.data?.tools.map(item => <div className="registry-row" key={item.id}><strong>{item.name}</strong><span>{item.category}</span><button onClick={() => deleteTool.mutate({ id: item.id })}><X size={13} /></button></div>)}</div><div><span className="registry-label">CVE SIGNALS</span>{adminContent.data?.cves.map(item => <div className="registry-row" key={item.id}><strong>{item.cveNumber}</strong><span>{item.severity}</span><button onClick={() => deleteCve.mutate({ id: item.id })}><X size={13} /></button></div>)}</div></div></div></section>;
 }

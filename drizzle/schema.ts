@@ -1,6 +1,6 @@
-import { boolean, integer, pgEnum, pgTable, serial, text, timestamp, unique, varchar } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgEnum, pgTable, serial, text, timestamp, unique, varchar } from "drizzle-orm/pg-core";
 
-export const usersRolePgEnum = pgEnum("users_role_enum", ["user", "admin"]);
+export const usersRolePgEnum = pgEnum("users_role_enum", ["user", "admin", "instructor"]);
 export const usersMemberRankPgEnum = pgEnum("users_memberRank_enum", ["learner", "contributor", "analyst", "mentor", "elite"]);
 export const coursesLevelPgEnum = pgEnum("courses_level_enum", ["beginner", "intermediate", "advanced"]);
 export const cvesSeverityPgEnum = pgEnum("cves_severity_enum", ["critical", "high", "medium", "low"]);
@@ -66,9 +66,25 @@ export const courses = pgTable("courses", {
   coverUrl: text("coverUrl"),
   courseUrl: text("courseUrl"),
   isPublished: boolean("isPublished").default(true).notNull(),
+  instructorUserId: integer("instructorUserId"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
 });
+
+export const courseChangeRequests = pgTable("courseChangeRequests", {
+  id: serial("id").primaryKey(),
+  courseId: integer("courseId").notNull().references(() => courses.id, { onDelete: "cascade" }),
+  instructorUserId: integer("instructorUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
+  changesJson: text("changesJson").notNull(),
+  status: varchar("status", { length: 24 }).default("pending").notNull(),
+  reviewedBy: integer("reviewedBy").references(() => users.id, { onDelete: "set null" }),
+  reviewNote: text("reviewNote"),
+  requestedAt: timestamp("requestedAt").defaultNow().notNull(),
+  reviewedAt: timestamp("reviewedAt"),
+}, table => [
+  index("courseChangeRequests_status_requestedAt_idx").on(table.status, table.requestedAt),
+  index("courseChangeRequests_instructorUserId_idx").on(table.instructorUserId, table.requestedAt),
+]);
 
 export const roadmaps = pgTable("roadmaps", {
   id: serial("id").primaryKey(),
@@ -570,6 +586,7 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type Session = typeof sessions.$inferSelect;
 export type Course = typeof courses.$inferSelect;
+export type CourseChangeRequest = typeof courseChangeRequests.$inferSelect;
 export type Roadmap = typeof roadmaps.$inferSelect;
 export type Track = typeof tracks.$inferSelect;
 export type CVE = typeof cves.$inferSelect;

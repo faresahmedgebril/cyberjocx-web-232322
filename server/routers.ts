@@ -11,9 +11,12 @@ import { nanoid } from "nanoid";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { getSessionToken, revokeSession } from "./core/auth/session";
 import { systemRouter } from "./_core/systemRouter";
-import { adminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
+import { adminProcedure, instructorProcedure, ownerAdminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { books, cartItems, carts, certificates, courseProgress, courses, cves, friendRequests, follows, malwareFamilies, notifications, nvdSyncSettings, postLikes, posts, quizAttempts, quizQuestions, trackQuizzes, tracks, tools, users, getCart, getDashboardStats, getDb, getTrackProgress, getTrackRoadmap, getUserById, listBooks, listBooksAdvanced, listCourses, listCves, listCvesPaginated, listMalware, listPosts, listTools, listToolsAdvanced, listRoadmaps, listTracks, ensureCart } from "./db";
 import { z } from "zod";
+import { ENV } from "./config/env";
+import { notifyAll } from "./modules/notifications/service";
+import { auditLogs, courseChangeRequests, labInstances, labTemplates } from "../drizzle/schema";
 
 export const appRouter = router({
   system: systemRouter,
@@ -111,27 +114,62 @@ export const appRouter = router({
       if (passed) {
         const existingCertificate = quiz.trackLevelId ? (await db.select().from(certificates).where(and(eq(certificates.userId, ctx.user.id), eq(certificates.trackLevelId, quiz.trackLevelId))).limit(1))[0] : undefined;
         certificateCode = existingCertificate?.certificateCode ?? `CJX-${nanoid(10).toUpperCase()}`;
-        if (!existingCertificate) await db.insert(certificates).values({ userId: ctx.user.id, trackId: quiz.trackId, trackLevelId: quiz.trackLevelId ?? null, certificateCode });
+        if (!existingCertificate) {
+          await db.insert(certificates).values({ userId: ctx.user.id, trackId: quiz.trackId, trackLevelId: quiz.trackLevelId ?? null, certificateCode });
+          await notifyAll({
+            type: "content",
+            title: "New learning milestone",
+            message: `${ctx.user.name?.trim() || "A CyberJocx learner"} earned a certificate for ${quiz.title}.`,
+          });
+        }
       }
       return { score, passed, certificateCode };
     }),
   }),
   courses: router({
-    list: publicProcedure.input(z.object({ search: z.string().optional() }).optional()).query(({ input }) => listCourses(input?.search)),
+    list: publicProcedure.input(z.object({ search: z.string().optional() }).optional()).query(async ({ input }) => (await listCourses(input?.search)).map(course => ({ ...course, availabilityStatus: ENV.COURSES_COMING_SOON ? "coming-soon" as const : "available" as const }))),
     byId: publicProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
       const db = await getDb();
       if (!db) return undefined;
-      const rows = await db.select().from(courses).where(eq(courses.id, input.id)).limit(1);
-      return rows[0];
+      const rows = await db.select().from(courses).where(and(eq(courses.id, input.id), eq(courses.isPublished, true))).limit(1);
+      return rows[0] ? { ...rows[0], availabilityStatus: ENV.COURSES_COMING_SOON ? "coming-soon" as const : "available" as const } : undefined;
     }),
-    progress: protectedProcedure.input(z.object({ courseId: z.number(), progress: z.number().min(0).max(100) })).mutation(async ({ ctx, input }) => {
+    progress: protectedProcedure.input(z.object({ courseId: z.number().int().positive(), progress: z.number().min(0).max(100) })).mutation(async ({ ctx, input }) => {
+      if (ENV.COURSES_COMING_SOON) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "This course is coming soon." });
       const db = await getDb();
       if (!db) return { success: false };
       const completed = input.progress >= 100;
-      const existing = await db.select().from(courseProgress).where(and(eq(courseProgress.userId, ctx.user.id), eq(courseProgress.courseId, input.courseId))).limit(1);
-      if (existing[0]) await db.update(courseProgress).set({ progress: input.progress, completed }).where(eq(courseProgress.id, existing[0].id));
-      else await db.insert(courseProgress).values({ userId: ctx.user.id, courseId: input.courseId, progress: input.progress, completed });
-      return { success: true, completed };
+      const existing = await db.select({ id: courseProgress.id, completed: courseProgress.completed })
+        .from(courseProgress)
+        .where(and(eq(courseProgress.userId, ctx.user.id), eq(courseProgress.courseId, input.courseId)))
+        .limit(1);
+      let newlyCompleted = false;
+
+      if (existing[0]) {
+        const updated = await db.update(courseProgress)
+          .set({ progress: input.progress, completed })
+          .where(and(eq(courseProgress.id, existing[0].id), eq(courseProgress.completed, false)))
+          .returning({ id: courseProgress.id });
+        newlyCompleted = completed && updated.length > 0;
+      } else {
+        await db.insert(courseProgress).values({
+          userId: ctx.user.id, courseId: input.courseId, progress: input.progress, completed,
+        });
+        newlyCompleted = completed;
+      }
+
+      if (newlyCompleted) {
+        const course = await db.select({ title: courses.title }).from(courses)
+          .where(and(eq(courses.id, input.courseId), eq(courses.isPublished, true))).limit(1);
+        if (course[0]) {
+          await notifyAll({
+            type: "content",
+            title: "Course completed",
+            message: `${ctx.user.name?.trim() || "A CyberJocx learner"} completed ${course[0].title}.`,
+          });
+        }
+      }
+      return { success: true, completed, newlyCompleted };
     }),
   }),
   cves: router({
@@ -251,10 +289,16 @@ export const appRouter = router({
       if (!db) return [];
       return db.select().from(notifications).where(eq(notifications.userId, ctx.user.id)).orderBy(desc(notifications.createdAt)).limit(30);
     }),
-    markRead: protectedProcedure.input(z.object({ id: z.number() })).mutation(async ({ ctx, input }) => {
+    markRead: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) return { success: false };
       await db.update(notifications).set({ isRead: true }).where(and(eq(notifications.id, input.id), eq(notifications.userId, ctx.user.id)));
+      return { success: true };
+    }),
+    markAllRead: protectedProcedure.mutation(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return { success: false };
+      await db.update(notifications).set({ isRead: true }).where(and(eq(notifications.userId, ctx.user.id), eq(notifications.isRead, false)));
       return { success: true };
     }),
   }),
@@ -307,6 +351,24 @@ export const appRouter = router({
   }),
   labs: router({
     templates: publicProcedure.query(() => listLabTemplates()),
+    myInstances: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return [];
+      return db.select({
+        id: labInstances.id,
+        instanceId: labInstances.instanceId,
+        status: labInstances.status,
+        targetUrl: labInstances.targetUrl,
+        expiresAt: labInstances.expiresAt,
+        createdAt: labInstances.createdAt,
+        templateName: labTemplates.name,
+        templateSlug: labTemplates.slug,
+      }).from(labInstances)
+        .innerJoin(labTemplates, eq(labInstances.templateId, labTemplates.id))
+        .where(eq(labInstances.userId, ctx.user.id))
+        .orderBy(desc(labInstances.createdAt))
+        .limit(20);
+    }),
     start: protectedProcedure.input(z.object({
       templateId: z.number().int().positive(),
       challengeId: z.number().int().positive().optional(),
@@ -331,6 +393,128 @@ export const appRouter = router({
       answer: z.string().min(1).max(512),
     })).mutation(({ ctx, input }) => submitChallenge(ctx.user.id, input.challengeId, input.answer)),
   }),
+  instructor: router({
+    dashboard: instructorProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return { courses: [], students: [], requests: [], totals: { courses: 0, published: 0, students: 0, averageProgress: 0 } };
+      const courseRows = await db.select({
+        id: courses.id,
+        title: courses.title,
+        slug: courses.slug,
+        category: courses.category,
+        level: courses.level,
+        lessons: courses.lessons,
+        isPublished: courses.isPublished,
+        createdAt: courses.createdAt,
+      }).from(courses).where(eq(courses.instructorUserId, ctx.user.id)).orderBy(desc(courses.createdAt));
+      const courseIds = courseRows.map(course => course.id);
+      const studentRows = courseIds.length ? await db.select({
+        courseId: courseProgress.courseId,
+        userId: courseProgress.userId,
+        studentName: users.name,
+        studentEmail: users.email,
+        progress: courseProgress.progress,
+        completed: courseProgress.completed,
+        updatedAt: courseProgress.updatedAt,
+      }).from(courseProgress)
+        .innerJoin(users, eq(courseProgress.userId, users.id))
+        .where(or(...courseIds.map(courseId => eq(courseProgress.courseId, courseId))))
+        .orderBy(desc(courseProgress.updatedAt))
+        .limit(250) : [];
+      const requestRows = await db.select({
+        id: courseChangeRequests.id,
+        courseId: courseChangeRequests.courseId,
+        changesJson: courseChangeRequests.changesJson,
+        status: courseChangeRequests.status,
+        reviewNote: courseChangeRequests.reviewNote,
+        requestedAt: courseChangeRequests.requestedAt,
+        reviewedAt: courseChangeRequests.reviewedAt,
+        courseTitle: courses.title,
+      }).from(courseChangeRequests)
+        .innerJoin(courses, eq(courseChangeRequests.courseId, courses.id))
+        .where(eq(courseChangeRequests.instructorUserId, ctx.user.id))
+        .orderBy(desc(courseChangeRequests.requestedAt))
+        .limit(50);
+      const uniqueStudents = new Set(studentRows.map(row => row.userId));
+      const averageProgress = studentRows.length ? Math.round(studentRows.reduce((sum, row) => sum + row.progress, 0) / studentRows.length) : 0;
+      return {
+        courses: courseRows,
+        students: studentRows,
+        requests: requestRows,
+        totals: {
+          courses: courseRows.length,
+          published: courseRows.filter(course => course.isPublished).length,
+          students: uniqueStudents.size,
+          averageProgress,
+        },
+        earningsAvailable: false,
+      };
+    }),
+    submitCourse: instructorProcedure.input(z.object({
+      title: z.string().trim().min(3).max(255),
+      slug: z.string().trim().min(3).max(255).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+      description: z.string().trim().min(20).max(12000),
+      category: z.string().trim().min(2).max(100),
+      level: z.enum(["beginner", "intermediate", "advanced"]),
+      lessons: z.number().int().min(1).max(500),
+      durationMinutes: z.number().int().min(1).max(100000),
+      coverUrl: z.string().url().optional(),
+      courseUrl: z.string().url().optional(),
+    })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const instructorName = ctx.user.name?.trim() || ctx.user.email || "CyberJocx Instructor";
+      const created = await db.insert(courses).values({
+        ...input,
+        instructor: instructorName,
+        instructorUserId: ctx.user.id,
+        isPublished: false,
+      }).returning({ id: courses.id, title: courses.title });
+      const admins = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin"));
+      if (admins.length) await db.insert(notifications).values(admins.map(admin => ({
+        userId: admin.id,
+        type: "content" as const,
+        title: "Course awaiting owner approval",
+        message: `${created[0]?.title ?? input.title} was submitted as a draft by ${instructorName}.`,
+      })));
+      return { success: true, course: created[0] };
+    }),
+    requestCourseUpdate: instructorProcedure.input(z.object({
+      courseId: z.number().int().positive(),
+      changes: z.object({
+        title: z.string().trim().min(3).max(255).optional(),
+        description: z.string().trim().min(20).max(12000).optional(),
+        category: z.string().trim().min(2).max(100).optional(),
+        level: z.enum(["beginner", "intermediate", "advanced"]).optional(),
+        lessons: z.number().int().min(1).max(500).optional(),
+        durationMinutes: z.number().int().min(1).max(100000).optional(),
+        coverUrl: z.string().url().nullable().optional(),
+        courseUrl: z.string().url().nullable().optional(),
+      }).refine(value => Object.keys(value).length > 0, "At least one change is required."),
+    })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const owned = await db.select({ id: courses.id, title: courses.title }).from(courses)
+        .where(and(eq(courses.id, input.courseId), eq(courses.instructorUserId, ctx.user.id))).limit(1);
+      if (!owned[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found in your instructor workspace." });
+      const pending = await db.select({ id: courseChangeRequests.id }).from(courseChangeRequests)
+        .where(and(eq(courseChangeRequests.courseId, input.courseId), eq(courseChangeRequests.instructorUserId, ctx.user.id), eq(courseChangeRequests.status, "pending"))).limit(1);
+      if (pending[0]) throw new TRPCError({ code: "CONFLICT", message: "There is already a pending change request for this course." });
+      const request = await db.insert(courseChangeRequests).values({
+        courseId: input.courseId,
+        instructorUserId: ctx.user.id,
+        changesJson: JSON.stringify(input.changes),
+      }).returning({ id: courseChangeRequests.id });
+      const admins = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin"));
+      if (admins.length) await db.insert(notifications).values(admins.map(admin => ({
+        userId: admin.id,
+        type: "content" as const,
+        title: "Course update requires approval",
+        message: `Update requested for ${owned[0].title}.`,
+      })));
+      return { success: true, requestId: request[0]?.id };
+    }),
+  }),
   admin: router({
     createChallenge: adminProcedure.input(z.object({
       slug: z.string().min(2).max(255),
@@ -344,6 +528,139 @@ export const appRouter = router({
       hintText: z.string().max(2000).optional(),
       skillId: z.number().int().positive().optional(),
     })).mutation(({ input }) => createChallenge(input)),
+    audit: ownerAdminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      return db.select({
+        id: auditLogs.id,
+        actorUserId: auditLogs.actorUserId,
+        action: auditLogs.action,
+        resourceType: auditLogs.resourceType,
+        resourceId: auditLogs.resourceId,
+        metadataJson: auditLogs.metadataJson,
+        createdAt: auditLogs.createdAt,
+      }).from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(50);
+    }),
+    users: ownerAdminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      return db.select({ id: users.id, name: users.name, email: users.email, role: users.role, createdAt: users.createdAt })
+        .from(users).orderBy(desc(users.createdAt)).limit(200);
+    }),
+    courseReviewQueue: ownerAdminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return { drafts: [], changes: [] };
+      const drafts = await db.select({
+        id: courses.id, title: courses.title, slug: courses.slug, category: courses.category,
+        level: courses.level, instructor: courses.instructor, instructorUserId: courses.instructorUserId,
+        createdAt: courses.createdAt,
+      }).from(courses).where(eq(courses.isPublished, false)).orderBy(desc(courses.createdAt)).limit(100);
+      const changes = await db.select({
+        id: courseChangeRequests.id, courseId: courseChangeRequests.courseId,
+        instructorUserId: courseChangeRequests.instructorUserId, changesJson: courseChangeRequests.changesJson,
+        requestedAt: courseChangeRequests.requestedAt, courseTitle: courses.title,
+        instructorName: users.name, instructorEmail: users.email,
+      }).from(courseChangeRequests)
+        .innerJoin(courses, eq(courseChangeRequests.courseId, courses.id))
+        .innerJoin(users, eq(courseChangeRequests.instructorUserId, users.id))
+        .where(eq(courseChangeRequests.status, "pending"))
+        .orderBy(desc(courseChangeRequests.requestedAt)).limit(100);
+      return { drafts, changes };
+    }),
+    publishCourse: ownerAdminProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const row = await db.update(courses).set({ isPublished: true, updatedAt: new Date() })
+        .where(and(eq(courses.id, input.id), eq(courses.isPublished, false)))
+        .returning({ id: courses.id, title: courses.title });
+      if (!row[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Draft course not found or already published." });
+      const recipients = await db.select({ id: users.id }).from(users);
+      if (recipients.length) await db.insert(notifications).values(recipients.map(recipient => ({
+        userId: recipient.id, type: "content" as const,
+        title: "New course published", message: `${row[0].title} is now available on CyberJocx.`,
+      })));
+      await db.insert(auditLogs).values({
+        actorUserId: ctx.user.id, action: "course.publish", resourceType: "course",
+        resourceId: row[0].id, metadataJson: JSON.stringify({ title: row[0].title }),
+      });
+      return { success: true, course: row[0] };
+    }),
+    reviewCourseChange: ownerAdminProcedure.input(z.object({
+      requestId: z.number().int().positive(),
+      decision: z.enum(["approve", "reject"]),
+      note: z.string().max(2000).optional(),
+    })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const request = (await db.select().from(courseChangeRequests)
+        .where(and(eq(courseChangeRequests.id, input.requestId), eq(courseChangeRequests.status, "pending"))).limit(1))[0];
+      if (!request) throw new TRPCError({ code: "NOT_FOUND", message: "Pending change request not found." });
+      if (input.decision === "approve") {
+        const parsed = JSON.parse(request.changesJson) as Record<string, unknown>;
+        const safeChanges: Partial<typeof courses.$inferInsert> = {};
+        if (typeof parsed.title === "string") safeChanges.title = parsed.title;
+        if (typeof parsed.description === "string") safeChanges.description = parsed.description;
+        if (typeof parsed.category === "string") safeChanges.category = parsed.category;
+        if (parsed.level === "beginner" || parsed.level === "intermediate" || parsed.level === "advanced") safeChanges.level = parsed.level;
+        if (typeof parsed.lessons === "number") safeChanges.lessons = parsed.lessons;
+        if (typeof parsed.durationMinutes === "number") safeChanges.durationMinutes = parsed.durationMinutes;
+        if (typeof parsed.coverUrl === "string" || parsed.coverUrl === null) safeChanges.coverUrl = parsed.coverUrl;
+        if (typeof parsed.courseUrl === "string" || parsed.courseUrl === null) safeChanges.courseUrl = parsed.courseUrl;
+        if (Object.keys(safeChanges).length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "No supported course changes were provided." });
+        await db.update(courses).set({ ...safeChanges, updatedAt: new Date() }).where(eq(courses.id, request.courseId));
+      }
+      await db.update(courseChangeRequests).set({
+        status: input.decision === "approve" ? "approved" : "rejected",
+        reviewedBy: ctx.user.id,
+        reviewNote: input.note ?? null,
+        reviewedAt: new Date(),
+      }).where(eq(courseChangeRequests.id, input.requestId));
+      await db.insert(notifications).values({
+        userId: request.instructorUserId,
+        type: "content",
+        title: input.decision === "approve" ? "Course changes approved" : "Course changes rejected",
+        message: input.note?.trim() || (input.decision === "approve" ? "Your requested course changes were approved." : "Your requested course changes need revision."),
+      });
+      await db.insert(auditLogs).values({
+        actorUserId: ctx.user.id,
+        action: input.decision === "approve" ? "course-change.approve" : "course-change.reject",
+        resourceType: "courseChangeRequest",
+        resourceId: request.id,
+        metadataJson: JSON.stringify({ courseId: request.courseId, note: input.note ?? null }),
+      });
+      if (input.decision === "approve") {
+        const course = await db.select({ title: courses.title }).from(courses).where(eq(courses.id, request.courseId)).limit(1);
+        if (course[0]) {
+          await notifyAll({
+            type: "content",
+            title: "Course content updated",
+            message: `${course[0].title} has a newly approved update.`,
+          });
+        }
+      }
+      return { success: true };
+    }),
+    setUserRole: ownerAdminProcedure.input(z.object({
+      userId: z.number().int().positive(),
+      role: z.enum(["user", "instructor"]),
+    })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const changed = await db.update(users).set({ role: input.role }).where(eq(users.id, input.userId))
+        .returning({ id: users.id, name: users.name, email: users.email, role: users.role });
+      if (!changed[0]) throw new TRPCError({ code: "NOT_FOUND", message: "User not found." });
+      await db.insert(notifications).values({
+        userId: changed[0].id,
+        type: "system",
+        title: input.role === "instructor" ? "Instructor access granted" : "Instructor access removed",
+        message: input.role === "instructor" ? "Your account can now access Instructor Studio." : "Instructor Studio access is no longer enabled for your account.",
+      });
+      await db.insert(auditLogs).values({
+        actorUserId: ctx.user.id, action: "user.role.update", resourceType: "user",
+        resourceId: changed[0].id, metadataJson: JSON.stringify({ role: input.role }),
+      });
+      return { success: true, user: changed[0] };
+    }),
     content: adminProcedure.query(async () => {
       const db = await getDb();
       if (!db) return { courses: [], tools: [], cves: [] };
@@ -384,7 +701,7 @@ export const appRouter = router({
       ]);
       return { users: Number(usersCount[0]?.count ?? 0), courses: Number(coursesCount[0]?.count ?? 0), cves: Number(cvesCount[0]?.count ?? 0), tools: Number(toolsCount[0]?.count ?? 0), posts: Number(postsCount[0]?.count ?? 0) };
     }),
-    createCourse: adminProcedure.input(z.object({ title: z.string(), slug: z.string(), description: z.string(), category: z.string(), level: z.enum(["beginner", "intermediate", "advanced"]), instructor: z.string(), lessons: z.number(), durationMinutes: z.number() })).mutation(async ({ input }) => {
+    createCourse: ownerAdminProcedure.input(z.object({ title: z.string(), slug: z.string(), description: z.string(), category: z.string(), level: z.enum(["beginner", "intermediate", "advanced"]), instructor: z.string(), lessons: z.number(), durationMinutes: z.number() })).mutation(async ({ input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.insert(courses).values(input);
@@ -404,10 +721,13 @@ export const appRouter = router({
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
       await db.insert(cves).values(input);
-      if (input.severity === "critical" || input.severity === "high") {
-        const recipients = await db.select({ id: users.id }).from(users);
-        if (recipients.length) await db.insert(notifications).values(recipients.map(recipient => ({ userId: recipient.id, type: "cve" as const, title: `CVE ${input.severity.toUpperCase()} detected`, message: `${input.cveNumber}: ${input.title}` })));
-      }
+      const recipients = await db.select({ id: users.id }).from(users);
+      if (recipients.length) await db.insert(notifications).values(recipients.map(recipient => ({
+        userId: recipient.id,
+        type: "cve" as const,
+        title: `New CVE • ${input.severity.toUpperCase()}`,
+        message: `${input.cveNumber}: ${input.title}`,
+      })));
       return { success: true };
     }),
   }),

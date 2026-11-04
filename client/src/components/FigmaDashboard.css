@@ -75,3 +75,262 @@
 .figma-dashboard .nav-item--section{margin-top:13px;position:relative}
 .figma-dashboard .nav-item--section:before{content:"";position:absolute;top:-9px;left:16px;right:16px;height:1px;background:linear-gradient(90deg,transparent,#224c99,transparent)}
 .figma-dashboard .nav-item--section:has(span){scroll-margin-top:12px}
+
+
+/* Dashboard shell: keep the entire page scrollable; the footer must never cover content. */
+.figma-dashboard{height:auto;min-height:100vh;overflow:visible}
+.figma-dashboard main{min-width:0;min-height:calc(100vh - 128px);padding-bottom:34px}
+.figma-dashboard footer{position:relative;left:auto;right:auto;bottom:auto;width:calc(100% + 255px);margin-left:-255px;min-height:51px;height:auto;flex-wrap:wrap}
+.figma-dashboard.nav-collapsed{padding-left:82px}
+.figma-dashboard.nav-collapsed .sidebar{width:82px}
+.figma-dashboard.nav-collapsed .sidebar nav{padding-left:9px;padding-right:9px}
+.figma-dashboard.nav-collapsed .nav-item{justify-content:center;padding-left:9px;padding-right:9px}
+.figma-dashboard.nav-collapsed .nav-item span,.figma-dashboard.nav-collapsed .sidebar-brand{display:none}
+.figma-dashboard .nav-toggle{display:grid}
+.figma-dashboard .notification-anchor{position:relative}
+.figma-dashboard .notification-popover{position:absolute;z-index:90;top:calc(100% + 14px);right:-45px;width:min(390px,calc(100vw - 24px));max-height:min(540px,calc(100vh - 100px));overflow:hidden;border:1px solid #375fc0;border-radius:13px;background:rgba(3,10,31,.98);box-shadow:0 18px 55px rgba(0,0,0,.48),0 0 24px rgba(83,44,220,.25);color:#edf4ff}
+.figma-dashboard .notification-popover-head{height:54px;padding:0 15px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(58,102,177,.45)}
+.figma-dashboard .notification-popover-head strong{font-size:14px}
+.figma-dashboard .notification-popover-head button{padding:6px 9px;border:1px solid #315db3;border-radius:6px;background:#091b41;color:#8fdcff;font-size:10px;cursor:pointer}
+.figma-dashboard .notification-popover-head button:disabled{opacity:.4;cursor:not-allowed}
+.figma-dashboard .notification-list{max-height:calc(min(540px,100vh - 100px) - 54px);overflow:auto}
+.figma-dashboard .notification-empty{padding:26px 16px;color:#8ea5cc;text-align:center;font-size:12px}
+.figma-dashboard .notification-item{width:100%;min-height:78px;padding:12px 13px;display:flex;align-items:flex-start;gap:10px;border:0;border-bottom:1px solid rgba(53,84,143,.27);text-align:left;background:transparent;cursor:pointer}
+.figma-dashboard .notification-item:hover{background:rgba(20,55,111,.45)}
+.figma-dashboard .notification-item.is-read{opacity:.58}
+.figma-dashboard .notification-type{width:34px;height:34px;flex:none;display:grid;place-items:center;border:1px solid #177bb6;border-radius:9px;color:#46d5ff;background:rgba(5,62,105,.34)}
+.figma-dashboard .notification-type.cve{color:#ffa8d8;border-color:#9c36b9;background:rgba(81,19,109,.3)}
+.figma-dashboard .notification-type.content{color:#80e8bc;border-color:#1f8f79;background:rgba(4,98,73,.24)}
+.figma-dashboard .notification-copy{min-width:0;flex:1;display:flex;flex-direction:column;gap:4px}
+.figma-dashboard .notification-copy b{color:#f0f5ff;font-size:11px}
+.figma-dashboard .notification-copy small{color:#a5bbdb;font-size:10px;line-height:1.45;overflow-wrap:anywhere}
+.figma-dashboard .notification-copy time{color:#708aac;font-size:9px}
+.figma-dashboard .notification-unread-dot{width:7px;height:7px;flex:none;margin-top:5px;border-radius:50%;background:#20caff;box-shadow:0 0 8px #20caff}
+.figma-dashboard.light-theme{
+  --bg:#edf4ff;--surface:rgba(255,255,255,.96);--surface-soft:rgba(244,249,255,.94);
+  --line:#b5c9e8;--line-soft:rgba(85,122,178,.24);--text:#172642;--muted:#526c91;
+  color:#172642;background:radial-gradient(circle at 58% 0,rgba(123,93,255,.12),transparent 32%),linear-gradient(120deg,#f5f9ff,#e8f1ff 58%,#f8fbff)
+}
+.figma-dashboard.light-theme .topbar{background:rgba(247,250,255,.97);border-bottom-color:#b8cae5;box-shadow:0 8px 22px rgba(25,56,100,.1)}
+.figma-dashboard.light-theme .sidebar{background:linear-gradient(180deg,#f5f8ff,#eaf1fb);border-right-color:#becfe7}
+.figma-dashboard.light-theme .nav-item{color:#334d72}
+.figma-dashboard.light-theme .nav-item.active{color:#fff}
+.figma-dashboard.light-theme .brand strong,.figma-dashboard.light-theme .section-title h2,.figma-dashboard.light-theme .terminal-head h2,.figma-dashboard.light-theme .goals-head h2{color:#152747}
+.figma-dashboard.light-theme .panel{--surface:rgba(255,255,255,.96);color:#1c3151;background:linear-gradient(var(--surface),var(--surface)) padding-box,linear-gradient(135deg,#78a8e9,#b78af5 58%,#57b6df) border-box;box-shadow:0 7px 22px rgba(40,76,126,.08),inset 0 0 18px rgba(96,130,190,.05)}
+.figma-dashboard.light-theme .stat-card small,.figma-dashboard.light-theme .course-heading small,.figma-dashboard.light-theme .path-step>small,.figma-dashboard.light-theme .course-heading strong{color:#526b8f}
+.figma-dashboard.light-theme .stat-card strong,.figma-dashboard.light-theme .welcome-copy h1,.figma-dashboard.light-theme .course-card strong{color:#142746}
+.figma-dashboard.light-theme .course-card,.figma-dashboard.light-theme .notification-popover{background:#fff;color:#1b3151}
+.figma-dashboard.light-theme .notification-popover-head strong,.figma-dashboard.light-theme .notification-copy b{color:#193153}
+.figma-dashboard.light-theme .notification-copy small{color:#526c91}
+.figma-dashboard.light-theme .notification-item:hover{background:#edf5ff}
+.figma-dashboard.light-theme .dashboard-placeholder{color:#56749e;background:#f2f7ff;border-color:#c1d1e8}
+.figma-dashboard.light-theme footer{background:rgba(241,247,255,.98);color:#506b91;border-top-color:#bbcee7}
+.figma-dashboard.light-theme footer strong{color:#183456}
+.figma-dashboard.light-theme .terminal-head,.figma-dashboard.light-theme .goals-head{border-bottom-color:#c7d6eb}
+@media(max-width:1180px){
+  .figma-dashboard footer{width:calc(100% + 82px);margin-left:-82px}
+}
+@media(max-width:760px){
+  .figma-dashboard{height:auto;min-height:100vh;padding:65px 0 0 0;overflow:visible}
+  .figma-dashboard .topbar{height:65px;padding:0 8px;gap:7px}
+  .figma-dashboard .brand{width:auto;min-width:0;gap:4px}
+  .figma-dashboard .brand img{width:47px;height:52px}
+  .figma-dashboard .brand strong{font-size:20px}
+  .figma-dashboard .brand>b{display:none}
+  .figma-dashboard .search-box{width:36px;min-width:36px}
+  .figma-dashboard .search-box input,.figma-dashboard .search-box small{display:none}
+  .figma-dashboard .search-box>.icon{right:8px}
+  .figma-dashboard .top-actions{gap:0}
+  .figma-dashboard .round-button{width:34px;height:40px}
+  .figma-dashboard .profile-button{gap:4px}
+  .figma-dashboard .profile-button b,.figma-dashboard .profile-button>.icon{display:none}
+  .figma-dashboard .profile-button>span{width:32px;height:32px}
+  .figma-dashboard .sidebar{position:fixed;z-index:70;left:0;top:65px;bottom:0;width:272px;height:auto;transform:translateX(-105%);transition:transform .22s ease;display:flex;overflow:hidden;border-right:1px solid #2457a9;border-top:0}
+  .figma-dashboard .sidebar.is-open{transform:translateX(0)}
+  .figma-dashboard .sidebar nav{width:100%;height:100%;padding:16px 12px 24px;overflow:auto;display:grid;grid-auto-rows:min-content;gap:3px}
+  .figma-dashboard .sidebar .nav-item{width:100%;min-height:42px;justify-content:flex-start;padding:8px 16px}
+  .figma-dashboard .sidebar .nav-item span{display:inline}
+  .figma-dashboard .sidebar .sidebar-brand{display:none}
+  .figma-dashboard .sidebar-overlay{position:fixed;z-index:65;inset:65px 0 0;border:0;background:rgba(0,5,18,.68);backdrop-filter:blur(2px)}
+  .figma-dashboard main{padding:10px 9px 24px;min-height:calc(100vh - 65px)}
+  .figma-dashboard main.has-page-content{padding:9px 8px 24px}
+  .figma-dashboard .dashboard-grid{grid-template-columns:minmax(0,1fr);gap:14px}
+  .figma-dashboard .main-column{max-width:none}
+  .figma-dashboard .right-column{display:flex}
+  .figma-dashboard .stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .figma-dashboard .course-grid{grid-template-columns:repeat(2,minmax(0,1fr));overflow:visible}
+  .figma-dashboard footer{display:none}
+  .figma-dashboard .notification-popover{position:fixed;top:61px;right:8px;width:min(370px,calc(100vw - 16px))}
+  .figma-dashboard .notification-list{max-height:calc(100vh - 130px)}
+  .figma-dashboard .welcome-copy{max-width:66%}
+}
+
+
+/* Full-page content sections mounted inside the shared Figma shell. */
+.figma-dashboard .cj-dashboard-page-content{width:100%;max-width:1500px;margin:0 auto;padding:8px 2px 30px;color:var(--text);min-width:0}
+.figma-dashboard .cj-dashboard-page-heading{display:flex;justify-content:space-between;align-items:center;margin:2px 0 17px;padding:0 4px}
+.figma-dashboard .cj-dashboard-page-heading span{color:#1acaff;font:10px "DM Mono",monospace;letter-spacing:.14em}
+.figma-dashboard .cj-dashboard-page-heading h1{margin-top:5px;font-size:25px;font-weight:800;color:var(--text)}
+.figma-dashboard .cj-dashboard-page-heading p{margin-top:5px;color:var(--muted);font-size:12px}
+.figma-dashboard .quick-action-list{padding:8px 14px 14px;display:grid;gap:7px}
+.figma-dashboard .quick-action-list button{min-height:55px;display:flex;align-items:center;gap:11px;padding:8px 10px;border:1px solid rgba(43,88,158,.48);border-radius:8px;color:#35caff;background:rgba(4,18,46,.6);text-align:left;cursor:pointer}
+.figma-dashboard .quick-action-list button:hover{border-color:#7c42ff;background:rgba(29,40,93,.62)}
+.figma-dashboard .quick-action-list button>span{min-width:0;flex:1;display:grid;gap:3px}
+.figma-dashboard .quick-action-list button b{color:#e8f2ff;font-size:11px}
+.figma-dashboard .quick-action-list button small{color:#849dc3;font-size:9px}
+.figma-dashboard .quick-action-list button>.icon:last-child{color:#819fc9}
+.figma-dashboard .dashboard-progress-list{padding:10px 18px 15px;display:grid;gap:10px}
+.figma-dashboard .dashboard-progress-list>div:not(.dashboard-progress-track){display:flex;justify-content:space-between;color:#b9c8e4;font-size:11px}
+.figma-dashboard .dashboard-progress-list>div b{color:#fff;font:700 13px "DM Mono",monospace}
+.figma-dashboard .dashboard-progress-track{height:7px;overflow:hidden;border-radius:8px;background:#0b2856}
+.figma-dashboard .dashboard-progress-track i{display:block;height:100%;background:linear-gradient(90deg,#09baff,#9b35ff);border-radius:inherit}
+.figma-dashboard .dashboard-next-course{padding:10px 11px;display:grid;gap:4px;border:1px solid #244f99;border-radius:8px;background:rgba(5,21,51,.72);text-align:left;cursor:pointer}
+.figma-dashboard .dashboard-next-course span{color:#26caff;font-size:9px;text-transform:uppercase}
+.figma-dashboard .dashboard-next-course strong{color:#e6f0ff;font-size:11px}
+.figma-dashboard .dashboard-next-course small{color:#9db4d6;font-size:9px}
+.figma-dashboard.light-theme .quick-action-list button{background:#f7faff;border-color:#cad8eb;color:#1874bd}
+.figma-dashboard.light-theme .quick-action-list button b,.figma-dashboard.light-theme .dashboard-next-course strong{color:#1b3457}
+.figma-dashboard.light-theme .quick-action-list button small,.figma-dashboard.light-theme .dashboard-next-course small{color:#61789a}
+.figma-dashboard.light-theme .dashboard-next-course{background:#f5f9ff;border-color:#c5d4e9}
+.figma-dashboard.light-theme .dashboard-progress-list>div b{color:#244a79}
+@media(max-width:760px){
+  .figma-dashboard .cj-dashboard-page-content{padding:4px 1px 24px}
+  .figma-dashboard .cj-dashboard-page-heading h1{font-size:21px}
+  .figma-dashboard .course-grid{grid-template-columns:minmax(0,1fr)}
+}
+
+
+/* CTF arena reference layout — all details are backed by active events and challenge records. */
+.figma-dashboard .cj-ctf-page{min-width:0}
+.figma-dashboard .cj-ctf-hero{min-height:142px;padding:22px 24px;display:flex;align-items:center;justify-content:space-between;gap:20px;background:radial-gradient(ellipse at 78% 15%,rgba(113,47,232,.24),transparent 48%),linear-gradient(125deg,rgba(4,14,42,.97),rgba(6,8,32,.98))}
+.figma-dashboard .cj-ctf-hero h2{margin-top:7px;color:#fff;font-size:25px;font-weight:800}
+.figma-dashboard .cj-ctf-hero p{max-width:690px;margin-top:7px;color:#a3b9dc;font-size:12px;line-height:1.65}
+.figma-dashboard .cj-ctf-event-select{width:min(270px,40%);display:grid;gap:6px}
+.figma-dashboard .cj-ctf-event-select label{color:#54d7ff;font:9px "DM Mono",monospace;letter-spacing:.12em}
+.figma-dashboard .cj-ctf-event-select select{width:100%;min-height:40px;padding:0 11px;border:1px solid #3455a7;border-radius:7px;color:#e9f4ff;background:#081a43}
+.figma-dashboard .cj-ctf-layout{display:grid;grid-template-columns:minmax(210px,250px) minmax(0,1fr) minmax(225px,275px);gap:14px;align-items:start}
+.figma-dashboard .cj-ctf-challenge-list,.figma-dashboard .cj-ctf-task,.figma-dashboard .cj-ctf-info,.figma-dashboard .cj-ctf-terminal{min-width:0;overflow:hidden}
+.figma-dashboard .cj-ctf-card-heading{min-height:52px;padding:0 14px;display:flex;align-items:center;gap:9px;border-bottom:1px solid rgba(54,90,158,.42);color:#ae45ff}
+.figma-dashboard .cj-ctf-card-heading strong{color:#e8f2ff;font-size:12px}
+.figma-dashboard .cj-ctf-card-heading>span{margin-left:auto;color:#89a7d2;font-size:9px}
+.figma-dashboard .cj-ctf-challenge-list>button{width:100%;min-height:63px;padding:9px 10px;display:flex;align-items:center;gap:9px;border:0;border-bottom:1px solid rgba(40,72,133,.36);background:transparent;color:#b8cbe7;text-align:left;cursor:pointer}
+.figma-dashboard .cj-ctf-challenge-list>button:hover,.figma-dashboard .cj-ctf-challenge-list>button.is-active{background:linear-gradient(90deg,rgba(91,33,202,.34),rgba(20,49,109,.28));color:#fff}
+.figma-dashboard .cj-ctf-challenge-list>button>b{width:28px;height:28px;flex:none;display:grid;place-items:center;border:1px solid #3a4c8d;border-radius:50%;font:700 10px "DM Mono",monospace}
+.figma-dashboard .cj-ctf-challenge-list>button.is-active>b{border-color:#ba3aff;background:#6825cf;box-shadow:0 0 12px #742eff}
+.figma-dashboard .cj-ctf-challenge-list>button>span{min-width:0;flex:1;display:grid;gap:4px}
+.figma-dashboard .cj-ctf-challenge-list>button strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:inherit;font-size:10px}
+.figma-dashboard .cj-ctf-challenge-list>button small{color:#829dc5;font-size:9px}
+.figma-dashboard .cj-ctf-challenge-list>button em{color:#f7d650;font:9px "DM Mono",monospace;font-style:normal}
+.figma-dashboard .cj-ctf-task{padding:18px 19px}
+.figma-dashboard .cj-ctf-task-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding-bottom:14px;border-bottom:1px solid rgba(55,86,157,.42)}
+.figma-dashboard .cj-ctf-task-head>div>span{color:#bd65ff;font:9px "DM Mono",monospace;letter-spacing:.1em}
+.figma-dashboard .cj-ctf-task-head h3{margin-top:5px;color:#f1f5ff;font-size:20px}
+.figma-dashboard .cj-ctf-difficulty{padding:5px 9px;border:1px solid #178d70;border-radius:7px;color:#50e7b3;background:rgba(0,110,82,.23);font-size:9px;text-transform:capitalize}
+.figma-dashboard .cj-ctf-difficulty.advanced{border-color:#b54858;color:#ff8f9e;background:rgba(151,27,46,.18)}
+.figma-dashboard .cj-ctf-difficulty.intermediate{border-color:#b18525;color:#f4d16a;background:rgba(134,90,5,.18)}
+.figma-dashboard .cj-ctf-objective{padding:16px 0;border-bottom:1px solid rgba(55,86,157,.35)}
+.figma-dashboard .cj-ctf-objective strong{display:flex;align-items:center;gap:8px;color:#c85bff;font-size:11px}
+.figma-dashboard .cj-ctf-objective p{margin-top:9px;color:#b7c8e4;font-size:11px;line-height:1.75;white-space:pre-wrap}
+.figma-dashboard .cj-ctf-meta{padding:12px 0;display:flex;flex-wrap:wrap;gap:8px}
+.figma-dashboard .cj-ctf-meta span{padding:5px 8px;border:1px solid rgba(57,105,174,.4);border-radius:6px;color:#9ec8ed;background:rgba(8,31,69,.65);font-size:9px}
+.figma-dashboard .cj-ctf-submit{margin-top:6px;padding-top:12px;border-top:1px solid rgba(55,86,157,.35)}
+.figma-dashboard .cj-ctf-submit label{display:block;margin-bottom:8px;color:#d6e5fa;font-size:11px;font-weight:700}
+.figma-dashboard .cj-ctf-submit>div{display:flex;gap:8px}
+.figma-dashboard .cj-ctf-submit input,.figma-dashboard .cj-lab-flag input{min-width:0;flex:1;height:40px;padding:0 11px;border:1px solid #2d5ea3;border-radius:7px;color:#e6f2ff;background:#061630;font:11px "DM Mono",monospace}
+.figma-dashboard .cj-ctf-submit button,.figma-dashboard .cj-lab-flag button{display:flex;align-items:center;justify-content:center;gap:7px;padding:0 14px;border:1px solid #9436e6;border-radius:7px;color:white;background:linear-gradient(90deg,#5823c5,#8f23ce);font-size:10px;font-weight:700;cursor:pointer}
+.figma-dashboard .cj-ctf-submit button:disabled,.figma-dashboard .cj-lab-flag button:disabled{opacity:.45;cursor:not-allowed}
+.figma-dashboard .cj-ctf-submit>small{display:block;margin-top:7px;color:#7d99bf;font-size:9px;line-height:1.55}
+.figma-dashboard .cj-ctf-side{display:grid;gap:13px}
+.figma-dashboard .cj-ctf-info>p{padding:12px 14px;color:#8fa9ce;font-size:10px;line-height:1.65}
+.figma-dashboard .cj-ctf-info>div:not(.cj-ctf-card-heading){padding:9px 14px;display:flex;justify-content:space-between;gap:12px;border-top:1px solid rgba(50,83,147,.32);font-size:9px}
+.figma-dashboard .cj-ctf-info>div span{color:#819cc1}.figma-dashboard .cj-ctf-info>div b{color:#d9e8ff;text-align:right}
+.figma-dashboard .cj-ctf-terminal-body{min-height:150px;padding:14px;color:#91c6da;background:radial-gradient(circle at 50% 30%,rgba(3,62,93,.28),transparent 70%)}
+.figma-dashboard .cj-ctf-terminal-body>span{color:#62e9b2;font:10px "DM Mono",monospace}
+.figma-dashboard .cj-ctf-terminal-body p{margin-top:13px;color:#9bb4d4;font:10px/1.65 "DM Mono",monospace}
+.figma-dashboard .cj-ctf-terminal-body i{display:inline-block;margin-top:16px;color:#e6c071;font-size:9px;font-style:normal}
+.figma-dashboard .cj-labs-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.figma-dashboard .cj-lab-template{padding:17px;min-width:0}
+.figma-dashboard .cj-lab-template-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;color:#42cfff}
+.figma-dashboard .cj-lab-template-top>span{width:43px;height:43px;display:grid;place-items:center;border:1px solid #5f35d8;border-radius:10px;background:rgba(72,35,164,.2)}
+.figma-dashboard .cj-lab-template-top>em{color:#80b4df;font:9px "DM Mono",monospace;font-style:normal}
+.figma-dashboard .cj-lab-template h3{margin-top:7px;color:#edf5ff;font-size:16px}
+.figma-dashboard .cj-lab-template p{min-height:58px;margin-top:7px;color:#9bb3d7;font-size:10px;line-height:1.6}
+.figma-dashboard .cj-lab-specs{display:flex;flex-wrap:wrap;gap:5px;margin:12px 0}
+.figma-dashboard .cj-lab-specs span{padding:5px 7px;border:1px solid rgba(46,92,164,.38);border-radius:5px;color:#9ab7dc;background:rgba(6,29,67,.6);font-size:8px}
+.figma-dashboard .cj-lab-sessions{padding:0 16px 13px}
+.figma-dashboard .cj-lab-session{min-height:62px;padding:11px 4px;display:grid;grid-template-columns:minmax(150px,1fr) auto auto;align-items:center;gap:12px;border-bottom:1px solid rgba(48,83,144,.3)}
+.figma-dashboard .cj-lab-session>div{min-width:0;display:grid;gap:4px}
+.figma-dashboard .cj-lab-session strong{color:#e8f1ff;font-size:11px}
+.figma-dashboard .cj-lab-session small{color:#7999c2;font:8px "DM Mono",monospace}
+.figma-dashboard .cj-lab-status{padding:5px 8px;border:1px solid #3b6ea8;border-radius:6px;color:#9fd9ff;background:rgba(12,65,115,.22);font-size:9px;text-transform:capitalize}
+.figma-dashboard .cj-lab-status.status-ready{border-color:#1a977a;color:#61e5ba;background:rgba(0,113,81,.2)}
+.figma-dashboard .cj-lab-status.status-failed{border-color:#ae4657;color:#ff9aa8;background:rgba(135,24,43,.2)}
+.figma-dashboard .cj-lab-pending{color:#bd9b65;font-size:9px}
+.figma-dashboard .cj-lab-flag{grid-column:1/-1;display:flex;gap:7px}
+.figma-dashboard .cj-lab-flag input{height:34px}
+.figma-dashboard .cj-lab-flag button{height:34px}
+.figma-dashboard .cj-instructor-course-row,.figma-dashboard .cj-instructor-student-row,.figma-dashboard .cj-admin-review-row{min-height:60px;padding:11px 14px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(49,86,151,.32)}
+.figma-dashboard .cj-instructor-course-row>div,.figma-dashboard .cj-instructor-student-row>div,.figma-dashboard .cj-admin-review-row>div{min-width:0;flex:1;display:grid;gap:4px}
+.figma-dashboard .cj-instructor-course-row strong,.figma-dashboard .cj-instructor-student-row strong,.figma-dashboard .cj-admin-review-row strong{color:#eaf2ff;font-size:11px}
+.figma-dashboard .cj-instructor-course-row small,.figma-dashboard .cj-instructor-student-row small,.figma-dashboard .cj-admin-review-row small{color:#8da8cd;font-size:9px;overflow-wrap:anywhere}
+.figma-dashboard .status-published{color:#58e5b4;font-size:9px}.figma-dashboard .status-draft{color:#e5c46f;font-size:9px}
+.figma-dashboard .cj-instructor-student-row>span{color:#41d4ff;font:10px "DM Mono",monospace}
+.figma-dashboard .cj-instructor-student-row>b{color:#95b2d7;font-size:9px}
+.figma-dashboard .cj-instructor-bottom-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.figma-dashboard .instructor-info-card{padding:15px}
+.figma-dashboard .instructor-info-card h3{margin-top:6px;color:#eef5ff;font-size:15px}
+.figma-dashboard .instructor-info-card>p{margin-top:9px;color:#a0b6d8;font-size:10px;line-height:1.65}
+.figma-dashboard .instructor-unavailable{display:inline-block;margin-top:12px;padding:6px 9px;border:1px solid rgba(187,143,61,.5);border-radius:6px;color:#e0c17c;background:rgba(125,84,8,.14);font-size:9px}
+.figma-dashboard .cj-instructor-request{padding:10px 0;display:grid;gap:5px;border-bottom:1px solid rgba(52,83,139,.3)}
+.figma-dashboard .cj-instructor-request strong{color:#edf4ff;font-size:11px}
+.figma-dashboard .cj-instructor-request span,.figma-dashboard .cj-instructor-request small{color:#91acd1;font-size:9px}
+.figma-dashboard .cj-admin-queue-group{padding:13px 14px}
+.figma-dashboard .cj-admin-queue-group+h4,.figma-dashboard .cj-admin-queue-group h4{margin-bottom:8px;color:#4ad2ff;font-size:11px}
+.figma-dashboard .cj-admin-review-row pre{max-width:100%;margin:6px 0 0;padding:8px;overflow:auto;border:1px solid rgba(48,85,152,.38);border-radius:6px;color:#b6d1ee;background:rgba(2,14,36,.7);font:9px/1.5 "DM Mono",monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+.figma-dashboard .cj-admin-review-actions{display:flex;gap:7px;flex:none}
+.figma-dashboard .cj-admin-review-row .small-button,.figma-dashboard .cj-admin-review-actions .small-button{padding:7px 9px}
+.figma-dashboard.light-theme .cj-ctf-hero,.figma-dashboard.light-theme .cj-ctf-task,.figma-dashboard.light-theme .cj-ctf-info,.figma-dashboard.light-theme .cj-ctf-terminal,.figma-dashboard.light-theme .cj-ctf-challenge-list,.figma-dashboard.light-theme .cj-lab-sessions,.figma-dashboard.light-theme .cj-lab-template,.figma-dashboard.light-theme .instructor-info-card{color:#243f64;background:#fff}
+.figma-dashboard.light-theme .cj-ctf-hero h2,.figma-dashboard.light-theme .cj-ctf-task-head h3,.figma-dashboard.light-theme .cj-lab-template h3,.figma-dashboard.light-theme .cj-instructor-course-row strong,.figma-dashboard.light-theme .cj-instructor-student-row strong,.figma-dashboard.light-theme .cj-admin-review-row strong,.figma-dashboard.light-theme .instructor-info-card h3{color:#1a3356}
+.figma-dashboard.light-theme .cj-ctf-hero p,.figma-dashboard.light-theme .cj-ctf-objective p,.figma-dashboard.light-theme .cj-lab-template p,.figma-dashboard.light-theme .instructor-info-card>p{color:#5d7598}
+.figma-dashboard.light-theme .cj-ctf-submit input,.figma-dashboard.light-theme .cj-lab-flag input{color:#203d63;background:#f7faff;border-color:#b9cce6}
+.figma-dashboard.light-theme .cj-ctf-submit label,.figma-dashboard.light-theme .cj-ctf-info>div b{color:#2c4c73}
+.figma-dashboard.light-theme .cj-admin-review-row pre{color:#315274;background:#f5f9ff}
+@media(max-width:1180px){
+  .figma-dashboard .cj-ctf-layout{grid-template-columns:220px minmax(0,1fr)}
+  .figma-dashboard .cj-ctf-side{grid-column:1/-1;grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:900px){
+  .figma-dashboard .cj-labs-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .figma-dashboard .cj-ctf-layout{grid-template-columns:minmax(0,1fr)}
+  .figma-dashboard .cj-ctf-challenge-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .figma-dashboard .cj-ctf-card-heading{grid-column:1/-1}
+  .figma-dashboard .cj-ctf-side{grid-template-columns:repeat(2,minmax(0,1fr));grid-column:auto}
+}
+@media(max-width:600px){
+  .figma-dashboard .cj-ctf-hero{align-items:stretch;flex-direction:column;padding:16px}
+  .figma-dashboard .cj-ctf-event-select{width:100%}
+  .figma-dashboard .cj-ctf-challenge-list{grid-template-columns:1fr}
+  .figma-dashboard .cj-ctf-side,.figma-dashboard .cj-instructor-bottom-grid{grid-template-columns:1fr}
+  .figma-dashboard .cj-labs-grid{grid-template-columns:1fr}
+  .figma-dashboard .cj-lab-session{grid-template-columns:1fr 1fr}
+  .figma-dashboard .cj-instructor-course-row,.figma-dashboard .cj-instructor-student-row,.figma-dashboard .cj-admin-review-row{align-items:flex-start;flex-wrap:wrap}
+  .figma-dashboard .cj-admin-review-actions{width:100%}
+}
+
+
+/* Temporary launch state: every course remains discoverable but cannot be started yet. */
+.figma-dashboard .course-coming-soon-badge,
+.figma-dashboard .course-coming-soon-pill{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:5px 9px;border:1px solid rgba(239,177,76,.72);border-radius:6px;
+  color:#f4d18d;background:rgba(122,75,8,.2);
+  font:800 9px "DM Mono",monospace;letter-spacing:.08em;
+  box-shadow:0 0 11px rgba(220,154,41,.1);
+}
+.figma-dashboard .course-coming-soon-badge{position:absolute;z-index:2;top:10px;right:10px;backdrop-filter:blur(8px)}
+.figma-dashboard .course-art .course-coming-soon-badge{top:12px;right:12px}
+.figma-dashboard .course-card-foot button:disabled,
+.figma-dashboard .course-card>button:disabled,
+.figma-dashboard .modal-actions button:disabled{opacity:1;cursor:not-allowed;color:#e8c783;border-color:rgba(213,157,62,.6);background:rgba(105,71,22,.24);box-shadow:none}
+.figma-dashboard.light-theme .course-coming-soon-badge,
+.figma-dashboard.light-theme .course-coming-soon-pill{color:#80520b;background:#fff8e8;border-color:#d9b56c}

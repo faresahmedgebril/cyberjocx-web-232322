@@ -1,10 +1,11 @@
 import type { Request, Response } from "express";
 import { provisionLab } from "./modules/labs/service";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { cves, getDb, nvdSyncRuns, nvdSyncSettings } from "./db";
 import { ENV } from "./config/env";
 import { NVD_BATCH_SIZE, NVD_LOOKBACK_HOURS } from "./config/constants";
 import { queue } from "./infrastructure/queue/provider";
+import { notifyAllMany } from "./modules/notifications/service";
 
 async function fetchWithRetry(url: URL, attempts = 4) {
   let lastError: unknown;
@@ -55,18 +56,36 @@ export async function syncRecentNvd() {
       const vulnerabilities = payload.vulnerabilities ?? [];
       totalResults = Number.isFinite(payload.totalResults) ? Number(payload.totalResults) : startIndex + vulnerabilities.length;
       if (vulnerabilities.length === 0) break;
+
+      const candidateIds = Array.from(new Set(vulnerabilities.map(item => item.cve?.id).filter((id): id is string => Boolean(id))));
+      const existingRows = candidateIds.length
+        ? await db.select({ cveNumber: cves.cveNumber }).from(cves).where(inArray(cves.cveNumber, candidateIds))
+        : [];
+      const existingIds = new Set(existingRows.map(row => row.cveNumber));
+      const newCveNotifications: Array<{ type: "cve"; title: string; message: string }> = [];
+
       for (const item of vulnerabilities) {
-      const cve = item.cve;
-      if (!cve?.id || !cve.published) continue;
-      const metric = cve.metrics?.cvssMetricV40?.[0] ?? cve.metrics?.cvssMetricV31?.[0] ?? cve.metrics?.cvssMetricV30?.[0];
-      const rawSeverity = metric?.cvssData?.baseSeverity?.toLowerCase() ?? "medium";
-      const severity = (["critical", "high", "medium", "low"].includes(rawSeverity) ? rawSeverity : "medium") as "critical" | "high" | "medium" | "low";
-      const affected = cve.configurations?.flatMap(config => config.nodes?.flatMap(node => node.cpeMatch?.map(match => match.criteria).filter(Boolean) ?? []) ?? []).slice(0, 4).join(", ") || "See NVD configuration details";
-      const description = cve.descriptions?.find(value => value.lang === "en")?.value ?? cve.descriptions?.[0]?.value ?? "No description provided by NVD.";
-      const title = description.length > 160 ? `${description.slice(0, 157).trimEnd()}...` : description;
-      await db.insert(cves).values({ cveNumber: cve.id, title, description, severity, cvss: String(metric?.cvssData?.baseScore ?? 0), publishedDate: cve.published, affected, sourceUrl: `https://nvd.nist.gov/vuln/detail/${cve.id}` }).onConflictDoUpdate({ target: cves.cveNumber, set: { title, description, severity, cvss: String(metric?.cvssData?.baseScore ?? 0), publishedDate: cve.published, affected, sourceUrl: `https://nvd.nist.gov/vuln/detail/${cve.id}` } });
-      imported += 1;
+        const cve = item.cve;
+        if (!cve?.id || !cve.published) continue;
+        const isNewCve = !existingIds.has(cve.id);
+        const metric = cve.metrics?.cvssMetricV40?.[0] ?? cve.metrics?.cvssMetricV31?.[0] ?? cve.metrics?.cvssMetricV30?.[0];
+        const rawSeverity = metric?.cvssData?.baseSeverity?.toLowerCase() ?? "medium";
+        const severity = (["critical", "high", "medium", "low"].includes(rawSeverity) ? rawSeverity : "medium") as "critical" | "high" | "medium" | "low";
+        const affected = cve.configurations?.flatMap(config => config.nodes?.flatMap(node => node.cpeMatch?.map(match => match.criteria).filter(Boolean) ?? []) ?? []).slice(0, 4).join(", ") || "See NVD configuration details";
+        const description = cve.descriptions?.find(value => value.lang === "en")?.value ?? cve.descriptions?.[0]?.value ?? "No description provided by NVD.";
+        const title = description.length > 160 ? `${description.slice(0, 157).trimEnd()}...` : description;
+        await db.insert(cves).values({ cveNumber: cve.id, title, description, severity, cvss: String(metric?.cvssData?.baseScore ?? 0), publishedDate: cve.published, affected, sourceUrl: `https://nvd.nist.gov/vuln/detail/${cve.id}` }).onConflictDoUpdate({ target: cves.cveNumber, set: { title, description, severity, cvss: String(metric?.cvssData?.baseScore ?? 0), publishedDate: cve.published, affected, sourceUrl: `https://nvd.nist.gov/vuln/detail/${cve.id}` } });
+        if (isNewCve) {
+          existingIds.add(cve.id);
+          newCveNotifications.push({
+            type: "cve",
+            title: `New CVE • ${severity.toUpperCase()}`,
+            message: `${cve.id}: ${title}`,
+          });
+        }
+        imported += 1;
       }
+      if (newCveNotifications.length) await notifyAllMany(newCveNotifications);
       startIndex += vulnerabilities.length;
       if (vulnerabilities.length < NVD_BATCH_SIZE) break;
     }
