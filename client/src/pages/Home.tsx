@@ -5,7 +5,7 @@ import { startLogin } from "@/const";
 import { trpc } from "@/lib/trpc";
 import { Streamdown } from "streamdown";
 import {
-  Activity, ArrowLeft, ArrowUpRight, BookOpen, Bot, Boxes, BrainCircuit, Bug, Check, ChevronLeft, CircleUserRound, Code2, Cpu, Database, FileCode2, Filter, Gauge, Heart, LayoutDashboard, Library, LockKeyhole, LogOut, Menu, MessageSquare, Network, Plus, Radio, Search, Send, Settings2, ShieldAlert, ShoppingBag, ShoppingCart, Sparkles, Terminal, Trophy, UserPlus, Users, Wrench, X, Zap,
+  Activity, ArrowLeft, ArrowUpRight, BookOpen, Bot, Boxes, BrainCircuit, Bug, Check, ChevronLeft, CircleUserRound, Code2, Cpu, Database, FileCode2, Filter, Gauge, Heart, LayoutDashboard, Library, LockKeyhole, LogOut, Menu, MessageSquare, Network, Plus, Radio, Search, Send, Settings2, ShieldAlert, ShoppingBag, ShoppingCart, Sparkles, Terminal, Trophy, UserPlus, Users, Wrench, X, Zap, Target, ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import FigmaDashboard from "@/components/FigmaDashboard";
