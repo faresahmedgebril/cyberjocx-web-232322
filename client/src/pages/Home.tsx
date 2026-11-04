@@ -24,10 +24,10 @@ function safeExternalUrl(value: unknown): string | undefined {
   }
 }
 
-type Section = "dashboard" | "profile" | "learning" | "tracks" | "cves" | "malware" | "tools" | "community" | "market" | "leaderboard" | "settings" | "ai" | "admin";
+type Section = "dashboard" | "profile" | "learning" | "tracks" | "cves" | "malware" | "tools" | "community" | "market" | "leaderboard" | "settings" | "ai" | "admin" | "instructor" | "ctf" | "labs";
 
 function SectionIcon({ section }: { section: Section }) {
-  const icons = { dashboard: LayoutDashboard, profile: CircleUserRound, learning: Library, tracks: Network, cves: ShieldAlert, malware: Bug, tools: Wrench, community: Users, market: ShoppingBag, leaderboard: Trophy, settings: Settings2, ai: Bot, admin: Gauge };
+  const icons = { dashboard: LayoutDashboard, profile: CircleUserRound, learning: Library, tracks: Network, cves: ShieldAlert, malware: Bug, tools: Wrench, community: Users, market: ShoppingBag, leaderboard: Trophy, settings: Settings2, ai: Bot, admin: Gauge, instructor: BookOpen, ctf: Terminal, labs: Boxes };
   const Icon = icons[section];
   return <Icon size={17} strokeWidth={1.8} />;
 }
@@ -69,7 +69,7 @@ export default function Home() {
   const friendRequestsQuery = trpc.community.friendRequests.useQuery(undefined, { enabled: isAuthenticated });
   const booksQuery = trpc.market.booksAdvanced.useQuery(bookInput);
   const cartQuery = trpc.market.cart.useQuery(undefined, { enabled: isAuthenticated });
-  const notificationsQuery = trpc.notifications.list.useQuery(undefined, { enabled: isAuthenticated });
+  const notificationsQuery = trpc.notifications.list.useQuery(undefined, { enabled: isAuthenticated, refetchInterval: isAuthenticated ? 30_000 : false, refetchOnWindowFocus: true });
   const nvdStatusQuery = trpc.nvd.status.useQuery();
   const malwareQuery = trpc.malware.list.useQuery({ search: malwareSearch || undefined, category: malwareCategory === "all" ? undefined : malwareCategory });
   const createPost = trpc.community.create.useMutation({ onSuccess: () => { setPostText(""); postsQuery.refetch(); toast.success("تم بث الإشارة إلى المجتمع"); } });
@@ -81,6 +81,8 @@ export default function Home() {
   const addToCart = trpc.market.addToCart.useMutation({ onSuccess: () => { cartQuery.refetch(); toast.success("تمت إضافة العنصر إلى السلة"); } });
   const removeFromCart = trpc.market.removeFromCart.useMutation({ onSuccess: () => cartQuery.refetch() });
   const askAI = trpc.ai.ask.useMutation({ onSuccess: data => { setAiMessages(messages => [...messages, { role: "assistant", content: data.answer }]); }, onError: () => toast.error("تعذر الوصول إلى NEXUS الآن") });
+  const markNotificationRead = trpc.notifications.markRead.useMutation({ onSuccess: () => notificationsQuery.refetch() });
+  const markAllNotificationsRead = trpc.notifications.markAllRead.useMutation({ onSuccess: () => notificationsQuery.refetch() });
 
   const courses = coursesQuery.data ?? [];
   const cves = paginatedCvesQuery.data?.items ?? cvesQuery.data ?? [];
@@ -104,12 +106,13 @@ export default function Home() {
     { id: "ai", label: "NEXUS AI", meta: "AI" },
     { id: "settings", label: "الإعدادات", meta: "CFG" },
   ];
+  if (user?.role === "instructor" || user?.role === "admin") navItems.push({ id: "instructor", label: "Instructor Studio", meta: "TEACH" });
   if (user?.role === "admin") navItems.push({ id: "admin", label: "غرفة المدير", meta: "A" });
 
   const navigate = (target: Section) => { setSection(target); setMobileOpen(false); };
-  const figmaTargets: Record<string, Section> = { dashboard: "dashboard", profile: "profile", learning: "learning", tracks: "tracks", cves: "cves", malware: "malware", tools: "tools", community: "community", market: "market", leaderboard: "leaderboard", settings: "settings", ai: "ai" };
+  const figmaTargets: Record<string, Section> = { dashboard: "dashboard", profile: "profile", learning: "learning", tracks: "tracks", cves: "cves", malware: "malware", tools: "tools", community: "community", market: "market", leaderboard: "leaderboard", settings: "settings", ai: "ai", admin: "admin", instructor: "instructor", ctf: "ctf", labs: "labs" };
   const handleFigmaNavigate = (target: string) => { const destination = figmaTargets[target]; if (destination) navigate(destination); else toast.info(`${target} module is not available yet.`); };
-  const titleMap: Record<Section, string> = { dashboard: "CYBERJOCX", profile: "YOUR PROFILE", learning: "مسارات التعلّم", tracks: "مساراتك التعليمية", cves: "مركز الثغرات CVE", malware: "مركز Malware", tools: "دليل الأدوات", community: "المجتمع", market: "مكتبة CyberJocx", leaderboard: "LEADERBOARD", settings: "SETTINGS", ai: "NEXUS", admin: "إدارة المنصة" };
+  const titleMap: Record<Section, string> = { dashboard: "CYBERJOCX", profile: "YOUR PROFILE", learning: "مسارات التعلّم", tracks: "مساراتك التعليمية", cves: "مركز الثغرات CVE", malware: "مركز Malware", tools: "دليل الأدوات", community: "المجتمع", market: "مكتبة CyberJocx", leaderboard: "LEADERBOARD", settings: "SETTINGS", ai: "NEXUS", admin: "إدارة المنصة", instructor: "INSTRUCTOR STUDIO", ctf: "CTF ARENA", labs: "PRACTICE LABS" };
 
   if (loading) return (
     <div className="launch-loader" role="status" aria-live="polite">
@@ -139,68 +142,50 @@ export default function Home() {
     </div>
   );
 
-  if (section === "dashboard" || section === "leaderboard") {
-    const displayUserName = user?.name?.trim() || user?.email?.split("@")[0]?.trim() || (isAuthenticated ? "GHOST_OPERATOR" : "Guest");
-    return (
-      <FigmaDashboard
-        stats={{ points: stats.points, coursesCompleted: stats.coursesCompleted, activeCourses: stats.activeCourses, cvesTracked: stats.cvesTracked || cves.length }}
-        learningCourses={courses.map((course: any) => ({ id: course.id, title: course.title, category: course.category, level: course.level, progress: course.progress }))}
-        userName={displayUserName}
-        userAvatarUrl={user?.avatarUrl ?? null}
-        activePage={section === "leaderboard" ? "Leaderboard" : "Home"}
-        pageContent={section === "leaderboard" ? (
-          <LeaderboardView
-            stats={{ points: isAuthenticated ? stats.points : null, coursesCompleted: isAuthenticated ? stats.coursesCompleted : null, cvesTracked: isAuthenticated ? (stats.cvesTracked || cves.length) : null }}
-            userName={displayUserName}
-            onSignIn={() => isAuthenticated ? navigate("profile") : startLogin()}
-          />
-        ) : undefined}
-        onNavigate={handleFigmaNavigate}
-        onOpenAuth={() => isAuthenticated ? navigate("profile") : startLogin()}
-        onLogout={() => { void logout(); }}
-      />
-    );
-  }
+  const displayUserName = user?.name?.trim() || user?.email?.split("@")[0]?.trim() || (isAuthenticated ? "GHOST_OPERATOR" : "Guest");
+  const pageContent = section === "dashboard" ? undefined : (
+    <section className="cj-dashboard-page-content">
+      <header className="cj-dashboard-page-heading">
+        <div><span>// CYBERJOCX CONTROL SURFACE</span><h1>{titleMap[section]}</h1><p>كل أدوات التعلم والممارسة وإدارة حسابك في مساحة واحدة.</p></div>
+      </header>
+      {syncError && <div className="system-alert"><ShieldAlert size={15} /><span>{authError ? "AUTH WARNING // تعذر إكمال جلسة الدخول. سجّل الدخول مرة أخرى أو أنشئ حسابًا جديدًا." : "SYNC WARNING // تعذر مزامنة بعض البيانات. حاول التحديث مرة أخرى."}</span></div>}
+      {section === "profile" && <ProfileView user={user} />}
+      {section === "learning" && <LearningView courses={courses} roadmaps={roadmapsQuery.data ?? []} tracks={tracksQuery.data ?? []} loading={coursesQuery.isLoading || roadmapsQuery.isLoading || tracksQuery.isLoading} error={coursesQuery.error || roadmapsQuery.error || tracksQuery.error} search={courseSearch} setSearch={setCourseSearch} onStart={course => isAuthenticated ? progressMutation.mutate({ courseId: course.id, progress: 10 }) : startLogin()} />}
+      {section === "tracks" && <TracksView tracks={tracksQuery.data ?? []} loading={tracksQuery.isLoading} error={tracksQuery.error} />}
+      {section === "cves" && <CvesView cves={cves} loading={cvesQuery.isLoading || paginatedCvesQuery.isLoading} error={cvesQuery.error || paginatedCvesQuery.error} search={cveSearch} setSearch={value => { setCveSearch(value); setCvePage(1); }} severity={severity} setSeverity={value => { setSeverity(value); setCvePage(1); }} page={cvePage} totalPages={paginatedCvesQuery.data?.totalPages ?? 0} onPage={setCvePage} lastUpdated={nvdStatusQuery.data?.lastCompletedAt ? new Date(nvdStatusQuery.data.lastCompletedAt).toLocaleString("ar-EG") : nvdStatusQuery.data?.lastStatus ?? "لم تبدأ بعد"} />}
+      {section === "malware" && <MalwareView items={malwareQuery.data ?? []} loading={malwareQuery.isLoading} error={malwareQuery.error} search={malwareSearch} setSearch={setMalwareSearch} category={malwareCategory} setCategory={setMalwareCategory} />}
+      {section === "tools" && <ToolsView tools={tools} loading={toolsQuery.isLoading} error={toolsQuery.error} search={toolSearch} setSearch={setToolSearch} category={toolCategory} setCategory={setToolCategory} sort={toolSort} setSort={setToolSort} />}
+      {section === "community" && <CommunityView posts={postsQuery.data ?? []} requests={friendRequestsQuery.data ?? []} loading={postsQuery.isLoading} error={postsQuery.error} postText={postText} setPostText={setPostText} onPost={() => isAuthenticated ? createPost.mutate({ content: postText }) : startLogin()} onLike={postId => isAuthenticated ? likePost.mutate({ postId }) : startLogin()} onFollow={userId => isAuthenticated ? followUser.mutate({ userId }) : startLogin()} onFriend={userId => isAuthenticated ? sendFriendRequest.mutate({ userId }) : startLogin()} onRespond={(requestId, accept) => respondFriendRequest.mutate({ requestId, accept })} />}
+      {section === "market" && <MarketView books={booksQuery.data ?? []} loading={booksQuery.isLoading} error={booksQuery.error} cartItems={cartQuery.data ?? []} cartCount={cartCount} onAdd={bookId => isAuthenticated ? addToCart.mutate({ bookId }) : startLogin()} onRemove={itemId => removeFromCart.mutate({ itemId })} search={bookSearch} setSearch={setBookSearch} category={bookCategory} setCategory={setBookCategory} maxPoints={bookMaxPoints} setMaxPoints={setBookMaxPoints} sort={bookSort} setSort={setBookSort} />}
+      {section === "leaderboard" && <LeaderboardView stats={{ points: isAuthenticated ? stats.points : null, coursesCompleted: isAuthenticated ? stats.coursesCompleted : null, cvesTracked: isAuthenticated ? (stats.cvesTracked || cves.length) : null }} userName={displayUserName} onSignIn={() => isAuthenticated ? navigate("profile") : startLogin()} />}
+      {section === "settings" && <SettingsView user={user} isAuthenticated={isAuthenticated} onOpenProfile={() => navigate("profile")} />}
+      {section === "ai" && <NexusAssistantView messages={aiMessages} input={aiInput} setInput={setAiInput} onAsk={() => { const message = aiInput.trim(); if (!message || !isAuthenticated || askAI.isPending) return; setAiMessages(messages => [...messages, { role: "user", content: message }]); askAI.mutate({ message, history: aiMessages.slice(-12) }); setAiInput(""); }} onNewChat={() => { setAiMessages([]); setAiInput(""); }} isLoading={askAI.isPending} isAuthenticated={isAuthenticated} onSignIn={startLogin} />}
+      {section === "admin" && (user?.role === "admin" ? <AdminView /> : <ModuleState title="لوحة الإدارة مخصصة لحساب المدير فقط." error />)}
+      {section === "instructor" && (user?.role === "instructor" || user?.role === "admin" ? <InstructorView /> : <ModuleState title="مساحة المدرّس مخصصة للحسابات المعتمدة فقط." error />)}
+      {section === "ctf" && <CtfView isAuthenticated={isAuthenticated} onSignIn={startLogin} />}
+      {section === "labs" && <LabsView isAuthenticated={isAuthenticated} onSignIn={startLogin} />}
+    </section>
+  );
 
   return (
-    <div className="app-shell">
-      <aside className={`side-panel ${mobileOpen ? "is-open" : ""}`}>
-        <div className="brand-block">
-          <div className="brand-mark"><span>◩</span><span>◫</span></div>
-          <div><div className="brand-name"><span className="brand-accent">C</span>YBER<span className="brand-accent">J</span>OCX</div><div className="brand-sub">SECURITY // LEARNING OS</div></div>
-          <button className="mobile-close" onClick={() => setMobileOpen(false)}><X size={18} /></button>
-        </div>
-        <div className="status-chip"><span className="pulse-dot" /> CYBERJOCX <b>ONLINE</b></div>
-        <div className="nav-caption">// NAVIGATION</div>
-        <nav className="main-nav">
-          {navItems.map(item => <button key={item.id} className={`nav-item ${section === item.id ? "active" : ""}`} onClick={() => navigate(item.id)}><SectionIcon section={item.id} /><span>{item.label}</span><em>{item.meta}</em></button>)}
-        </nav>
-        <div className="sidebar-terminal"><div className="terminal-title"><Terminal size={13} /> LIVE FEED</div><p><span>&gt;</span> threat intel stream connected</p><p><span>&gt;</span> 4 new learning nodes</p><p><span>&gt;</span> encryption layer active</p></div>
-        <div className="side-footer"><div className="mini-avatar">{user?.name?.[0] ?? "G"}</div><div className="user-meta"><strong>{user?.name ?? "GHOST_OPERATOR"}</strong><span>{user?.role === "admin" ? "ADMIN // ROOT" : "FIELD AGENT"}</span></div>{isAuthenticated ? <button className="icon-button" title="تسجيل الخروج" onClick={() => logout()}><LogOut size={15} /></button> : <button className="icon-button" title="تسجيل الدخول" onClick={() => startLogin()}><LockKeyhole size={15} /></button>}</div>
-      </aside>
-      {mobileOpen && <button className="mobile-overlay" onClick={() => setMobileOpen(false)} aria-label="إغلاق القائمة" />}
-      <main className="main-panel">
-        <header className="topbar"><button className="mobile-menu" onClick={() => setMobileOpen(true)}><Menu size={19} /></button><div className="breadcrumb"><span>CYBERJOCX</span><ChevronLeft size={14} /><b>{titleMap[section]}</b></div><div className="topbar-actions"><span className="top-time">SYSTEM // READY</span><button className="alert-button" onClick={() => toast.info(unreadCount ? `${unreadCount} إشعارات غير مقروءة` : "لا توجد إشعارات جديدة")}><Radio size={16} /><span className="alert-ping" /></button><button className="profile-trigger" onClick={() => navigate("profile")}><span className="mini-avatar">{user?.name?.[0] ?? "G"}</span><span>{user?.name ?? "GHOST_OPERATOR"}</span></button></div></header>
-        <div className="content-wrap">
-          <div className="page-heading"><div><div className="eyebrow"><span /> WELCOME TO CYBERJOCX</div><h1>{titleMap[section]}</h1><p>محتوى واضح وخطوات عملية تساعدك على التعلّم وبناء خبرة قابلة للقياس.</p></div></div>
-          {syncError && <div className="system-alert"><ShieldAlert size={15} /><span>{authError ? "AUTH WARNING // تعذر إكمال جلسة الدخول. سجّل الدخول مرة أخرى أو أنشئ حسابًا جديدًا." : "SYNC WARNING // تعذر مزامنة بعض الإشارات. ستظهر آخر نسخة متاحة ويمكن إعادة المحاولة تلقائيًا."}</span></div>}
-                    {section === "profile" && <ProfileView user={user} />}
-          {section === "learning" && <LearningView courses={courses} roadmaps={roadmapsQuery.data ?? []} tracks={tracksQuery.data ?? []} loading={coursesQuery.isLoading || roadmapsQuery.isLoading || tracksQuery.isLoading} error={coursesQuery.error || roadmapsQuery.error || tracksQuery.error} search={courseSearch} setSearch={setCourseSearch} onStart={course => isAuthenticated ? progressMutation.mutate({ courseId: course.id, progress: 10 }) : startLogin()} />}
-          {section === "tracks" && <TracksView tracks={tracksQuery.data ?? []} loading={tracksQuery.isLoading} error={tracksQuery.error} />}
-          {section === "cves" && <CvesView cves={cves} loading={cvesQuery.isLoading || paginatedCvesQuery.isLoading} error={cvesQuery.error || paginatedCvesQuery.error} search={cveSearch} setSearch={value => { setCveSearch(value); setCvePage(1); }} severity={severity} setSeverity={value => { setSeverity(value); setCvePage(1); }} page={cvePage} totalPages={paginatedCvesQuery.data?.totalPages ?? 0} onPage={setCvePage} lastUpdated={nvdStatusQuery.data?.lastCompletedAt ? new Date(nvdStatusQuery.data.lastCompletedAt).toLocaleString("ar-EG") : nvdStatusQuery.data?.lastStatus ?? "لم تبدأ بعد"} />}
-          {section === "malware" && <MalwareView items={malwareQuery.data ?? []} loading={malwareQuery.isLoading} error={malwareQuery.error} search={malwareSearch} setSearch={setMalwareSearch} category={malwareCategory} setCategory={setMalwareCategory} />}
-          {section === "tools" && <ToolsView tools={tools} loading={toolsQuery.isLoading} error={toolsQuery.error} search={toolSearch} setSearch={setToolSearch} category={toolCategory} setCategory={setToolCategory} sort={toolSort} setSort={setToolSort} />}
-          {section === "community" && <CommunityView posts={postsQuery.data ?? []} requests={friendRequestsQuery.data ?? []} loading={postsQuery.isLoading} error={postsQuery.error} postText={postText} setPostText={setPostText} onPost={() => isAuthenticated ? createPost.mutate({ content: postText }) : startLogin()} onLike={postId => isAuthenticated ? likePost.mutate({ postId }) : startLogin()} onFollow={userId => isAuthenticated ? followUser.mutate({ userId }) : startLogin()} onFriend={userId => isAuthenticated ? sendFriendRequest.mutate({ userId }) : startLogin()} onRespond={(requestId, accept) => respondFriendRequest.mutate({ requestId, accept })} />}
-          {section === "market" && <MarketView books={booksQuery.data ?? []} loading={booksQuery.isLoading} error={booksQuery.error} cartItems={cartQuery.data ?? []} cartCount={cartCount} onAdd={bookId => isAuthenticated ? addToCart.mutate({ bookId }) : startLogin()} onRemove={itemId => removeFromCart.mutate({ itemId })} search={bookSearch} setSearch={setBookSearch} category={bookCategory} setCategory={setBookCategory} maxPoints={bookMaxPoints} setMaxPoints={setBookMaxPoints} sort={bookSort} setSort={setBookSort} />}
-          {section === "settings" && <SettingsView user={user} isAuthenticated={isAuthenticated} onOpenProfile={() => navigate("profile")} />}
-          {section === "ai" && <NexusAssistantView messages={aiMessages} input={aiInput} setInput={setAiInput} onAsk={() => { const message = aiInput.trim(); if (!message || !isAuthenticated || askAI.isPending) return; setAiMessages(messages => [...messages, { role: "user", content: message }]); askAI.mutate({ message, history: aiMessages.slice(-12) }); setAiInput(""); }} onNewChat={() => { setAiMessages([]); setAiInput(""); }} isLoading={askAI.isPending} isAuthenticated={isAuthenticated} onSignIn={startLogin} />}
-          {section === "admin" && <AdminView />} 
-        </div>
-        <button className="nexus-float" onClick={() => navigate("ai")} aria-label="فتح محادثة NEXUS"><span className="nexus-bot"><Bot size={23} /></span><span className="nexus-float-label">NEXUS<br /><small>اسألني</small></span></button>
-      </main>
-    </div>
+    <FigmaDashboard
+      stats={{ points: stats.points, coursesCompleted: stats.coursesCompleted, activeCourses: stats.activeCourses, cvesTracked: stats.cvesTracked || cves.length }}
+      learningCourses={courses.map((course: any) => ({ id: course.id, title: course.title, category: course.category, level: course.level, progress: course.progress }))}
+      userName={displayUserName}
+      userAvatarUrl={user?.avatarUrl ?? null}
+      userRole={user?.role ?? null}
+      activePage={section === "dashboard" ? "Home" : section === "leaderboard" ? "Leaderboard" : section === "admin" ? "Admin Console" : section === "instructor" ? "Instructor Studio" : section === "ctf" ? "CTF" : section === "labs" ? "Labs" : titleMap[section]}
+      pageContent={pageContent}
+      notifications={notificationsQuery.data ?? []}
+      onNotificationRead={id => markNotificationRead.mutate({ id })}
+      onNotificationReadAll={() => markAllNotificationsRead.mutate()}
+      onNavigate={handleFigmaNavigate}
+      onOpenAuth={() => isAuthenticated ? navigate("profile") : startLogin()}
+      onLogout={() => { void logout(); }}
+    />
   );
 }
+
 
 function ModuleState({ title, error, empty = false }: { title: string; error?: unknown; empty?: boolean }) {
   return <div className="empty-state panel-card"><Activity size={27} /><h3>{error ? "Signal unavailable" : empty ? "No nodes indexed" : "Syncing matrix..."}</h3><p>{error ? "تعذر الوصول إلى قاعدة البيانات. تحقق من الاتصال وحاول مرة أخرى." : empty ? title : "جارٍ تحميل البيانات الدائمة من طبقة المعرفة..."}</p></div>;
