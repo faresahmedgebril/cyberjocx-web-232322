@@ -81,6 +81,7 @@ const inheritedBindingNames = [
   "GOOGLE_CLIENT_SECRET",
   "HYPERDRIVE",
   "NODE_ENV",
+  "OWNER_OPEN_ID",
   "PORT",
   "PUBLIC_API_RATE_LIMIT",
 ];
