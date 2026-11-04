@@ -1,4 +1,5 @@
 import { ReactNode, useEffect, useMemo, useState } from "react";
+import { useTheme } from "@/contexts/ThemeContext";
 import "./FigmaDashboard.css";
 import { ComingSoonModal } from "@/components/ComingSoonModal";
 
@@ -45,13 +46,13 @@ function Icon({ name, size = 22 }: { name: IconName; size?: number }) {
   return <svg aria-hidden="true" className="icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{iconPaths[name]}</svg>
 }
 
-const navigation: { icon: IconName; label: string; target?: string; comingSoon?: boolean; dividerBefore?: boolean }[] = [
+const navigation: { icon: IconName; label: string; target?: string; comingSoon?: boolean; dividerBefore?: boolean; adminOnly?: boolean; instructorOnly?: boolean }[] = [
   { icon: "home", label: "Home", target: "dashboard" },
   { icon: "server", label: "Dashboard", target: "dashboard" },
   { icon: "book", label: "Courses", target: "learning" },
   { icon: "roadmap", label: "Roadmap", target: "tracks" },
-  { icon: "tools", label: "Labs", comingSoon: true },
-  { icon: "target", label: "CTF", comingSoon: true },
+  { icon: "tools", label: "Labs", target: "labs" },
+  { icon: "target", label: "CTF", target: "ctf" },
   { icon: "shield", label: "CVE Center", target: "cves" },
   { icon: "bug", label: "Malware", target: "malware" },
   { icon: "users", label: "Community", target: "community" },
@@ -59,7 +60,9 @@ const navigation: { icon: IconName; label: string; target?: string; comingSoon?:
   { icon: "terminal", label: "AI Assistant", target: "ai" },
   { icon: "network", label: "Tracks", target: "tracks", dividerBefore: true },
   { icon: "trophy", label: "Leaderboard", target: "leaderboard" },
+  { icon: "book", label: "Instructor Studio", target: "instructor", instructorOnly: true },
   { icon: "settings", label: "Settings", target: "settings" },
+  { icon: "shield", label: "Admin Console", target: "admin", adminOnly: true, dividerBefore: true },
   { icon: "logout", label: "Log Out", target: "logout", dividerBefore: true },
 ]
 
@@ -95,19 +98,46 @@ export function DashboardRightRail({ onComingSoon }: { onComingSoon: () => void 
 }
 
 
+type DashboardNotification = {
+  id: number;
+  type: "cve" | "content" | "system";
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string | Date;
+};
+
 type FigmaDashboardProps = {
   stats: { points: number; coursesCompleted: number; activeCourses: number; cvesTracked: number };
   learningCourses: Array<{ id?: number | string; title: string; category?: string; level?: string; progress?: number }>;
   userName: string;
   userAvatarUrl?: string | null;
+  userRole?: string | null;
   activePage?: string;
   pageContent?: ReactNode;
+  notifications?: DashboardNotification[];
+  onNotificationRead?: (id: number) => void;
+  onNotificationReadAll?: () => void;
   onNavigate: (target: string) => void;
   onOpenAuth: () => void;
   onLogout?: () => void;
 };
 
-export default function FigmaDashboard({ stats: liveStats, learningCourses, userName, userAvatarUrl, activePage = "Home", pageContent, onNavigate, onOpenAuth, onLogout }: FigmaDashboardProps) {
+export default function FigmaDashboard({
+  stats: liveStats,
+  learningCourses,
+  userName,
+  userAvatarUrl,
+  userRole,
+  activePage = "Home",
+  pageContent,
+  notifications = [],
+  onNotificationRead,
+  onNotificationReadAll,
+  onNavigate,
+  onOpenAuth,
+  onLogout,
+}: FigmaDashboardProps) {
   const dashboardStats = [
     { icon: "star" as IconName, title: "Total Points", value: liveStats.points.toLocaleString(), gain: "LIVE", progress: Math.min(100, Math.max(8, liveStats.points % 100)) },
     { icon: "book" as IconName, title: "Completed Courses", value: String(liveStats.coursesCompleted), gain: "SYNC", progress: Math.min(100, liveStats.coursesCompleted * 20) },
@@ -123,12 +153,18 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
   const [activeNav, setActiveNav] = useState(activePage)
   const [search, setSearch] = useState("")
   const [comingSoonOpen, setComingSoonOpen] = useState(false)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [navCollapsed, setNavCollapsed] = useState(false)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
+  const { theme, toggleTheme } = useTheme();
+  const unreadNotifications = notifications.filter(item => !item.isRead);
+  const visibleNavigation = navigation.filter(item => (!item.adminOnly || userRole === "admin") && (!item.instructorOnly || userRole === "instructor" || userRole === "admin"));
 
   useEffect(() => setActiveNav(activePage), [activePage]);
 
   const matches = useMemo(() => dashboardCourses.filter((course) => course.name.toLowerCase().includes(search.toLowerCase())), [dashboardCourses, search])
 
-  return <div className="figma-dashboard">
+  return <div className={`figma-dashboard ${theme === "light" ? "light-theme" : "dark-theme"} ${navCollapsed ? "nav-collapsed" : ""}`}>
     <header className="topbar">
       <div className="brand">
         <img src={`${import.meta.env.BASE_URL}assets/cyber-hacker.jpg`} alt="CyberJocx" />
@@ -141,8 +177,37 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
         {search && <small>{matches.length} course{matches.length === 1 ? "" : "s"}</small>}
       </label>
       <div className="top-actions">
-        <button className="round-button notification" aria-label="Notifications" onClick={() => setComingSoonOpen(true)}><Icon name="bell" size={26} /><i>1</i></button>
-        <button className="round-button" aria-label="Appearance settings" onClick={() => setComingSoonOpen(true)}><Icon name="moon" size={25} /></button>
+        <button className="round-button nav-toggle" type="button" aria-label={mobileNavOpen ? "Close navigation" : "Open navigation"} aria-expanded={mobileNavOpen} onClick={() => { if (window.innerWidth <= 760) setMobileNavOpen(value => !value); else setNavCollapsed(value => !value); }}>
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
+        </button>
+        <div className="notification-anchor">
+          <button className="round-button notification" type="button" aria-label="Notifications" aria-expanded={notificationsOpen} onClick={() => setNotificationsOpen(value => !value)}>
+            <Icon name="bell" size={26} />
+            {unreadNotifications.length > 0 && <i>{unreadNotifications.length > 99 ? "99+" : unreadNotifications.length}</i>}
+          </button>
+          {notificationsOpen && (
+            <div className="notification-popover" role="dialog" aria-label="Notifications">
+              <div className="notification-popover-head">
+                <strong>Notifications</strong>
+                <button type="button" onClick={onNotificationReadAll} disabled={unreadNotifications.length === 0}>Mark all read</button>
+              </div>
+              <div className="notification-list">
+                {notifications.length === 0 ? (
+                  <p className="notification-empty">No notifications yet.</p>
+                ) : notifications.slice(0, 20).map(item => (
+                  <button type="button" key={item.id} className={`notification-item ${item.isRead ? "is-read" : "is-unread"}`} onClick={() => { if (!item.isRead) onNotificationRead?.(item.id); }}>
+                    <span className={`notification-type ${item.type}`}><Icon name={item.type === "cve" ? "shield" : item.type === "content" ? "book" : "bolt"} size={16} /></span>
+                    <span className="notification-copy"><b>{item.title}</b><small>{item.message}</small><time>{new Date(item.createdAt).toLocaleString()}</time></span>
+                    {!item.isRead && <i className="notification-unread-dot" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        <button className="round-button" type="button" aria-label={theme === "dark" ? "Switch to daylight mode" : "Switch to night mode"} aria-pressed={theme === "dark"} onClick={toggleTheme}>
+          <Icon name={theme === "dark" ? "sun" : "moon"} size={25} />
+        </button>
         <button className="profile-button" onClick={onOpenAuth}>
           <span>{userAvatarUrl ? <img src={userAvatarUrl} alt="" /> : <Icon name="user" size={22} />}</span>
           <b>{userName || "GHOST_OPERATOR"}</b><Icon name="chevron" size={14} />
@@ -150,9 +215,10 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
       </div>
     </header>
 
-    <aside className="sidebar">
+    {mobileNavOpen && <button className="sidebar-overlay" type="button" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)} />}
+    <aside className={`sidebar ${mobileNavOpen ? "is-open" : ""} ${navCollapsed ? "is-collapsed" : ""}`}>
       <nav aria-label="Dashboard navigation">
-        {navigation.map((item) => <button key={item.label} className={`nav-item ${activeNav === item.label ? "active" : ""} ${item.dividerBefore ? "nav-item--section" : ""}`} onClick={() => { if (item.target === "logout") { onLogout?.(); return; } if (item.comingSoon || !item.target) { setComingSoonOpen(true); return; } setActiveNav(item.label); onNavigate(item.target); }}><Icon name={item.icon} size={23} /><span>{item.label}</span></button>)}
+        {visibleNavigation.map((item) => <button key={item.label} type="button" className={`nav-item ${activeNav === item.label ? "active" : ""} ${item.dividerBefore ? "nav-item--section" : ""}`} onClick={() => { setMobileNavOpen(false); if (item.target === "logout") { onLogout?.(); return; } if (!item.target) { setComingSoonOpen(true); return; } setActiveNav(item.label); onNavigate(item.target); }}><Icon name={item.icon} size={23} /><span>{item.label}</span></button>)}
       </nav>
       <div className="sidebar-brand" role="button" tabIndex={0} onClick={() => onNavigate("dashboard")} onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onNavigate("dashboard"); } }}>
         <img src={`${import.meta.env.BASE_URL}assets/cyber-hacker.jpg`} alt="Hooded CyberJocx character" />
@@ -161,7 +227,7 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
       </div>
     </aside>
 
-    <main className={pageContent ? "has-page-content" : ""}>
+    <main className={pageContent ? "has-page-content" : "is-dashboard-page"}>
       {pageContent ?? <div className="dashboard-grid">
         <div className="main-column">
           <Panel className="welcome-card">
