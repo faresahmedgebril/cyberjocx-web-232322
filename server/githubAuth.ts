@@ -2,6 +2,8 @@ import type { Express, Request, Response } from "express";
 import { createSession, ensureGitHubUser, sessionCookie } from "./core/auth/session";
 import { ENV } from "./config/env";
 import { clearOAuthStateCookie, issueOAuthState, verifyOAuthState } from "./core/auth/oauthState";
+import { logger } from "./core/logger";
+import { getDatabaseErrorMetadata } from "./infrastructure/database/errorMetadata";
 
 const AUTHORIZE_URL = "https://github.com/login/oauth/authorize";
 const TOKEN_URL = "https://github.com/login/oauth/access_token";
@@ -95,7 +97,7 @@ export function registerGitHubAuthRoutes(app: Express) {
       res.redirect(302, appHomeUrl());
     } catch (error) {
       res.setHeader("Set-Cookie", clearOAuthStateCookie("github"));
-      console.error("[GitHub OAuth] callback failed", error instanceof Error ? error.message : String(error));
+      logger.error("[GitHub OAuth] callback failed", getDatabaseErrorMetadata(error));
       res.redirect(302, loginUrl("github"));
     }
   });
