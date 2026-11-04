@@ -143,7 +143,7 @@ type DashboardNotification = {
 
 type FigmaDashboardProps = {
   stats: { points: number; coursesCompleted: number; activeCourses: number; cvesTracked: number };
-  learningCourses: Array<{ id?: number | string; title: string; category?: string; level?: string; progress?: number }>;
+  learningCourses: Array<{ id?: number | string; title: string; category?: string; level?: string; progress?: number; availabilityStatus?: "coming-soon" | "available" }>;
   userName: string;
   userAvatarUrl?: string | null;
   userRole?: string | null;
@@ -183,6 +183,7 @@ export default function FigmaDashboard({
     name: course.title,
     detail: `${course.level || "Learning"} • ${course.category || "Course"}`,
     progress: Math.max(0, Math.min(100, Number(course.progress || 0))),
+    availabilityStatus: course.availabilityStatus ?? "coming-soon",
   })), [learningCourses]);
   const [activeNav, setActiveNav] = useState(activePage)
   const [search, setSearch] = useState("")
@@ -288,7 +289,7 @@ export default function FigmaDashboard({
           <Panel className="courses-panel">
             <SectionTitle icon="book" action="View All" onAction={() => onNavigate("learning")}>Featured Courses</SectionTitle>
             <div className="course-grid">
-              {dashboardCourses.map((course) => <article className="course-card" key={course.name}><div className="course-heading"><span><Icon name={course.icon} size={25} /></span><div><strong>{course.name}</strong><small>{course.detail}</small></div></div><div className="course-progress"><i style={{ width: `${course.progress}%` }} /></div><b>{course.progress}%</b><button onClick={() => onNavigate("learning")}>{course.progress ? "Continue" : "Start"} →</button></article>)}
+              {dashboardCourses.map((course) => <article className="course-card" key={course.name}><div className="course-coming-soon-badge">COMING SOON</div><div className="course-heading"><span><Icon name={course.icon} size={25} /></span><div><strong>{course.name}</strong><small>{course.detail}</small></div></div><div className="course-progress"><i style={{ width: `${course.progress}%` }} /></div><b>{course.progress}%</b><button type="button" disabled={course.availabilityStatus === "coming-soon"} onClick={() => onNavigate("learning")}>{course.availabilityStatus === "coming-soon" ? "COMING SOON" : course.progress ? "Continue" : "Start"}</button></article>)}
             </div>
           </Panel>
         </div>
