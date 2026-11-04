@@ -49,7 +49,7 @@ export default function SettingsView({
     return savedAccent && accentColors.includes(savedAccent) ? savedAccent : accentColors[1];
   });
   const [comingOpen, setComingOpen] = useState(false);
-  const { theme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const updateProfile = trpc.profile.update.useMutation({
     onSuccess: () => toast.success("تم حفظ إعدادات الحساب."),
     onError: () => toast.error("تعذر حفظ إعدادات الحساب الآن."),
@@ -111,8 +111,8 @@ export default function SettingsView({
                 <div className="cj-settings-divider" />
                 <h3>Theme</h3>
                 <div className="cj-theme-options">
-                  <button type="button" onClick={openComingSoon}><Sun size={22} />Light</button>
-                  <button type="button" className={theme === "dark" ? "selected" : ""} aria-pressed={theme === "dark"} disabled><Moon size={22} />Dark{theme === "dark" && <Check size={15} />}</button>
+                  <button type="button" className={theme === "light" ? "selected" : ""} aria-pressed={theme === "light"} onClick={() => { if (theme !== "light") toggleTheme?.(); }}><Sun size={22} />Light{theme === "light" && <Check size={15} />}</button>
+                  <button type="button" className={theme === "dark" ? "selected" : ""} aria-pressed={theme === "dark"} onClick={() => { if (theme !== "dark") toggleTheme?.(); }}><Moon size={22} />Dark{theme === "dark" && <Check size={15} />}</button>
                   <button type="button" onClick={openComingSoon}><Monitor size={22} />Auto</button>
                 </div>
                 <div className="cj-settings-divider" />
