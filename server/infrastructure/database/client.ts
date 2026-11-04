@@ -42,9 +42,9 @@ export function createRequestDatabaseScope(connectionString: string): RequestDat
         databasePromise = requestClient.connect()
           .then(() => drizzle(requestClient, { schema }))
           .catch(async error => {
+            await requestClient.end().catch(() => undefined);
             if (client === requestClient) client = null;
             databasePromise = null;
-            await requestClient.end().catch(() => undefined);
             throw error;
           });
       }
