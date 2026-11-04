@@ -61,6 +61,30 @@ function SectionTitle({ icon, children, action, onAction }: { icon: IconName; ch
   return <div className="section-title"><span className="title-icon"><Icon name={icon} size={23} /></span><h2>{children}</h2>{action && <button type="button" className="outline-action" onClick={onAction}>{action} <span>→</span></button>}</div>
 }
 
+export function DashboardRightRail({ onComingSoon }: { onComingSoon: () => void }) {
+  const [terminalOpen, setTerminalOpen] = useState(true);
+
+  return (
+    <div className="right-column">
+      <Panel className="activity-panel">
+        <SectionTitle icon="bolt" action="View All" onAction={onComingSoon}>Recent Activity</SectionTitle>
+        <div className="dashboard-placeholder">Coming Soon</div>
+      </Panel>
+
+      <Panel className={`terminal-panel ${terminalOpen ? "" : "closed"}`}>
+        <div className="terminal-head"><span><Icon name="terminal" size={22} /></span><h2>Quick Terminal</h2><div><button aria-label="Minimize terminal" onClick={() => setTerminalOpen(!terminalOpen)}>−</button><button aria-label="Expand terminal" onClick={onComingSoon}><Icon name="expand" size={14} /></button><button aria-label="Close terminal" onClick={() => setTerminalOpen(false)}><Icon name="close" size={15} /></button></div></div>
+        {terminalOpen && <div className="terminal dashboard-placeholder">Coming Soon</div>}
+      </Panel>
+
+      <Panel className="goals-panel">
+        <div className="goals-head"><span><Icon name="target" size={23} /></span><h2>Today's Goals</h2><i /></div>
+        <div className="dashboard-placeholder">Coming Soon</div>
+      </Panel>
+    </div>
+  );
+}
+
+
 type FigmaDashboardProps = {
   stats: { points: number; coursesCompleted: number; activeCourses: number; cvesTracked: number };
   learningCourses: Array<{ id?: number | string; title: string; category?: string; level?: string; progress?: number }>;
@@ -84,7 +108,6 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
   })), [learningCourses]);
   const [activeNav, setActiveNav] = useState("Home")
   const [search, setSearch] = useState("")
-  const [terminalOpen, setTerminalOpen] = useState(true)
   const [comingSoonOpen, setComingSoonOpen] = useState(false)
 
   const matches = useMemo(() => dashboardCourses.filter((course) => course.name.toLowerCase().includes(search.toLowerCase())), [dashboardCourses, search])
@@ -151,22 +174,7 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
           </Panel>
         </div>
 
-        <div className="right-column">
-          <Panel className="activity-panel">
-            <SectionTitle icon="bolt" action="View All" onAction={() => setComingSoonOpen(true)}>Recent Activity</SectionTitle>
-            <div className="dashboard-placeholder">Coming Soon</div>
-          </Panel>
-
-          <Panel className={`terminal-panel ${terminalOpen ? "" : "closed"}`}>
-            <div className="terminal-head"><span><Icon name="terminal" size={22} /></span><h2>Quick Terminal</h2><div><button aria-label="Minimize terminal" onClick={() => setTerminalOpen(!terminalOpen)}>−</button><button aria-label="Expand terminal" onClick={() => setComingSoonOpen(true)}><Icon name="expand" size={14} /></button><button aria-label="Close terminal" onClick={() => setTerminalOpen(false)}><Icon name="close" size={15} /></button></div></div>
-            {terminalOpen && <div className="terminal dashboard-placeholder">Coming Soon</div>}
-          </Panel>
-
-          <Panel className="goals-panel">
-            <div className="goals-head"><span><Icon name="target" size={23} /></span><h2>Today's Goals</h2><i /></div>
-            <div className="dashboard-placeholder">Coming Soon</div>
-          </Panel>
-        </div>
+        <DashboardRightRail onComingSoon={() => setComingSoonOpen(true)} />
       </div>
     </main>
 
