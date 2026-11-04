@@ -113,7 +113,14 @@ export const appRouter = router({
       if (passed) {
         const existingCertificate = quiz.trackLevelId ? (await db.select().from(certificates).where(and(eq(certificates.userId, ctx.user.id), eq(certificates.trackLevelId, quiz.trackLevelId))).limit(1))[0] : undefined;
         certificateCode = existingCertificate?.certificateCode ?? `CJX-${nanoid(10).toUpperCase()}`;
-        if (!existingCertificate) await db.insert(certificates).values({ userId: ctx.user.id, trackId: quiz.trackId, trackLevelId: quiz.trackLevelId ?? null, certificateCode });
+        if (!existingCertificate) {
+          await db.insert(certificates).values({ userId: ctx.user.id, trackId: quiz.trackId, trackLevelId: quiz.trackLevelId ?? null, certificateCode });
+          await notifyAll({
+            type: "content",
+            title: "New learning milestone",
+            message: `${ctx.user.name?.trim() || "A CyberJocx learner"} earned a certificate for ${quiz.title}.`,
+          });
+        }
       }
       return { score, passed, certificateCode };
     }),
@@ -619,6 +626,16 @@ export const appRouter = router({
         resourceId: request.id,
         metadataJson: JSON.stringify({ courseId: request.courseId, note: input.note ?? null }),
       });
+      if (input.decision === "approve") {
+        const course = await db.select({ title: courses.title }).from(courses).where(eq(courses.id, request.courseId)).limit(1);
+        if (course[0]) {
+          await notifyAll({
+            type: "content",
+            title: "Course content updated",
+            message: `${course[0].title} has a newly approved update.`,
+          });
+        }
+      }
       return { success: true };
     }),
     setUserRole: ownerAdminProcedure.input(z.object({
