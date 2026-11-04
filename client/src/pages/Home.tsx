@@ -139,7 +139,28 @@ export default function Home() {
     </div>
   );
 
-  if (String(section) === "dashboard") return <><FigmaDashboard stats={{ points: stats.points, coursesCompleted: stats.coursesCompleted, activeCourses: stats.activeCourses, cvesTracked: stats.cvesTracked || cves.length }} learningCourses={courses.map((course: any) => ({ id: course.id, title: course.title, category: course.category, level: course.level, progress: course.progress }))} userName={user?.name?.trim() || user?.email?.split("@")[0]?.trim() || (isAuthenticated ? "GHOST_OPERATOR" : "Guest")} onNavigate={handleFigmaNavigate} onOpenAuth={() => isAuthenticated ? navigate("profile") : startLogin()} /></>;
+  if (section === "dashboard" || section === "leaderboard") {
+    const displayUserName = user?.name?.trim() || user?.email?.split("@")[0]?.trim() || (isAuthenticated ? "GHOST_OPERATOR" : "Guest");
+    return (
+      <FigmaDashboard
+        stats={{ points: stats.points, coursesCompleted: stats.coursesCompleted, activeCourses: stats.activeCourses, cvesTracked: stats.cvesTracked || cves.length }}
+        learningCourses={courses.map((course: any) => ({ id: course.id, title: course.title, category: course.category, level: course.level, progress: course.progress }))}
+        userName={displayUserName}
+        userAvatarUrl={user?.avatarUrl ?? null}
+        activePage={section === "leaderboard" ? "Leaderboard" : "Home"}
+        pageContent={section === "leaderboard" ? (
+          <LeaderboardView
+            stats={{ points: stats.points, coursesCompleted: stats.coursesCompleted, cvesTracked: stats.cvesTracked || cves.length }}
+            userName={displayUserName}
+            onSignIn={() => isAuthenticated ? navigate("profile") : startLogin()}
+          />
+        ) : undefined}
+        onNavigate={handleFigmaNavigate}
+        onOpenAuth={() => isAuthenticated ? navigate("profile") : startLogin()}
+        onLogout={() => { void logout(); }}
+      />
+    );
+  }
 
   return (
     <div className="app-shell">
