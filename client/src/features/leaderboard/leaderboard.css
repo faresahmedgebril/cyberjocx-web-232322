@@ -130,6 +130,7 @@
 .cj-lb-score-progress>i>b{height:100%;display:block;border-radius:inherit;background:linear-gradient(90deg,#08baff,#c024ff);box-shadow:0 0 8px #572cff}
 .cj-lb-footnote{padding:10px 12px 11px;color:#718eb5;font-size:9px;line-height:1.5;border-top:1px solid rgba(34,72,136,.24)}
 .cj-lb-side-column{gap:16px}
+.cj-lb-quick-stats{margin-top:48px}
 .cj-lb-profile-card,.cj-lb-quick-stats,.cj-lb-encouragement{position:relative;overflow:hidden;border:1px solid #285dc0;border-radius:10px;background:linear-gradient(145deg,rgba(3,14,43,.98),rgba(5,9,35,.98));box-shadow:0 0 16px rgba(29,60,177,.17),inset 0 0 24px rgba(17,53,132,.12)}
 .cj-lb-profile-card{min-height:238px;padding:16px 17px;border-color:#7b35ed;background:radial-gradient(circle at 12% 36%,rgba(13,93,255,.16),transparent 39%),linear-gradient(145deg,rgba(5,16,51,.98),rgba(9,8,43,.98));box-shadow:0 0 17px rgba(96,37,220,.23),inset 0 0 24px rgba(67,44,181,.15)}
 .cj-lb-card-topline{display:flex;align-items:center;justify-content:space-between;color:#73cfff;font:9px "DM Mono",monospace;letter-spacing:.11em}
@@ -197,6 +198,7 @@
 @media(max-width:900px){
   .cj-lb-reference-page{grid-template-columns:1fr}
   .cj-lb-side-column{padding-top:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+  .cj-lb-quick-stats{margin-top:0}
   .cj-lb-profile-card{grid-column:1/-1}
   .cj-lb-encouragement{min-height:170px}
 }
