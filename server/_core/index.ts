@@ -8,7 +8,6 @@ import { handleNvdSync } from "../nvdSync";
 import { registerGoogleAuthRoutes } from "../googleAuth";
 import { registerGitHubAuthRoutes } from "../githubAuth";
 import { registerPasswordAuthRoutes, registerSupportRoutes } from "../passwordAuth";
-import { setupVite, serveStatic } from "./vite";
 import { ENV } from "../config/env";
 import { HEALTH_PATH, READY_PATH } from "../config/constants";
 import { corsMiddleware, rateLimit, validateStateChangingOrigin } from "../core/security/middleware";
@@ -48,8 +47,13 @@ export function createApp() {
 export async function startServer() {
   const app = createApp();
   const server = createServer(app);
-  if (ENV.NODE_ENV === "development") await setupVite(app, server);
-  else serveStatic(app);
+  if (ENV.NODE_ENV === "development") {
+    const { setupVite } = await import("./vite");
+    await setupVite(app, server);
+  } else {
+    const { serveStatic } = await import("./vite");
+    serveStatic(app);
+  }
   server.listen(ENV.PORT, () => logger.info("HTTP server started", { port: ENV.PORT, environment: ENV.NODE_ENV }));
   const stopWorker = startEmbeddedWorker();
   const shutdown = (signal: string) => {
