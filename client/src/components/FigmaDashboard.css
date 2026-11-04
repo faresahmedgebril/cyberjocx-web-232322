@@ -316,3 +316,21 @@
   .figma-dashboard .cj-instructor-course-row,.figma-dashboard .cj-instructor-student-row,.figma-dashboard .cj-admin-review-row{align-items:flex-start;flex-wrap:wrap}
   .figma-dashboard .cj-admin-review-actions{width:100%}
 }
+
+
+/* Temporary launch state: every course remains discoverable but cannot be started yet. */
+.figma-dashboard .course-coming-soon-badge,
+.figma-dashboard .course-coming-soon-pill{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:5px 9px;border:1px solid rgba(239,177,76,.72);border-radius:6px;
+  color:#f4d18d;background:rgba(122,75,8,.2);
+  font:800 9px "DM Mono",monospace;letter-spacing:.08em;
+  box-shadow:0 0 11px rgba(220,154,41,.1);
+}
+.figma-dashboard .course-coming-soon-badge{position:absolute;z-index:2;top:10px;right:10px;backdrop-filter:blur(8px)}
+.figma-dashboard .course-art .course-coming-soon-badge{top:12px;right:12px}
+.figma-dashboard .course-card-foot button:disabled,
+.figma-dashboard .course-card>button:disabled,
+.figma-dashboard .modal-actions button:disabled{opacity:1;cursor:not-allowed;color:#e8c783;border-color:rgba(213,157,62,.6);background:rgba(105,71,22,.24);box-shadow:none}
+.figma-dashboard.light-theme .course-coming-soon-badge,
+.figma-dashboard.light-theme .course-coming-soon-pill{color:#80520b;background:#fff8e8;border-color:#d9b56c}
