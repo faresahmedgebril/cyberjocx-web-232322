@@ -1,5 +1,3 @@
-import type { Request } from "express";
-
 interface HyperdriveBinding {
   connectionString: string;
 }
