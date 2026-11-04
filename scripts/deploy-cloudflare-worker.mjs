@@ -157,12 +157,9 @@ for (const entry of leaderboardData.entries) {
 }
 
 for (const provider of ["github", "google"]) {
-  const { response, body } = await fetchJson(`${API_BASE_URL}/api/auth/${provider}/login`, {
+  const response = await fetch(`${API_BASE_URL}/api/auth/${provider}/login`, {
     redirect: "manual",
-  }).then(async result => ({
-    ...result,
-    body: result.body,
-  }));
+  });
   if (response.status !== 302) {
     throw new Error(`${provider} OAuth start returned HTTP ${response.status} instead of 302.`);
   }
