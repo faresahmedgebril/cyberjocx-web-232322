@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { Award, Clock3, Crown, Grid2X2, Medal, RefreshCw, Shield, Trophy, Users, Zap } from "lucide-react";
+import { Clock3, Crown, Grid2X2, Medal, RefreshCw, Shield, Trophy } from "lucide-react";
 import { trpc } from "@/lib/trpc";
+import { DashboardRightRail } from "@/components/FigmaDashboard";
 import { ComingSoonModal } from "@/components/ComingSoonModal";
 import "./leaderboard.css";
 
@@ -43,7 +44,6 @@ export default function LeaderboardView() {
   const [comingOpen, setComingOpen] = useState(false);
   const board = trpc.leaderboard.list.useQuery({ period }, { staleTime: 30_000, refetchOnWindowFocus: true });
   const entries = board.data?.entries ?? [];
-  const current = board.data?.currentUser ?? null;
   const podium = useMemo(() => entries.slice(0, 3), [entries]);
   const podiumOrder = podium.length === 3
     ? [{ entry: podium[1]!, rank: 2 }, { entry: podium[0]!, rank: 1 }, { entry: podium[2]!, rank: 3 }]
@@ -132,34 +132,9 @@ export default function LeaderboardView() {
           </div>
 
           <aside className="cj-lb-rail">
-            <section className="cj-lb-profile-card">
-              <div className="cj-lb-card-label"><Award size={17} /> YOUR POSITION</div>
-              {current ? (
-                <>
-                  <Avatar name={current.name} src={current.avatarUrl} size="large" />
-                  <strong>{displayName(current.name)}</strong>
-                  <span className="cj-lb-your-points">{points(current.points)} <small>PTS</small></span>
-                  <p>{current.rank ? `Rank #${current.rank}` : "Not currently in the top 50"}</p>
-                </>
-              ) : (
-                <div className="cj-lb-guest"><Users size={22} /><span>Sign in to see your position.</span></div>
-              )}
-            </section>
-
-            <section className="cj-lb-stats-card">
-              <h2><Zap size={19} /> Community Stats</h2>
-              <div><Users size={18} /><span>Registered members</span><b>{points(board.data?.totalMembers)}</b></div>
-              <div><Trophy size={18} /><span>Top score</span><b>{points(entries[0]?.points)}</b></div>
-              <div><Shield size={18} /><span>Top member rank</span><b>{entries[0] ? (rankLabels[entries[0].memberRank] ?? "Learner") : "—"}</b></div>
-            </section>
-
-            <section className="cj-lb-note">
-              <b>“</b>
-              <Trophy size={23} />
-              <strong>Earn your place.</strong>
-              <p>Complete courses, challenges and practical activities to build your verified points.</p>
-              <span>LEARN · PRACTICE · PROVE</span>
-            </section>
+            <div className="figma-dashboard cj-lb-dashboard-scope">
+              <DashboardRightRail onComingSoon={() => setComingOpen(true)} />
+            </div>
           </aside>
         </div>
       </section>
