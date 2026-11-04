@@ -174,7 +174,7 @@ export default function Home() {
       userName={displayUserName}
       userAvatarUrl={user?.avatarUrl ?? null}
       userRole={user?.role ?? null}
-      activePage={section === "dashboard" ? "Home" : section === "leaderboard" ? "Leaderboard" : section === "admin" ? "Admin Console" : section === "instructor" ? "Instructor Studio" : section === "ctf" ? "CTF" : section === "labs" ? "Labs" : titleMap[section]}
+      activePage={({ dashboard: "Home", profile: "Profile", learning: "Courses", tracks: "Roadmap", cves: "CVE Center", malware: "Malware", tools: "Labs", community: "Community", market: "Market", leaderboard: "Leaderboard", settings: "Settings", ai: "AI Assistant", admin: "Admin Console", instructor: "Instructor Studio", ctf: "CTF", labs: "Labs" } satisfies Record<Section, string>)[section]}
       pageContent={pageContent}
       notifications={notificationsQuery.data ?? []}
       onNotificationRead={id => markNotificationRead.mutate({ id })}
