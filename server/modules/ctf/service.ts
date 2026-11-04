@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 import { challenges, ctfChallenges, ctfEvents, ctfSubmissions } from "../../../drizzle/schema";
 import { getDb } from "../../db";
+import { notifyAll } from "../notifications/service";
 import { awardChallengeCompletion } from "../practice/service";
 import { validationError } from "../../core/errors";
 
@@ -42,5 +43,12 @@ export async function submitCtfFlag(userId: number, eventId: number, challengeId
   const correct = Boolean(challenge.expectedHash && crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(challenge.expectedHash)));
   await db.insert(ctfSubmissions).values({ eventId, challengeId, userId, answerHash: hash, correct });
   const reward = correct ? await awardChallengeCompletion(userId, challengeId, "ctf") : { awardedXp: 0 };
+  if (correct && reward.awardedXp > 0) {
+    await notifyAll({
+      type: "content",
+      title: "CTF challenge cleared",
+      message: `A CyberJocx learner completed the ${challenge.title} challenge and earned ${reward.awardedXp} XP.`,
+    });
+  }
   return { correct, awardedXp: reward.awardedXp };
 }
