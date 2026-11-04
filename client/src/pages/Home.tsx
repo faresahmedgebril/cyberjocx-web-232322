@@ -150,7 +150,7 @@ export default function Home() {
         activePage={section === "leaderboard" ? "Leaderboard" : "Home"}
         pageContent={section === "leaderboard" ? (
           <LeaderboardView
-            stats={{ points: stats.points, coursesCompleted: stats.coursesCompleted, cvesTracked: stats.cvesTracked || cves.length }}
+            stats={{ points: isAuthenticated ? stats.points : null, coursesCompleted: isAuthenticated ? stats.coursesCompleted : null, cvesTracked: isAuthenticated ? (stats.cvesTracked || cves.length) : null }}
             userName={displayUserName}
             onSignIn={() => isAuthenticated ? navigate("profile") : startLogin()}
           />
