@@ -49,6 +49,7 @@ function Icon({ name, size = 22 }: { name: IconName; size?: number }) {
 const navigation: { icon: IconName; label: string; target?: string; comingSoon?: boolean; dividerBefore?: boolean; adminOnly?: boolean; instructorOnly?: boolean }[] = [
   { icon: "home", label: "Home", target: "dashboard" },
   { icon: "server", label: "Dashboard", target: "dashboard" },
+  { icon: "user", label: "Profile", target: "profile" },
   { icon: "book", label: "Courses", target: "learning" },
   { icon: "roadmap", label: "Roadmap", target: "tracks" },
   { icon: "tools", label: "Labs", target: "labs" },
