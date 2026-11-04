@@ -160,7 +160,7 @@ export default function Home() {
       {section === "leaderboard" && <LeaderboardView stats={{ points: isAuthenticated ? stats.points : null, coursesCompleted: isAuthenticated ? stats.coursesCompleted : null, cvesTracked: isAuthenticated ? (stats.cvesTracked || cves.length) : null }} userName={displayUserName} onSignIn={() => isAuthenticated ? navigate("profile") : startLogin()} />}
       {section === "settings" && <SettingsView user={user} isAuthenticated={isAuthenticated} onOpenProfile={() => navigate("profile")} />}
       {section === "ai" && <NexusAssistantView messages={aiMessages} input={aiInput} setInput={setAiInput} onAsk={() => { const message = aiInput.trim(); if (!message || !isAuthenticated || askAI.isPending) return; setAiMessages(messages => [...messages, { role: "user", content: message }]); askAI.mutate({ message, history: aiMessages.slice(-12) }); setAiInput(""); }} onNewChat={() => { setAiMessages([]); setAiInput(""); }} isLoading={askAI.isPending} isAuthenticated={isAuthenticated} onSignIn={startLogin} />}
-      {section === "admin" && (user?.role === "admin" ? <AdminView /> : <ModuleState title="لوحة الإدارة مخصصة لحساب المدير فقط." error />)}
+      {section === "admin" && (user?.role === "admin" ? <><AdminView /><AdminWorkflowPanel /></> : <ModuleState title="لوحة الإدارة مخصصة لحساب المدير فقط." error />)}
       {section === "instructor" && (user?.role === "instructor" || user?.role === "admin" ? <InstructorView /> : <ModuleState title="مساحة المدرّس مخصصة للحسابات المعتمدة فقط." error />)}
       {section === "ctf" && <CtfView isAuthenticated={isAuthenticated} onSignIn={startLogin} />}
       {section === "labs" && <LabsView isAuthenticated={isAuthenticated} onSignIn={startLogin} />}
@@ -398,6 +398,115 @@ function LabsView({ isAuthenticated, onSignIn }: { isAuthenticated: boolean; onS
   );
 }
 
+function InstructorView() {
+  const dashboard = trpc.instructor.dashboard.useQuery(undefined, { refetchInterval: 30_000 });
+  const [course, setCourse] = useState({ title: "", slug: "", description: "", category: "Cybersecurity", level: "beginner" as "beginner"|"intermediate"|"advanced", lessons: "8", durationMinutes: "240" });
+  const [requestingCourseId, setRequestingCourseId] = useState<number | null>(null);
+  const [changeDescription, setChangeDescription] = useState("");
+  const submitCourse = trpc.instructor.submitCourse.useMutation({
+    onSuccess: () => { setCourse({ title:"",slug:"",description:"",category:"Cybersecurity",level:"beginner",lessons:"8",durationMinutes:"240" }); void dashboard.refetch(); toast.success("تم إرسال الدورة كمسودة لمراجعة المالك قبل النشر."); },
+    onError: error => toast.error(error.message || "تعذر إرسال الدورة."),
+  });
+  const requestUpdate = trpc.instructor.requestCourseUpdate.useMutation({
+    onSuccess: () => { setRequestingCourseId(null); setChangeDescription(""); void dashboard.refetch(); toast.success("تم إرسال طلب التعديل للموافقة."); },
+    onError: error => toast.error(error.message || "تعذر إرسال طلب التعديل."),
+  });
+  const data = dashboard.data;
+  const totals = data?.totals ?? { courses:0,published:0,students:0,averageProgress:0 };
+
+  return (
+    <section className="cj-instructor-page module-stack">
+      <header className="admin-hero panel-card"><div className="section-tag">// INSTRUCTOR WORKSPACE</div><h2>Teach. Track. Improve.</h2><p>تابع طلابك ودوراتك، وقدّم المحتوى للمراجعة. نشر الدورة وتعديل المحتوى المنشور يظلان تحت موافقة مالك المنصة.</p></header>
+      {dashboard.error && <ModuleState title="تعذر تحميل مساحة المدرّس." error={dashboard.error}/>}
+      <div className="admin-metrics">
+        <div className="admin-metric panel-card"><BookOpen size={18}/><strong>{totals.courses}</strong><span>MY COURSES</span></div>
+        <div className="admin-metric panel-card"><Check size={18}/><strong>{totals.published}</strong><span>PUBLISHED</span></div>
+        <div className="admin-metric panel-card"><Users size={18}/><strong>{totals.students}</strong><span>UNIQUE STUDENTS</span></div>
+        <div className="admin-metric panel-card"><Activity size={18}/><strong>{totals.averageProgress}%</strong><span>AVERAGE PROGRESS</span></div>
+      </div>
+
+      <section className="admin-editor panel-card">
+        <div className="card-head"><div><div className="section-tag">// SUBMIT NEW COURSE</div><h3>Create a draft for owner review</h3></div><span className="status-chip">NOT PUBLISHED</span></div>
+        <div className="admin-form-grid">
+          <label className="admin-field"><span>COURSE TITLE</span><input value={course.title} onChange={event=>setCourse(old=>({...old,title:event.target.value}))} placeholder="Web Application Security"/></label>
+          <label className="admin-field"><span>SLUG</span><input value={course.slug} onChange={event=>setCourse(old=>({...old,slug:event.target.value.toLowerCase().replace(/[^a-z0-9-]+/g,"-")}))} placeholder="web-application-security"/></label>
+          <label className="admin-field"><span>CATEGORY</span><input value={course.category} onChange={event=>setCourse(old=>({...old,category:event.target.value}))} placeholder="Cybersecurity"/></label>
+          <label className="admin-field"><span>LEVEL</span><select value={course.level} onChange={event=>setCourse(old=>({...old,level:event.target.value as typeof old.level}))}><option value="beginner">Beginner</option><option value="intermediate">Intermediate</option><option value="advanced">Advanced</option></select></label>
+          <label className="admin-field"><span>LESSONS</span><input type="number" min="1" max="500" value={course.lessons} onChange={event=>setCourse(old=>({...old,lessons:event.target.value}))}/></label>
+          <label className="admin-field"><span>DURATION (MINUTES)</span><input type="number" min="1" value={course.durationMinutes} onChange={event=>setCourse(old=>({...old,durationMinutes:event.target.value}))}/></label>
+          <label className="admin-field full"><span>DESCRIPTION (AT LEAST 20 CHARACTERS)</span><textarea value={course.description} onChange={event=>setCourse(old=>({...old,description:event.target.value}))} placeholder="Describe the learning outcomes, scope, and practical work."/></label>
+        </div>
+        <button className="primary-button" type="button" disabled={submitCourse.isPending||!course.title.trim()||!course.slug.trim()||course.description.trim().length<20} onClick={()=>submitCourse.mutate({...course,lessons:Number(course.lessons),durationMinutes:Number(course.durationMinutes)})}><Send size={15}/> Submit for approval</button>
+      </section>
+
+      <section className="admin-table panel-card">
+        <div className="card-head"><div><div className="section-tag">// YOUR COURSES</div><h3>Course performance</h3></div><span>{totals.courses} courses</span></div>
+        {dashboard.isLoading ? <ModuleState title="جارٍ تحميل دوراتك..." /> : !data?.courses.length ? <ModuleState title="لم ترسل أي دورة بعد." empty/> : data.courses.map(item=>(
+          <article className="cj-instructor-course-row" key={item.id}>
+            <div><strong>{item.title}</strong><small>{item.category} · {item.level} · {item.lessons} lessons</small></div>
+            <span className={item.isPublished?"status-published":"status-draft"}>{item.isPublished?"Published":"Draft / Pending"}</span>
+            {item.isPublished&&<button className="small-button" type="button" onClick={()=>{setRequestingCourseId(item.id);setChangeDescription("");}}>Request update</button>}
+          </article>
+        ))}
+      </section>
+
+      {requestingCourseId!==null&&<section className="admin-editor panel-card">
+        <div className="card-head"><div><div className="section-tag">// OWNER APPROVAL REQUIRED</div><h3>Request course changes</h3></div><button className="small-button" type="button" onClick={()=>setRequestingCourseId(null)}>Cancel</button></div>
+        <label className="admin-field full"><span>PROPOSED DESCRIPTION</span><textarea value={changeDescription} onChange={event=>setChangeDescription(event.target.value)} placeholder="اكتب الوصف الجديد للدورة أو التغييرات المطلوبة..."/></label>
+        <button className="primary-button" disabled={requestUpdate.isPending||changeDescription.trim().length<20} onClick={()=>requestUpdate.mutate({courseId:requestingCourseId,changes:{description:changeDescription.trim()}})}><Send size={15}/> Send update request</button>
+      </section>}
+
+      <section className="admin-table panel-card">
+        <div className="card-head"><div><div className="section-tag">// STUDENT PERFORMANCE</div><h3>Progress and activity</h3></div><span>{data?.students.length??0} progress records</span></div>
+        {!data?.students.length ? <ModuleState title="لا توجد سجلات تقدم للطلاب في دوراتك حتى الآن." empty/> : data.students.map((student,index)=>(
+          <div className="cj-instructor-student-row" key={`${student.courseId}-${student.userId}-${index}`}>
+            <div><strong>{student.studentName||"CyberJocx learner"}</strong><small>{student.studentEmail||"Email unavailable"} · {data.courses.find(course=>course.id===student.courseId)?.title??"Course"}</small></div>
+            <span>{student.progress}%</span><b>{student.completed?"Completed":"In progress"}</b>
+          </div>
+        ))}
+      </section>
+
+      <section className="cj-instructor-bottom-grid">
+        <div className="panel-card instructor-info-card"><div className="section-tag">// COURSE CHANGE REQUESTS</div><h3>Review status</h3>{data?.requests.length?data.requests.map(request=><div className="cj-instructor-request" key={request.id}><strong>{request.courseTitle}</strong><span>{request.status}</span><small>{new Date(request.requestedAt).toLocaleString()}</small>{request.reviewNote&&<p>{request.reviewNote}</p>}</div>):<p>No update requests yet.</p>}</div>
+        <div className="panel-card instructor-info-card"><div className="section-tag">// EARNINGS & GROWTH</div><h3>Financial reporting</h3><p>عدد الطلاب ومتوسط التقدم محسوبان من سجلات المنصة الحالية. الأرباح والمدفوعات غير متاحة بعد لأن بوابة الدفع وجدول المعاملات غير مربوطين.</p><span className="instructor-unavailable">Earnings not connected</span></div>
+      </section>
+    </section>
+  );
+}
+
+function AdminWorkflowPanel() {
+  const queue = trpc.admin.courseReviewQueue.useQuery(undefined,{refetchInterval:30_000});
+  const accounts = trpc.admin.users.useQuery(undefined,{refetchInterval:60_000});
+  const audit = trpc.admin.audit.useQuery(undefined,{refetchInterval:60_000});
+  const publish = trpc.admin.publishCourse.useMutation({onSuccess:()=>{void queue.refetch();toast.success("تم نشر الدورة وإرسال إشعار لكل المستخدمين.");},onError:error=>toast.error(error.message)});
+  const review = trpc.admin.reviewCourseChange.useMutation({onSuccess:()=>{void queue.refetch();void audit.refetch();toast.success("تم تسجيل قرار المراجعة.");},onError:error=>toast.error(error.message)});
+  const setRole = trpc.admin.setUserRole.useMutation({onSuccess:()=>{void accounts.refetch();void audit.refetch();toast.success("تم تحديث صلاحية الحساب.");},onError:error=>toast.error(error.message)});
+
+  return (
+    <section className="cj-admin-workflow module-stack">
+      <section className="admin-table panel-card">
+        <div className="card-head"><div><div className="section-tag">// OWNER APPROVAL QUEUE</div><h3>Course publication and change requests</h3></div><span>{(queue.data?.drafts.length??0)+(queue.data?.changes.length??0)} pending</span></div>
+        {queue.error ? <ModuleState title="قائمة الموافقات متاحة لحساب مالك المنصة فقط." error={queue.error}/> : queue.isLoading ? <ModuleState title="جارٍ تحميل قائمة الموافقات..."/> : (
+          <>
+            <div className="cj-admin-queue-group"><h4>Draft courses awaiting publication</h4>{queue.data?.drafts.length?queue.data.drafts.map(item=><div className="cj-admin-review-row" key={item.id}><div><strong>{item.title}</strong><small>{item.category} · {item.level} · {item.instructor}</small></div><button className="primary-button compact" disabled={publish.isPending} onClick={()=>publish.mutate({id:item.id})}>Approve & publish</button></div>):<p>No draft courses waiting.</p>}</div>
+            <div className="cj-admin-queue-group"><h4>Instructor update requests</h4>{queue.data?.changes.length?queue.data.changes.map(item=><div className="cj-admin-review-row is-change" key={item.id}><div><strong>{item.courseTitle}</strong><small>{item.instructorName||item.instructorEmail||"Instructor"} · {new Date(item.requestedAt).toLocaleString()}</small><pre>{item.changesJson}</pre></div><div className="cj-admin-review-actions"><button className="primary-button compact" disabled={review.isPending} onClick={()=>review.mutate({requestId:item.id,decision:"approve"})}>Approve</button><button className="small-button" disabled={review.isPending} onClick={()=>review.mutate({requestId:item.id,decision:"reject",note:"Please revise the requested change and resubmit."})}>Reject</button></div></div>):<p>No pending update requests.</p>}</div>
+          </>
+        )}
+      </section>
+
+      <section className="admin-table panel-card">
+        <div className="card-head"><div><div className="section-tag">// ACCESS MANAGEMENT</div><h3>Instructor accounts</h3></div><span>Owner only</span></div>
+        {accounts.error ? <ModuleState title="إدارة الأدوار متاحة لحساب المالك فقط." error={accounts.error}/> : accounts.data?.map(account=><div className="cj-admin-review-row" key={account.id}><div><strong>{account.name||"Unnamed account"}</strong><small>{account.email||`User #${account.id}`} · {account.role}</small></div>{account.role==="admin"?<span className="status-published">Platform admin</span>:<button className="small-button" disabled={setRole.isPending} onClick={()=>setRole.mutate({userId:account.id,role:account.role==="instructor"?"user":"instructor"})}>{account.role==="instructor"?"Remove instructor":"Grant instructor"}</button>}</div>)}
+      </section>
+
+      <section className="admin-table panel-card">
+        <div className="card-head"><div><div className="section-tag">// AUDIT LOG</div><h3>Recorded owner actions</h3></div><span>{audit.data?.length??0} entries</span></div>
+        {audit.error ? <p>Audit log is available to the configured owner account only.</p> : audit.data?.length ? audit.data.map(item=><div className="audit-row" key={item.id}><span>#{item.id}</span><strong>{item.action} · {item.resourceType} #{item.resourceId??"—"}</strong><em>{new Date(item.createdAt).toLocaleString()}</em><Check size={15}/></div>) : <p>No owner actions have been recorded yet.</p>}
+      </section>
+    </section>
+  );
+}
+
 function AdminView() {
   const [mode, setMode] = useState<"course" | "tool" | "cve">("course");
   const [form, setForm] = useState<Record<string, string>>({});
@@ -417,5 +526,5 @@ function AdminView() {
   };
   const field = (key: string, label: string, placeholder: string) => <label className="admin-field"><span>{label}</span><input value={form[key] ?? ""} onChange={event => update(key, event.target.value)} placeholder={placeholder} /></label>;
   const stats = adminStats.data ?? { users: 0, courses: 0, cves: 0, tools: 0, posts: 0 };
-  return <section className="admin-layout"><div className="admin-hero panel-card"><div className="section-tag">// ROOT ACCESS GRANTED</div><h2>Control the knowledge layer.</h2><p>إدارة المحتوى ومراجعة نبض المنصة من نقطة تحكم واحدة.</p><div className="admin-actions"><button className={`primary-button ${mode === "course" ? "" : "secondary-button"}`} onClick={() => setMode("course")}><BookOpen size={16} /> COURSE NODE</button><button className={`primary-button ${mode === "tool" ? "" : "secondary-button"}`} onClick={() => setMode("tool")}><Wrench size={16} /> TOOL NODE</button><button className={`primary-button ${mode === "cve" ? "" : "secondary-button"}`} onClick={() => setMode("cve")}><Bug size={16} /> CVE SIGNAL</button></div></div><div className="admin-metrics"><div className="admin-metric panel-card"><Users size={18} /><strong>{stats.users.toLocaleString()}</strong><span>REGISTERED OPERATORS</span></div><div className="admin-metric panel-card"><BookOpen size={18} /><strong>{stats.courses}</strong><span>COURSE NODES</span></div><div className="admin-metric panel-card"><Bug size={18} /><strong>{stats.cves.toLocaleString()}</strong><span>CVE SIGNALS</span></div><div className="admin-metric panel-card"><Wrench size={18} /><strong>{stats.tools}</strong><span>TOOL REPOSITORY</span></div></div><div className="admin-editor panel-card"><div className="card-head"><div><div className="section-tag">// WRITE TO KNOWLEDGE LAYER</div><h3>Publish {mode === "course" ? "course" : mode === "tool" ? "tool" : "CVE"} node</h3></div><span className="status-chip"><span className="pulse-dot" /> VALIDATED</span></div><div className="admin-form-grid">{mode === "course" && <>{field("title", "TITLE", "Threat Hunting Protocol")} {field("slug", "SLUG", "threat-hunting-protocol")} {field("category", "CATEGORY", "THREAT INTEL")} {field("instructor", "INSTRUCTOR", "NEXUS LAB")} {field("lessons", "LESSONS", "12")} {field("durationMinutes", "DURATION MINUTES", "360")}</>}{mode === "tool" && <>{field("name", "NAME", "Nmap")} {field("category", "CATEGORY", "RECON")} {field("commands", "COMMANDS", "nmap -sV --script safe target")} {field("downloadUrl", "REPOSITORY URL", "https://...")}</>}{mode === "cve" && <>{field("cveNumber", "CVE NUMBER", "CVE-2026-0000")} {field("title", "TITLE", "Critical signal title")} {field("severity", "SEVERITY", "critical")} {field("cvss", "CVSS", "9.8")} {field("affected", "AFFECTED PRODUCT", "Product / version")} {field("publishedDate", "PUBLISHED DATE", "2026-08-23")}</>}<label className="admin-field full"><span>DESCRIPTION</span><textarea value={form.description ?? ""} onChange={event => update("description", event.target.value)} placeholder="اكتب ملخصًا دقيقًا وقابلًا للتدقيق..." /></label></div><button className="primary-button" onClick={submit} disabled={createCourse.isPending || createTool.isPending || createCve.isPending}><Send size={15} /> PUBLISH TO MATRIX</button></div><div className="admin-table panel-card"><div className="card-head"><div><div className="section-tag">// CONTENT REGISTRY</div><h3>Current knowledge nodes</h3></div><span className="status-chip"><span className="pulse-dot" /> {adminContent.isLoading ? "SYNCING" : "LIVE"}</span></div><div className="registry-grid"><div><span className="registry-label">COURSES</span>{!adminContent.data?.courses.length && <div className="registry-empty">NO COURSE NODES</div>}{adminContent.data?.courses.map(item => <div className="registry-row" key={item.id}><strong>{item.title}</strong><span>{item.category}</span><button onClick={() => deleteCourse.mutate({ id: item.id })}><X size={13} /></button></div>)}</div><div><span className="registry-label">TOOLS</span>{adminContent.data?.tools.map(item => <div className="registry-row" key={item.id}><strong>{item.name}</strong><span>{item.category}</span><button onClick={() => deleteTool.mutate({ id: item.id })}><X size={13} /></button></div>)}</div><div><span className="registry-label">CVE SIGNALS</span>{adminContent.data?.cves.map(item => <div className="registry-row" key={item.id}><strong>{item.cveNumber}</strong><span>{item.severity}</span><button onClick={() => deleteCve.mutate({ id: item.id })}><X size={13} /></button></div>)}</div></div></div><div className="admin-table panel-card"><div className="card-head"><div><div className="section-tag">// RECENT ADMIN ACTIVITY</div><h3>Audit stream</h3></div><span className="status-chip"><span className="pulse-dot" /> MONITORING</span></div>{["Knowledge layer synchronized", "High-risk CVE notification pipeline ready", "Tool repository link verified", "Community signal review queue updated"].map((item, index) => <div className="audit-row" key={item}><span>0{index + 1}</span><strong>{item}</strong><em>{index + 2}m ago</em><Check size={15} /></div>)}</div></section>;
+  return <section className="admin-layout"><div className="admin-hero panel-card"><div className="section-tag">// ROOT ACCESS GRANTED</div><h2>Control the knowledge layer.</h2><p>إدارة المحتوى ومراجعة نبض المنصة من نقطة تحكم واحدة.</p><div className="admin-actions"><button className={`primary-button ${mode === "course" ? "" : "secondary-button"}`} onClick={() => setMode("course")}><BookOpen size={16} /> COURSE NODE</button><button className={`primary-button ${mode === "tool" ? "" : "secondary-button"}`} onClick={() => setMode("tool")}><Wrench size={16} /> TOOL NODE</button><button className={`primary-button ${mode === "cve" ? "" : "secondary-button"}`} onClick={() => setMode("cve")}><Bug size={16} /> CVE SIGNAL</button></div></div><div className="admin-metrics"><div className="admin-metric panel-card"><Users size={18} /><strong>{stats.users.toLocaleString()}</strong><span>REGISTERED OPERATORS</span></div><div className="admin-metric panel-card"><BookOpen size={18} /><strong>{stats.courses}</strong><span>COURSE NODES</span></div><div className="admin-metric panel-card"><Bug size={18} /><strong>{stats.cves.toLocaleString()}</strong><span>CVE SIGNALS</span></div><div className="admin-metric panel-card"><Wrench size={18} /><strong>{stats.tools}</strong><span>TOOL REPOSITORY</span></div></div><div className="admin-editor panel-card"><div className="card-head"><div><div className="section-tag">// WRITE TO KNOWLEDGE LAYER</div><h3>Publish {mode === "course" ? "course" : mode === "tool" ? "tool" : "CVE"} node</h3></div><span className="status-chip"><span className="pulse-dot" /> VALIDATED</span></div><div className="admin-form-grid">{mode === "course" && <>{field("title", "TITLE", "Threat Hunting Protocol")} {field("slug", "SLUG", "threat-hunting-protocol")} {field("category", "CATEGORY", "THREAT INTEL")} {field("instructor", "INSTRUCTOR", "NEXUS LAB")} {field("lessons", "LESSONS", "12")} {field("durationMinutes", "DURATION MINUTES", "360")}</>}{mode === "tool" && <>{field("name", "NAME", "Nmap")} {field("category", "CATEGORY", "RECON")} {field("commands", "COMMANDS", "nmap -sV --script safe target")} {field("downloadUrl", "REPOSITORY URL", "https://...")}</>}{mode === "cve" && <>{field("cveNumber", "CVE NUMBER", "CVE-2026-0000")} {field("title", "TITLE", "Critical signal title")} {field("severity", "SEVERITY", "critical")} {field("cvss", "CVSS", "9.8")} {field("affected", "AFFECTED PRODUCT", "Product / version")} {field("publishedDate", "PUBLISHED DATE", "2026-08-23")}</>}<label className="admin-field full"><span>DESCRIPTION</span><textarea value={form.description ?? ""} onChange={event => update("description", event.target.value)} placeholder="اكتب ملخصًا دقيقًا وقابلًا للتدقيق..." /></label></div><button className="primary-button" onClick={submit} disabled={createCourse.isPending || createTool.isPending || createCve.isPending}><Send size={15} /> PUBLISH TO MATRIX</button></div><div className="admin-table panel-card"><div className="card-head"><div><div className="section-tag">// CONTENT REGISTRY</div><h3>Current knowledge nodes</h3></div><span className="status-chip"><span className="pulse-dot" /> {adminContent.isLoading ? "SYNCING" : "LIVE"}</span></div><div className="registry-grid"><div><span className="registry-label">COURSES</span>{!adminContent.data?.courses.length && <div className="registry-empty">NO COURSE NODES</div>}{adminContent.data?.courses.map(item => <div className="registry-row" key={item.id}><strong>{item.title}</strong><span>{item.category}</span><button onClick={() => deleteCourse.mutate({ id: item.id })}><X size={13} /></button></div>)}</div><div><span className="registry-label">TOOLS</span>{adminContent.data?.tools.map(item => <div className="registry-row" key={item.id}><strong>{item.name}</strong><span>{item.category}</span><button onClick={() => deleteTool.mutate({ id: item.id })}><X size={13} /></button></div>)}</div><div><span className="registry-label">CVE SIGNALS</span>{adminContent.data?.cves.map(item => <div className="registry-row" key={item.id}><strong>{item.cveNumber}</strong><span>{item.severity}</span><button onClick={() => deleteCve.mutate({ id: item.id })}><X size={13} /></button></div>)}</div></div></div></section>;
 }
