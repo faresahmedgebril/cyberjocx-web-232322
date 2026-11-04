@@ -1,4 +1,4 @@
-import { boolean, integer, pgEnum, pgTable, serial, text, timestamp, unique, varchar } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgEnum, pgTable, serial, text, timestamp, unique, varchar } from "drizzle-orm/pg-core";
 
 export const usersRolePgEnum = pgEnum("users_role_enum", ["user", "instructor", "admin"]);
 export const usersMemberRankPgEnum = pgEnum("users_memberRank_enum", ["learner", "contributor", "analyst", "mentor", "elite"]);
@@ -73,15 +73,18 @@ export const courses = pgTable("courses", {
 
 export const courseChangeRequests = pgTable("courseChangeRequests", {
   id: serial("id").primaryKey(),
-  courseId: integer("courseId").notNull(),
-  instructorUserId: integer("instructorUserId").notNull(),
+  courseId: integer("courseId").notNull().references(() => courses.id, { onDelete: "cascade" }),
+  instructorUserId: integer("instructorUserId").notNull().references(() => users.id, { onDelete: "cascade" }),
   changesJson: text("changesJson").notNull(),
   status: varchar("status", { length: 24 }).default("pending").notNull(),
-  reviewedBy: integer("reviewedBy"),
+  reviewedBy: integer("reviewedBy").references(() => users.id, { onDelete: "set null" }),
   reviewNote: text("reviewNote"),
   requestedAt: timestamp("requestedAt").defaultNow().notNull(),
   reviewedAt: timestamp("reviewedAt"),
-});
+}, table => [
+  index("courseChangeRequests_status_requestedAt_idx").on(table.status, table.requestedAt),
+  index("courseChangeRequests_instructorUserId_idx").on(table.instructorUserId, table.requestedAt),
+]);
 
 export const roadmaps = pgTable("roadmaps", {
   id: serial("id").primaryKey(),
