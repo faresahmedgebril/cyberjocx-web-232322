@@ -164,3 +164,37 @@
   .figma-dashboard .notification-list{max-height:calc(100vh - 130px)}
   .figma-dashboard .welcome-copy{max-width:66%}
 }
+
+
+/* Full-page content sections mounted inside the shared Figma shell. */
+.figma-dashboard .cj-dashboard-page-content{width:100%;max-width:1500px;margin:0 auto;padding:8px 2px 30px;color:var(--text);min-width:0}
+.figma-dashboard .cj-dashboard-page-heading{display:flex;justify-content:space-between;align-items:center;margin:2px 0 17px;padding:0 4px}
+.figma-dashboard .cj-dashboard-page-heading span{color:#1acaff;font:10px "DM Mono",monospace;letter-spacing:.14em}
+.figma-dashboard .cj-dashboard-page-heading h1{margin-top:5px;font-size:25px;font-weight:800;color:var(--text)}
+.figma-dashboard .cj-dashboard-page-heading p{margin-top:5px;color:var(--muted);font-size:12px}
+.figma-dashboard .quick-action-list{padding:8px 14px 14px;display:grid;gap:7px}
+.figma-dashboard .quick-action-list button{min-height:55px;display:flex;align-items:center;gap:11px;padding:8px 10px;border:1px solid rgba(43,88,158,.48);border-radius:8px;color:#35caff;background:rgba(4,18,46,.6);text-align:left;cursor:pointer}
+.figma-dashboard .quick-action-list button:hover{border-color:#7c42ff;background:rgba(29,40,93,.62)}
+.figma-dashboard .quick-action-list button>span{min-width:0;flex:1;display:grid;gap:3px}
+.figma-dashboard .quick-action-list button b{color:#e8f2ff;font-size:11px}
+.figma-dashboard .quick-action-list button small{color:#849dc3;font-size:9px}
+.figma-dashboard .quick-action-list button>.icon:last-child{color:#819fc9}
+.figma-dashboard .dashboard-progress-list{padding:10px 18px 15px;display:grid;gap:10px}
+.figma-dashboard .dashboard-progress-list>div:not(.dashboard-progress-track){display:flex;justify-content:space-between;color:#b9c8e4;font-size:11px}
+.figma-dashboard .dashboard-progress-list>div b{color:#fff;font:700 13px "DM Mono",monospace}
+.figma-dashboard .dashboard-progress-track{height:7px;overflow:hidden;border-radius:8px;background:#0b2856}
+.figma-dashboard .dashboard-progress-track i{display:block;height:100%;background:linear-gradient(90deg,#09baff,#9b35ff);border-radius:inherit}
+.figma-dashboard .dashboard-next-course{padding:10px 11px;display:grid;gap:4px;border:1px solid #244f99;border-radius:8px;background:rgba(5,21,51,.72);text-align:left;cursor:pointer}
+.figma-dashboard .dashboard-next-course span{color:#26caff;font-size:9px;text-transform:uppercase}
+.figma-dashboard .dashboard-next-course strong{color:#e6f0ff;font-size:11px}
+.figma-dashboard .dashboard-next-course small{color:#9db4d6;font-size:9px}
+.figma-dashboard.light-theme .quick-action-list button{background:#f7faff;border-color:#cad8eb;color:#1874bd}
+.figma-dashboard.light-theme .quick-action-list button b,.figma-dashboard.light-theme .dashboard-next-course strong{color:#1b3457}
+.figma-dashboard.light-theme .quick-action-list button small,.figma-dashboard.light-theme .dashboard-next-course small{color:#61789a}
+.figma-dashboard.light-theme .dashboard-next-course{background:#f5f9ff;border-color:#c5d4e9}
+.figma-dashboard.light-theme .dashboard-progress-list>div b{color:#244a79}
+@media(max-width:760px){
+  .figma-dashboard .cj-dashboard-page-content{padding:4px 1px 24px}
+  .figma-dashboard .cj-dashboard-page-heading h1{font-size:21px}
+  .figma-dashboard .course-grid{grid-template-columns:minmax(0,1fr)}
+}
