@@ -10,6 +10,7 @@ interface CyberJocxWorkerEnv {
   AUTH_RATE_LIMIT?: string;
   PUBLIC_API_RATE_LIMIT?: string;
   CRON_SECRET?: string;
+  OWNER_OPEN_ID?: string;
   RESEND_API_KEY?: string;
   AUTH_EMAIL_FROM?: string;
   GOOGLE_CLIENT_ID?: string;
@@ -54,6 +55,7 @@ async function ensureApiInitialized(bindings: CyberJocxWorkerEnv): Promise<void>
 
       const optionalEnvironment: Record<string, string | undefined> = {
         CRON_SECRET: bindings.CRON_SECRET,
+        OWNER_OPEN_ID: bindings.OWNER_OPEN_ID,
         RESEND_API_KEY: bindings.RESEND_API_KEY,
         AUTH_EMAIL_FROM: bindings.AUTH_EMAIL_FROM,
         GOOGLE_CLIENT_ID: bindings.GOOGLE_CLIENT_ID,
