@@ -14,6 +14,7 @@ import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, instructorProcedure, ownerAdminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { books, cartItems, carts, certificates, courseProgress, courses, cves, friendRequests, follows, malwareFamilies, notifications, nvdSyncSettings, postLikes, posts, quizAttempts, quizQuestions, trackQuizzes, tracks, tools, users, getCart, getDashboardStats, getDb, getTrackProgress, getTrackRoadmap, getUserById, listBooks, listBooksAdvanced, listCourses, listCves, listCvesPaginated, listMalware, listPosts, listTools, listToolsAdvanced, listRoadmaps, listTracks, ensureCart } from "./db";
 import { z } from "zod";
+import { auditLogs, courseChangeRequests, labInstances, labTemplates } from "../drizzle/schema";
 
 export const appRouter = router({
   system: systemRouter,
@@ -313,6 +314,24 @@ export const appRouter = router({
   }),
   labs: router({
     templates: publicProcedure.query(() => listLabTemplates()),
+    myInstances: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return [];
+      return db.select({
+        id: labInstances.id,
+        instanceId: labInstances.instanceId,
+        status: labInstances.status,
+        targetUrl: labInstances.targetUrl,
+        expiresAt: labInstances.expiresAt,
+        createdAt: labInstances.createdAt,
+        templateName: labTemplates.name,
+        templateSlug: labTemplates.slug,
+      }).from(labInstances)
+        .innerJoin(labTemplates, eq(labInstances.templateId, labTemplates.id))
+        .where(eq(labInstances.userId, ctx.user.id))
+        .orderBy(desc(labInstances.createdAt))
+        .limit(20);
+    }),
     start: protectedProcedure.input(z.object({
       templateId: z.number().int().positive(),
       challengeId: z.number().int().positive().optional(),
