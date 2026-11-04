@@ -74,24 +74,57 @@ function SectionTitle({ icon, children, action, onAction }: { icon: IconName; ch
   return <div className="section-title"><span className="title-icon"><Icon name={icon} size={23} /></span><h2>{children}</h2>{action && <button type="button" className="outline-action" onClick={onAction}>{action} <span>→</span></button>}</div>
 }
 
-export function DashboardRightRail({ onComingSoon }: { onComingSoon: () => void }) {
-  const [terminalOpen, setTerminalOpen] = useState(true);
+export function DashboardRightRail({
+  onNavigate,
+  notifications = [],
+  stats,
+  courses = [],
+}: {
+  onNavigate: (target: string) => void;
+  notifications?: Array<{ id: number; type: "cve" | "content" | "system"; title: string; message: string; createdAt: string | Date; isRead: boolean }>;
+  stats: { points: number; coursesCompleted: number; activeCourses: number; cvesTracked: number };
+  courses?: Array<{ id?: number | string; title: string; category?: string; level?: string; progress?: number }>;
+}) {
+  const recent = notifications.slice(0, 4);
+  const nextCourse = courses.find(course => Number(course.progress ?? 0) < 100);
 
   return (
     <div className="right-column">
       <Panel className="activity-panel">
-        <SectionTitle icon="bolt" action="View All" onAction={onComingSoon}>Recent Activity</SectionTitle>
-        <div className="dashboard-placeholder">Coming Soon</div>
+        <SectionTitle icon="bolt" action="Open CVE Center" onAction={() => onNavigate("cves")}>Recent Activity</SectionTitle>
+        {recent.length ? (
+          <div className="activity-list">
+            {recent.map(item => (
+              <article className="activity-item" key={item.id}>
+                <span className={item.type === "cve" ? "purple" : item.type === "content" ? "green" : "blue"}>
+                  <Icon name={item.type === "cve" ? "shield" : item.type === "content" ? "book" : "bolt"} size={18} />
+                </span>
+                <div><strong>{item.title}</strong><small>{item.message}</small></div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="dashboard-placeholder">Your latest platform activity will appear here.</div>
+        )}
       </Panel>
 
-      <Panel className={`terminal-panel ${terminalOpen ? "" : "closed"}`}>
-        <div className="terminal-head"><span><Icon name="terminal" size={22} /></span><h2>Quick Terminal</h2><div><button aria-label="Minimize terminal" onClick={() => setTerminalOpen(!terminalOpen)}>−</button><button aria-label="Expand terminal" onClick={onComingSoon}><Icon name="expand" size={14} /></button><button aria-label="Close terminal" onClick={() => setTerminalOpen(false)}><Icon name="close" size={15} /></button></div></div>
-        {terminalOpen && <div className="terminal dashboard-placeholder">Coming Soon</div>}
+      <Panel className="terminal-panel">
+        <div className="terminal-head"><span><Icon name="terminal" size={22} /></span><h2>Quick Actions</h2></div>
+        <div className="quick-action-list">
+          <button type="button" onClick={() => onNavigate("ctf")}><Icon name="target" size={17}/><span><b>Enter CTF Arena</b><small>Practice challenge flags</small></span><Icon name="chevron" size={15}/></button>
+          <button type="button" onClick={() => onNavigate("labs")}><Icon name="tools" size={17}/><span><b>Launch a Lab</b><small>Open a safe virtual environment</small></span><Icon name="chevron" size={15}/></button>
+          <button type="button" onClick={() => onNavigate("learning")}><Icon name="book" size={17}/><span><b>Browse Courses</b><small>Continue your learning path</small></span><Icon name="chevron" size={15}/></button>
+        </div>
       </Panel>
 
       <Panel className="goals-panel">
-        <div className="goals-head"><span><Icon name="target" size={23} /></span><h2>Today's Goals</h2><i /></div>
-        <div className="dashboard-placeholder">Coming Soon</div>
+        <div className="goals-head"><span><Icon name="target" size={23} /></span><h2>Today's Progress</h2><i /></div>
+        <div className="dashboard-progress-list">
+          <div><span>Completed courses</span><b>{stats.coursesCompleted}</b></div>
+          <div className="dashboard-progress-track"><i style={{width: `${Math.min(100, stats.coursesCompleted * 10)}%`}}/></div>
+          <div><span>Active courses</span><b>{stats.activeCourses}</b></div>
+          {nextCourse ? <button type="button" className="dashboard-next-course" onClick={() => onNavigate("learning")}><span>Continue next</span><strong>{nextCourse.title}</strong><small>{nextCourse.progress ?? 0}% complete →</small></button> : <p className="dashboard-placeholder">No active course progress yet.</p>}
+        </div>
       </Panel>
     </div>
   );
@@ -259,7 +292,7 @@ export default function FigmaDashboard({
           </Panel>
         </div>
 
-        <DashboardRightRail onComingSoon={() => setComingSoonOpen(true)} />
+        <DashboardRightRail onNavigate={onNavigate} notifications={notifications} stats={liveStats} courses={learningCourses} />
       </div>}
     </main>
 
