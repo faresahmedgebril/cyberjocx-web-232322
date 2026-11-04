@@ -39,6 +39,7 @@ pnpm test
 pnpm build:client
 pnpm build:server
 pnpm build:worker
+pnpm build:cloudflare-worker
 ```
 
 ## Deployment

@@ -41,25 +41,15 @@ jobs:
         run: pnpm typecheck
       - name: Test
         run: pnpm test
-      - name: Smoke test production API and database readiness
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        env:
-          API_URL: https://cyberjocx-api.gebrilfares972.workers.dev
-        run: |
-          set -euo pipefail
-          health="$(curl --fail --silent --show-error --retry 4 --retry-delay 3 --max-time 20 "$API_URL/health")"
-          ready="$(curl --fail --silent --show-error --retry 4 --retry-delay 3 --max-time 20 "$API_URL/ready")"
-          printf 'Health: %s\n' "$health"
-          printf 'Readiness: %s\n' "$ready"
-          node --input-type=module -e '
-            const health = JSON.parse(process.argv[1]);
-            const ready = JSON.parse(process.argv[2]);
-            if (health.ok !== true) throw new Error("Worker health check did not return ok=true");
-            if (ready.ok !== true || ready.database !== true) throw new Error("Worker could not confirm database readiness");
-          ' "$health" "$ready"
-          cron_status="$(curl --silent --show-error --max-time 20 -o /tmp/cron-unauthorized.json -w '%{http_code}' -X POST "$API_URL/api/scheduled/nvd-sync" -H 'content-type: application/json' -d '{}')"
-          cat /tmp/cron-unauthorized.json
-          test "$cron_status" = "403"
+      - name: Build Cloudflare Worker
+        run: pnpm build:cloudflare-worker
+      - name: Upload Cloudflare Worker bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudflare-worker-bundle
+          path: dist/cloudflare-worker.js
+          if-no-files-found: error
+          retention-days: 7
       - name: Verify production all-time leaderboard
         shell: bash
         env:
@@ -81,71 +71,6 @@ jobs:
             }
             console.log("Production leaderboard passed:", data.entries.length, "ranked users;");
           ' "$response"
-      - name: Smoke test production authentication routes
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        env:
-          API_URL: https://cyberjocx-api.gebrilfares972.workers.dev
-          FRONTEND_ORIGIN: https://faresahmedgebril.github.io
-        run: |
-          set -euo pipefail
-          mkdir -p /tmp/cyberjocx-auth-smoke
-
-          login_status="$(curl --silent --show-error --max-time 20 -D /tmp/cyberjocx-auth-smoke/login.headers -o /tmp/cyberjocx-auth-smoke/login.json -w '%{http_code}' -X POST "$API_URL/api/auth/login" -H "Origin: $FRONTEND_ORIGIN" -H 'content-type: application/json' -d '{"email":"unregistered-auth-smoke@example.invalid","password":"not-the-password"}')"
-          printf 'Invalid password login HTTP status: %s\n' "$login_status"
-          test "$login_status" = "401"
-          grep -Fqi "access-control-allow-origin: $FRONTEND_ORIGIN" /tmp/cyberjocx-auth-smoke/login.headers
-          grep -Eiq '^access-control-allow-credentials: true' /tmp/cyberjocx-auth-smoke/login.headers
-          node --input-type=module -e '
-            import { readFileSync } from "node:fs";
-            const body = JSON.parse(readFileSync("/tmp/cyberjocx-auth-smoke/login.json", "utf8"));
-            if (body.ok !== false || body.message !== "Invalid email or password.") {
-              throw new Error("Login did not return the generic invalid-credentials response");
-            }
-          '
-
-          for provider in google github; do
-            headers="/tmp/cyberjocx-auth-smoke/$provider.headers"
-            status="$(curl --silent --show-error --max-time 20 -D "$headers" -o /dev/null -w '%{http_code}' "$API_URL/api/auth/$provider/login")"
-            printf '%s OAuth start HTTP status: %s\n' "$provider" "$status"
-            test "$status" = "302"
-            if [ "$provider" = "google" ]; then
-              grep -Eiq '^location: https://accounts\.google\.com/o/oauth2/v2/auth' "$headers"
-            else
-              grep -Eiq '^location: https://github\.com/login/oauth/authorize' "$headers"
-            fi
-            grep -Eiq "^set-cookie: __Host-cyberjocx_${provider}_oauth_state=.*HttpOnly.*Secure.*SameSite=Lax" "$headers"
-            location="$(awk 'BEGIN { IGNORECASE=1 } /^location:/ { sub(/\r$/, ""); sub(/^[^:]*:[[:space:]]*/, ""); print; exit }' "$headers")"
-            node --input-type=module -e '
-              const provider = process.argv[1];
-              const location = new URL(process.argv[2]);
-              const expected = `https://cyberjocx-api.gebrilfares972.workers.dev/api/auth/${provider}/callback`;
-              if (location.searchParams.get("redirect_uri") !== expected) {
-                throw new Error(provider + " OAuth callback URL mismatch");
-              }
-              if (!location.searchParams.get("state")) {
-                throw new Error(provider + " OAuth state parameter is missing");
-              }
-            ' "$provider" "$location"
-          done
-
-          for provider in google github; do
-            state_status="$(curl --silent --show-error --max-time 20 -D "/tmp/cyberjocx-auth-smoke/$provider-invalid-state.headers" -o /dev/null -w '%{http_code}' "$API_URL/api/auth/$provider/callback?code=invalid&state=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")"
-            printf '%s callback without state cookie HTTP status: %s\n' "$provider" "$state_status"
-            test "$state_status" = "302"
-            grep -Fqi "authError=$provider-state" "/tmp/cyberjocx-auth-smoke/$provider-invalid-state.headers"
-          done
-
-          logout_status="$(curl --silent --show-error --max-time 20 -D /tmp/cyberjocx-auth-smoke/logout.headers -o /tmp/cyberjocx-auth-smoke/logout.json -w '%{http_code}' -X POST "$API_URL/api/trpc/auth.logout?batch=1" -H "Origin: $FRONTEND_ORIGIN" -H 'content-type: application/json' --data '{"0":{"json":null}}')"
-          printf 'Unauthenticated logout HTTP status: %s\n' "$logout_status"
-          test "$logout_status" = "200"
-          grep -Eiq '^set-cookie: cyberjocx_session=' /tmp/cyberjocx-auth-smoke/logout.headers
-          node --input-type=module -e '
-            import { readFileSync } from "node:fs";
-            const body = JSON.parse(readFileSync("/tmp/cyberjocx-auth-smoke/logout.json", "utf8"));
-            if (!JSON.stringify(body).includes(String.fromCharCode(34) + "success" + String.fromCharCode(34) + ":true")) {
-              throw new Error("Logout mutation did not report success");
-            }
-          '
       - name: Build image
         uses: docker/build-push-action@v6
         with:

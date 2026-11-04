@@ -1,6 +1,6 @@
 # CyberJocx Architecture
 
-Last reviewed: 2026-11-03
+Last reviewed: 2026-11-04
 
 ## Production topology
 
@@ -10,16 +10,19 @@ flowchart TD
     GH -->|HTTPS + credentials| CF["Cloudflare Worker\ncyberjocx-api"]
     CF --> EX["Express-compatible API\nREST Auth + tRPC"]
     EX --> MW["Middleware\nCORS · Origin checks · Rate limits"]
-    MW --> ROUTER["Application routers\nZod input validation"]
+    MW --> DB_SCOPE["Request DB scope\nAsyncLocalStorage"]
+    DB_SCOPE --> ROUTER["Application routers\nZod input validation"]
     ROUTER --> AUTH["Auth & session services"]
     ROUTER --> DOMAIN["Learning · CVE · Malware\nCommunity · Market · Profile"]
     ROUTER --> AI["NEXUS AI service"]
     ROUTER --> LB["Leaderboard router"]
     ROUTER --> SETTINGS["Profile preferences"]
-    AUTH --> HD["Cloudflare Hyperdrive"]
-    DOMAIN --> HD
-    LB --> HD
-    SETTINGS --> HD
+    AUTH --> DB_SCOPE
+    DOMAIN --> DB_SCOPE
+    LB --> DB_SCOPE
+    SETTINGS --> DB_SCOPE
+    DB_SCOPE --> PG_CLIENT["pg.Client\nOne lazy client per Worker request"]
+    PG_CLIENT --> HD["Cloudflare Hyperdrive\nupstream connection pooling"]
     HD --> NEON["Neon PostgreSQL\nCyberJocx Production"]
     AI --> PROVIDER["Configured AI provider"]
     GH --> ASSETS["Static assets\nGitHub Pages artifact"]
@@ -51,6 +54,15 @@ flowchart TD
     AUTH_PAGE --> AUTH_API["Worker REST auth routes"]
     AUTH_API --> SESSIONS["sessions table\nSHA-256 token hash"]
 ```
+
+## Database connection lifecycle
+
+- Cloudflare sets `DB_REQUEST_SCOPED=true`. The Express middleware creates a per-request database scope backed by Node's `AsyncLocalStorage`; database access outside that scope fails closed rather than falling back to a module-global pool.
+- The scope opens one `pg.Client` lazily when the first route actually queries Neon. Routes that do not touch the database do not create a PostgreSQL connection.
+- The client is available only to asynchronous work created within that request's scope and is closed when the Express response finishes or closes. Concurrent Worker requests never share a `pg.Client` or `pg.Pool`.
+- Hyperdrive remains responsible for pooling upstream database connections. The Worker does not maintain its own long-lived PostgreSQL pool.
+- Conventional Node.js deployments keep the existing process-level `pg.Pool` fallback; the request-scoped path is enabled only by the Cloudflare Worker adapter.
+- The Worker adapter source is checked in at [server/cloudflare-worker.ts](server/cloudflare-worker.ts). Build it with `pnpm build:cloudflare-worker`; its checked-in source now sets the request-scoped database mode explicitly.
 
 ## Request and data flows
 
