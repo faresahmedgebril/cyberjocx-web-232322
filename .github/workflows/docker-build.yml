@@ -41,6 +41,8 @@ jobs:
         run: pnpm typecheck
       - name: Test
         run: pnpm test
+      - name: Build Cloudflare Worker
+        run: pnpm build:cloudflare-worker
       - name: Smoke test production API and database readiness
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
