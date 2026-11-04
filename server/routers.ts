@@ -121,7 +121,7 @@ export const appRouter = router({
     byId: publicProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
       const db = await getDb();
       if (!db) return undefined;
-      const rows = await db.select().from(courses).where(eq(courses.id, input.id)).limit(1);
+      const rows = await db.select().from(courses).where(and(eq(courses.id, input.id), eq(courses.isPublished, true))).limit(1);
       return rows[0];
     }),
     progress: protectedProcedure.input(z.object({ courseId: z.number(), progress: z.number().min(0).max(100) })).mutation(async ({ ctx, input }) => {
