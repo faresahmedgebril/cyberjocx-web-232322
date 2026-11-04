@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import {
   Award, CalendarDays, Clock3, Crown, Medal, RefreshCw, ShieldCheck, Star,
-  Trophy, Users, Zap, BookOpen, Bug,
+  Trophy, Zap, BookOpen, Bug,
 } from "lucide-react";
 import { trpc } from "@/lib/trpc";
 import { ComingSoonModal } from "@/components/ComingSoonModal";
@@ -11,9 +11,9 @@ type Period = "all-time";
 type PeriodOption = Period | "month" | "week" | "today";
 
 type LeaderboardStats = {
-  points: number;
-  coursesCompleted: number;
-  cvesTracked: number;
+  points: number | null;
+  coursesCompleted: number | null;
+  cvesTracked: number | null;
 };
 
 const periods: { id: PeriodOption; label: string; Icon: typeof Trophy }[] = [
@@ -74,9 +74,9 @@ export default function LeaderboardView({
   const currentShare = current && topScore > 0 ? Math.min(100, Math.round((currentPoints / topScore) * 100)) : 0;
   const pointsBehindLeader = Math.max(0, topScore - currentPoints);
   const quickStats = [
-    { label: "Total Points", value: current ? points(current.points) : stats.points ? points(stats.points) : "—", Icon: Star, tone: "gold" },
-    { label: "Completed Courses", value: points(stats.coursesCompleted), Icon: BookOpen, tone: "blue" },
-    { label: "CVE Intelligence", value: points(stats.cvesTracked), Icon: Bug, tone: "cyan" },
+    { label: "Total Points", value: current ? points(current.points) : stats.points !== null ? points(stats.points) : "—", Icon: Star, tone: "gold" },
+    { label: "Completed Courses", value: stats.coursesCompleted !== null ? points(stats.coursesCompleted) : "—", Icon: BookOpen, tone: "blue" },
+    { label: "CVE Intelligence", value: stats.cvesTracked !== null ? points(stats.cvesTracked) : "—", Icon: Bug, tone: "cyan" },
   ];
 
   return (
@@ -198,7 +198,7 @@ export default function LeaderboardView({
                     <strong>{points(current.points)} <small>PTS</small></strong>
                     <span>{displayName(current.name)}</span>
                     <div className="cj-lb-progress-track"><i style={{ width: `${currentShare}%` }} /></div>
-                    <small>{current.rank ? `Rank #${current.rank}` : "Outside the top 50"} · {points(pointsBehindLeader)} pts to first place</small>
+                    <small>{current.rank === 1 ? "You are leading the board" : current.rank ? `Rank #${current.rank}` : "Outside the top 50"} · {current.rank === 1 ? "Top position" : `${points(pointsBehindLeader)} pts to first place`}</small>
                   </div>
                 </div>
                 <div className="cj-lb-profile-bottom">
