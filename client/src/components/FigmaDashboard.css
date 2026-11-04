@@ -70,3 +70,8 @@
   text-align:center;
 }
 .terminal.dashboard-placeholder{min-height:180px;color:#66d9e7}
+
+.figma-dashboard .profile-button > span > img{width:100%;height:100%;border-radius:50%;object-fit:cover}
+.figma-dashboard .nav-item--section{margin-top:13px;position:relative}
+.figma-dashboard .nav-item--section:before{content:"";position:absolute;top:-9px;left:16px;right:16px;height:1px;background:linear-gradient(90deg,transparent,#224c99,transparent)}
+.figma-dashboard .nav-item--section:has(span){scroll-margin-top:12px}

@@ -1,12 +1,12 @@
-import { ReactNode, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import "./FigmaDashboard.css";
 import { ComingSoonModal } from "@/components/ComingSoonModal";
 
 type IconName =
   | "home" | "server" | "target" | "trophy" | "user" | "book" | "roadmap"
-  | "shield" | "bug" | "tools" | "users" | "store" | "settings" | "sun"
+  | "shield" | "bug" | "tools" | "users" | "store" | "settings" | "sun" | "moon"
   | "bell" | "search" | "star" | "terminal" | "check" | "lock" | "bolt"
-  | "code" | "network" | "linux" | "chevron" | "message" | "close" | "expand"
+  | "code" | "network" | "linux" | "chevron" | "message" | "close" | "expand" | "logout"
 
 const iconPaths: Record<IconName, ReactNode> = {
   home: <><path d="m3 11 9-8 9 8" /><path d="M5 10v10h5v-6h4v6h5V10" /></>,
@@ -23,6 +23,7 @@ const iconPaths: Record<IconName, ReactNode> = {
   store: <><path d="M4 10v10h16V10M3 4h18l-2 6H5Z" /><path d="M9 20v-6h6v6" /></>,
   settings: <><circle cx="12" cy="12" r="3" /><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.4 3.1a7 7 0 0 0-1.7 1L5 6.1 3 9.5 5.1 11a7 7 0 0 0 0 2L3 14.5l2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 3.1h5l.4-3.1a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2.1-1.5c.1-.3.1-.7.1-1Z" /></>,
   sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5" /></>,
+  moon: <path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11Z" />,
   bell: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4" /></>,
   search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></>,
   star: <path d="m12 2 3 6 6.5 1-4.8 4.6 1.2 6.4-5.9-3.1L6.1 20l1.2-6.4L2.5 9 9 8Z" />,
@@ -37,20 +38,29 @@ const iconPaths: Record<IconName, ReactNode> = {
   message: <><path d="M4 4h16v13H8l-4 4Z" /><path d="M8 9h8M8 13h5" /></>,
   close: <path d="m6 6 12 12M18 6 6 18" />,
   expand: <path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5" />,
+  logout: <><path d="M10 17l5-5-5-5M15 12H3" /><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6" /></>,
 }
 
 function Icon({ name, size = 22 }: { name: IconName; size?: number }) {
   return <svg aria-hidden="true" className="icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{iconPaths[name]}</svg>
 }
 
-const navigation: { icon: IconName; label: string }[] = [
-  { icon: "home", label: "Home" }, { icon: "server", label: "Machines" },
-  { icon: "target", label: "Challenges" }, { icon: "trophy", label: "Leaderboard" },
-  { icon: "user", label: "Profile" }, { icon: "book", label: "Courses" },
-  { icon: "roadmap", label: "Tracks / Roadmaps" }, { icon: "shield", label: "CVE" },
-  { icon: "bug", label: "Malware" }, { icon: "tools", label: "Tools" },
-  { icon: "users", label: "Community" }, { icon: "store", label: "Marketplace" },
-  { icon: "settings", label: "Settings" }, { icon: "terminal", label: "AI Assistant" },
+const navigation: { icon: IconName; label: string; target?: string; comingSoon?: boolean; dividerBefore?: boolean }[] = [
+  { icon: "home", label: "Home", target: "dashboard" },
+  { icon: "server", label: "Dashboard", target: "dashboard" },
+  { icon: "book", label: "Courses", target: "learning" },
+  { icon: "roadmap", label: "Roadmap", target: "tracks" },
+  { icon: "tools", label: "Labs", comingSoon: true },
+  { icon: "target", label: "CTF", comingSoon: true },
+  { icon: "shield", label: "CVE Center", target: "cves" },
+  { icon: "bug", label: "Malware", target: "malware" },
+  { icon: "users", label: "Community", target: "community" },
+  { icon: "store", label: "Market", target: "market" },
+  { icon: "terminal", label: "AI Assistant", target: "ai" },
+  { icon: "network", label: "Tracks", target: "tracks", dividerBefore: true },
+  { icon: "trophy", label: "Leaderboard", target: "leaderboard" },
+  { icon: "settings", label: "Settings", target: "settings" },
+  { icon: "logout", label: "Log Out", target: "logout", dividerBefore: true },
 ]
 
 function Panel({ children, className = "" }: { children: ReactNode; className?: string }) {
@@ -89,11 +99,15 @@ type FigmaDashboardProps = {
   stats: { points: number; coursesCompleted: number; activeCourses: number; cvesTracked: number };
   learningCourses: Array<{ id?: number | string; title: string; category?: string; level?: string; progress?: number }>;
   userName: string;
+  userAvatarUrl?: string | null;
+  activePage?: string;
+  pageContent?: ReactNode;
   onNavigate: (target: string) => void;
   onOpenAuth: () => void;
+  onLogout?: () => void;
 };
 
-export default function FigmaDashboard({ stats: liveStats, learningCourses, userName, onNavigate, onOpenAuth }: FigmaDashboardProps) {
+export default function FigmaDashboard({ stats: liveStats, learningCourses, userName, userAvatarUrl, activePage = "Home", pageContent, onNavigate, onOpenAuth, onLogout }: FigmaDashboardProps) {
   const dashboardStats = [
     { icon: "star" as IconName, title: "Total Points", value: liveStats.points.toLocaleString(), gain: "LIVE", progress: Math.min(100, Math.max(8, liveStats.points % 100)) },
     { icon: "book" as IconName, title: "Completed Courses", value: String(liveStats.coursesCompleted), gain: "SYNC", progress: Math.min(100, liveStats.coursesCompleted * 20) },
@@ -106,9 +120,11 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
     detail: `${course.level || "Learning"} • ${course.category || "Course"}`,
     progress: Math.max(0, Math.min(100, Number(course.progress || 0))),
   })), [learningCourses]);
-  const [activeNav, setActiveNav] = useState("Home")
+  const [activeNav, setActiveNav] = useState(activePage)
   const [search, setSearch] = useState("")
   const [comingSoonOpen, setComingSoonOpen] = useState(false)
+
+  useEffect(() => setActiveNav(activePage), [activePage]);
 
   const matches = useMemo(() => dashboardCourses.filter((course) => course.name.toLowerCase().includes(search.toLowerCase())), [dashboardCourses, search])
 
@@ -120,20 +136,23 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
         <b>DASHBOARD</b>
       </div>
       <label className="search-box">
-        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search courses…" />
+        <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search anything…" />
         <Icon name="search" size={20} />
         {search && <small>{matches.length} course{matches.length === 1 ? "" : "s"}</small>}
       </label>
       <div className="top-actions">
-        <button className="round-button" aria-label="Toggle brightness" onClick={() => setComingSoonOpen(true)}><Icon name="sun" size={27} /></button>
-        <button className="round-button notification" aria-label="Notifications" onClick={() => setComingSoonOpen(true)}><Icon name="bell" size={26} /></button>
-        <button className="profile-button" onClick={onOpenAuth}><span><Icon name="user" size={22} /></span><b>{userName || "GHOST_OPERATOR"}</b><Icon name="chevron" size={14} /></button>
+        <button className="round-button notification" aria-label="Notifications" onClick={() => setComingSoonOpen(true)}><Icon name="bell" size={26} /><i>1</i></button>
+        <button className="round-button" aria-label="Appearance settings" onClick={() => setComingSoonOpen(true)}><Icon name="moon" size={25} /></button>
+        <button className="profile-button" onClick={onOpenAuth}>
+          <span>{userAvatarUrl ? <img src={userAvatarUrl} alt="" /> : <Icon name="user" size={22} />}</span>
+          <b>{userName || "GHOST_OPERATOR"}</b><Icon name="chevron" size={14} />
+        </button>
       </div>
     </header>
 
     <aside className="sidebar">
       <nav aria-label="Dashboard navigation">
-        {navigation.map((item) => <button key={item.label} className={`nav-item ${activeNav === item.label ? "active" : ""}`} onClick={() => { const targets: Record<string, string> = { Home: "dashboard", Profile: "profile", Courses: "learning", "Tracks / Roadmaps": "tracks", CVE: "cves", Malware: "malware", Tools: "tools", Community: "community", Marketplace: "market", Leaderboard: "leaderboard", Settings: "settings", "AI Assistant": "ai" }; const target = targets[item.label]; if (!target) { setComingSoonOpen(true); return; } setActiveNav(item.label); onNavigate(target); }}><Icon name={item.icon} size={23} /><span>{item.label}</span></button>)}
+        {navigation.map((item) => <button key={item.label} className={`nav-item ${activeNav === item.label ? "active" : ""} ${item.dividerBefore ? "nav-item--section" : ""}`} onClick={() => { if (item.target === "logout") { onLogout?.(); return; } if (item.comingSoon || !item.target) { setComingSoonOpen(true); return; } setActiveNav(item.label); onNavigate(item.target); }}><Icon name={item.icon} size={23} /><span>{item.label}</span></button>)}
       </nav>
       <div className="sidebar-brand" role="button" tabIndex={0} onClick={() => onNavigate("dashboard")} onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onNavigate("dashboard"); } }}>
         <img src={`${import.meta.env.BASE_URL}assets/cyber-hacker.jpg`} alt="Hooded CyberJocx character" />
@@ -142,8 +161,8 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
       </div>
     </aside>
 
-    <main>
-      <div className="dashboard-grid">
+    <main className={pageContent ? "has-page-content" : ""}>
+      {pageContent ?? <div className="dashboard-grid">
         <div className="main-column">
           <Panel className="welcome-card">
             <img
@@ -175,7 +194,7 @@ export default function FigmaDashboard({ stats: liveStats, learningCourses, user
         </div>
 
         <DashboardRightRail onComingSoon={() => setComingSoonOpen(true)} />
-      </div>
+      </div>}
     </main>
 
     <footer><strong>Cyber<span>Jocx</span></strong><b>v1.0.0</b><i /><span>Learn</span><small>•</small><span>Practice</span><small>•</small><span>Become Better</span><div className="online"><Icon name="message" size={16} /> Community</div></footer>
