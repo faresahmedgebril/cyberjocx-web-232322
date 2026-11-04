@@ -472,6 +472,19 @@ export const appRouter = router({
       hintText: z.string().max(2000).optional(),
       skillId: z.number().int().positive().optional(),
     })).mutation(({ input }) => createChallenge(input)),
+    audit: ownerAdminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      return db.select({
+        id: auditLogs.id,
+        actorUserId: auditLogs.actorUserId,
+        action: auditLogs.action,
+        resourceType: auditLogs.resourceType,
+        resourceId: auditLogs.resourceId,
+        metadataJson: auditLogs.metadataJson,
+        createdAt: auditLogs.createdAt,
+      }).from(auditLogs).orderBy(desc(auditLogs.createdAt)).limit(50);
+    }),
     users: ownerAdminProcedure.query(async () => {
       const db = await getDb();
       if (!db) return [];
@@ -510,6 +523,10 @@ export const appRouter = router({
         userId: recipient.id, type: "content" as const,
         title: "New course published", message: `${row[0].title} is now available on CyberJocx.`,
       })));
+      await db.insert(auditLogs).values({
+        actorUserId: ctx.user.id, action: "course.publish", resourceType: "course",
+        resourceId: row[0].id, metadataJson: JSON.stringify({ title: row[0].title }),
+      });
       return { success: true, course: row[0] };
     }),
     reviewCourseChange: ownerAdminProcedure.input(z.object({
@@ -524,8 +541,15 @@ export const appRouter = router({
       if (!request) throw new TRPCError({ code: "NOT_FOUND", message: "Pending change request not found." });
       if (input.decision === "approve") {
         const parsed = JSON.parse(request.changesJson) as Record<string, unknown>;
-        const allowedKeys = ["title", "description", "category", "level", "lessons", "durationMinutes", "coverUrl", "courseUrl"];
-        const safeChanges = Object.fromEntries(Object.entries(parsed).filter(([key]) => allowedKeys.includes(key)));
+        const safeChanges: Partial<typeof courses.$inferInsert> = {};
+        if (typeof parsed.title === "string") safeChanges.title = parsed.title;
+        if (typeof parsed.description === "string") safeChanges.description = parsed.description;
+        if (typeof parsed.category === "string") safeChanges.category = parsed.category;
+        if (parsed.level === "beginner" || parsed.level === "intermediate" || parsed.level === "advanced") safeChanges.level = parsed.level;
+        if (typeof parsed.lessons === "number") safeChanges.lessons = parsed.lessons;
+        if (typeof parsed.durationMinutes === "number") safeChanges.durationMinutes = parsed.durationMinutes;
+        if (typeof parsed.coverUrl === "string" || parsed.coverUrl === null) safeChanges.coverUrl = parsed.coverUrl;
+        if (typeof parsed.courseUrl === "string" || parsed.courseUrl === null) safeChanges.courseUrl = parsed.courseUrl;
         if (Object.keys(safeChanges).length === 0) throw new TRPCError({ code: "BAD_REQUEST", message: "No supported course changes were provided." });
         await db.update(courses).set({ ...safeChanges, updatedAt: new Date() }).where(eq(courses.id, request.courseId));
       }
@@ -540,6 +564,13 @@ export const appRouter = router({
         type: "content",
         title: input.decision === "approve" ? "Course changes approved" : "Course changes rejected",
         message: input.note?.trim() || (input.decision === "approve" ? "Your requested course changes were approved." : "Your requested course changes need revision."),
+      });
+      await db.insert(auditLogs).values({
+        actorUserId: ctx.user.id,
+        action: input.decision === "approve" ? "course-change.approve" : "course-change.reject",
+        resourceType: "courseChangeRequest",
+        resourceId: request.id,
+        metadataJson: JSON.stringify({ courseId: request.courseId, note: input.note ?? null }),
       });
       return { success: true };
     }),
@@ -557,6 +588,10 @@ export const appRouter = router({
         type: "system",
         title: input.role === "instructor" ? "Instructor access granted" : "Instructor access removed",
         message: input.role === "instructor" ? "Your account can now access Instructor Studio." : "Instructor Studio access is no longer enabled for your account.",
+      });
+      await db.insert(auditLogs).values({
+        actorUserId: ctx.user.id, action: "user.role.update", resourceType: "user",
+        resourceId: changed[0].id, metadataJson: JSON.stringify({ role: input.role }),
       });
       return { success: true, user: changed[0] };
     }),
