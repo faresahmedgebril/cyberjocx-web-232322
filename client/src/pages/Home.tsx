@@ -284,6 +284,120 @@ function MalwareView({ items, loading, error, search, setSearch, category, setCa
   return <section className="module-stack"><div className="module-toolbar"><div className="search-box wide"><Search size={17} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="ابحث باسم العائلة أو التقنية أو الوصف..." /></div><div className="filter-tabs"><Filter size={15} />{categories.map(value => <button key={value} className={category === value ? "active" : ""} onClick={() => setCategory(value)}>{value === "all" ? "الكل" : value}</button>)}</div><span className="result-count">{items.length} FAMILIES</span></div><div className="intel-banner panel-card"><div className="intel-glyph"><Bug size={28} /></div><div><div className="section-tag">// MALWARE INTELLIGENCE</div><h2>افهم السلوك قبل بناء الدفاع.</h2><p>مركز داخلي للعائلات الخبيثة والتقنيات المرتبطة بها، مخصص للبحث والتحليل والدفاع القانوني.</p></div></div>{items.length ? <div className="tools-grid">{items.map(item => <article className="tool-card panel-card" key={item.id} onClick={() => setSelectedId(item.id)} role="button" tabIndex={0} onKeyDown={event => event.key === "Enter" && setSelectedId(item.id)}><div className="tool-card-top"><div className="tool-icon tool-1"><Bug size={20} /></div><span className={`severity-pill ${item.severity}`}>{item.severity}</span></div><h3>{item.name}</h3><p>{item.description}</p><div className="command-line"><span>MITRE</span>{item.mitreTechniques}</div><div className="detail-meta"><span>TARGETS: {item.targets}</span></div><button className="tool-link" onClick={event => { event.stopPropagation(); setSelectedId(item.id); }}>عرض التفاصيل <ArrowUpRight size={13} /></button></article>)}</div> : <ModuleState title="لم تُفهرس عائلات Malware بهذه الفلاتر بعد." empty />}{selectedId !== null && <div className="modal-backdrop" onClick={() => setSelectedId(null)}><div className="detail-modal panel-card" onClick={event => event.stopPropagation()}><button className="modal-close" onClick={() => setSelectedId(null)}><X size={16} /></button><div className="section-tag">// MALWARE PROFILE</div><h2>{detail.data?.name ?? "جارٍ التحميل"}</h2><p>{detail.data?.description}</p><div className="detail-meta"><span>{detail.data?.category}</span><span>{detail.data?.severity}</span><span>{detail.data?.targets}</span></div><div className="command-line"><span>MITRE TECHNIQUES</span>{detail.data?.mitreTechniques}</div>{safeExternalUrl(detail.data?.sourceUrl) && <a href={safeExternalUrl(detail.data?.sourceUrl)} target="_blank" rel="noopener noreferrer" className="primary-button">فتح المرجع <ArrowUpRight size={14} /></a>}</div></div>}</section>;
 }
 
+function CtfView({ isAuthenticated, onSignIn }: { isAuthenticated: boolean; onSignIn: () => void }) {
+  const events = trpc.ctf.events.useQuery();
+  const [eventId, setEventId] = useState<number | null>(null);
+  const [challengeId, setChallengeId] = useState<number | null>(null);
+  const [flag, setFlag] = useState("");
+  const event = trpc.ctf.event.useQuery({ eventId: eventId ?? 0 }, { enabled: eventId !== null });
+  const submit = trpc.ctf.submit.useMutation({
+    onSuccess: result => {
+      setFlag("");
+      toast[result.correct ? "success" : "error"](result.correct ? `Correct flag · +${result.awardedXp} XP` : "Flag not accepted. Check the challenge and try again.");
+      void event.refetch();
+    },
+    onError: error => toast.error(error.message || "Unable to submit this flag."),
+  });
+
+  useEffect(() => {
+    if (eventId === null && events.data?.length) setEventId(events.data[0].id);
+  }, [eventId, events.data]);
+
+  const challenges = event.data?.challenges ?? [];
+  const activeChallenge = challenges.find(item => item.challenge.id === challengeId) ?? challenges[0] ?? null;
+  useEffect(() => {
+    if (activeChallenge && challengeId !== activeChallenge.challenge.id) setChallengeId(activeChallenge.challenge.id);
+  }, [activeChallenge, challengeId]);
+
+  if (events.isLoading) return <ModuleState title="جارٍ تحميل فعاليات CTF..." />;
+  if (events.error) return <ModuleState title="تعذر تحميل فعاليات CTF." error={events.error} />;
+  if (!events.data?.length) return <section className="cj-ctf-page module-stack"><div className="learning-banner panel-card"><div><div className="section-tag">// CYBERJOCX CTF ARENA</div><h2>ميدان التحديات</h2><p>لا توجد فعالية CTF نشطة حاليًا. ستظهر التحديات هنا عند تفعيل فعالية من الإدارة.</p></div></div><ModuleState title="لا توجد فعاليات نشطة حاليًا." empty /></section>;
+
+  return (
+    <section className="cj-ctf-page module-stack">
+      <header className="cj-ctf-hero panel-card">
+        <div><div className="section-tag">// THINK · EXPLOIT · GET FLAGS</div><h2>{event.data?.event.title ?? events.data.find(item => item.id === eventId)?.title ?? "CTF Arena"}</h2><p>{event.data?.event.description ?? "اختر فعالية ثم نفّذ التحديات وسجّل الأعلام الصحيحة لجمع النقاط."}</p></div>
+        <div className="cj-ctf-event-select"><label>ACTIVE EVENT</label><select value={eventId ?? ""} onChange={value => { setEventId(Number(value)); setChallengeId(null); }}><option value="" disabled>Choose event</option>{events.data.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}</select></div>
+      </header>
+
+      <div className="cj-ctf-layout">
+        <aside className="cj-ctf-challenge-list panel-card">
+          <div className="cj-ctf-card-heading"><Terminal size={18} /><strong>Challenge sequence</strong><span>{challenges.length} tasks</span></div>
+          {challenges.map((item,index) => (
+            <button type="button" key={item.challenge.id} className={activeChallenge?.challenge.id===item.challenge.id?"is-active":""} onClick={() => {setChallengeId(item.challenge.id);setFlag("");}}>
+              <b>{String(index+1).padStart(2,"0")}</b><span><strong>{item.challenge.title}</strong><small>{item.category} · {item.challenge.difficulty}</small></span><em>{item.challenge.points} XP</em>
+            </button>
+          ))}
+        </aside>
+
+        <div className="cj-ctf-task panel-card">
+          {event.isLoading ? <ModuleState title="جارٍ تحميل تفاصيل الفعالية..." /> : event.error ? <ModuleState title="تعذر تحميل التحديات." error={event.error} /> : activeChallenge ? (
+            <>
+              <div className="cj-ctf-task-head"><div><span>CHALLENGE {String(challenges.findIndex(item=>item.challenge.id===activeChallenge.challenge.id)+1).padStart(2,"0")}</span><h3>{activeChallenge.challenge.title}</h3></div><span className={`cj-ctf-difficulty ${activeChallenge.challenge.difficulty}`}>{activeChallenge.challenge.difficulty}</span></div>
+              <div className="cj-ctf-objective"><strong><Target size={16}/> Objective</strong><p>{activeChallenge.challenge.description}</p></div>
+              <div className="cj-ctf-meta"><span>{activeChallenge.category}</span><span>{activeChallenge.challenge.points.toLocaleString()} XP</span><span>{challenges.length} challenges in event</span></div>
+              <form className="cj-ctf-submit" onSubmit={event => {event.preventDefault();if(!isAuthenticated){onSignIn();return;}if(flag.trim())submit.mutate({eventId:eventId!,challengeId:activeChallenge.challenge.id,flag:flag.trim()});}}>
+                <label htmlFor="ctf-flag-input">Submit Flag</label>
+                <div><input id="ctf-flag-input" value={flag} onChange={event=>setFlag(event.target.value)} placeholder="HTB{...}" autoComplete="off" spellCheck={false}/><button type="submit" disabled={!flag.trim()||submit.isPending}>{!isAuthenticated?"Sign in":"Submit"} <Send size={14}/></button></div>
+                <small>يتم التحقق من العلم على الخادم. لا تعرض الواجهة الإجابة الصحيحة أو hash التخزين.</small>
+              </form>
+            </>
+          ) : <ModuleState title="لا توجد تحديات مرتبطة بهذه الفعالية." empty />}
+        </div>
+
+        <aside className="cj-ctf-side">
+          <section className="panel-card cj-ctf-info"><div className="cj-ctf-card-heading"><ShieldCheck size={18}/><strong>Environment info</strong></div><p>لا يتم عرض عنوان IP أو تفاصيل جهاز افتراضي إلا بعد توفير بيئة فعلية مرتبطة بالتحدي.</p><div><span>Event</span><b>{event.data?.event.title ?? "Loading..."}</b></div><div><span>Challenge</span><b>{activeChallenge?.challenge.difficulty ?? "—"}</b></div></section>
+          <section className="panel-card cj-ctf-terminal"><div className="cj-ctf-card-heading"><Terminal size={18}/><strong>Practice terminal</strong></div><div className="cj-ctf-terminal-body"><span>cyberjocx@operator:~$</span><p>Terminal access becomes available when a provisioned lab is linked to this challenge.</p><i>Environment not attached</i></div></section>
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+function LabsView({ isAuthenticated, onSignIn }: { isAuthenticated: boolean; onSignIn: () => void }) {
+  const templates = trpc.labs.templates.useQuery();
+  const instances = trpc.labs.myInstances.useQuery(undefined, { enabled: isAuthenticated, refetchInterval: isAuthenticated ? 15_000 : false });
+  const [startingTemplate, setStartingTemplate] = useState<number | null>(null);
+  const start = trpc.labs.start.useMutation({
+    onSuccess: () => { setStartingTemplate(null); void instances.refetch(); toast.success("تم إنشاء طلب البيئة. ستظهر حالتها هنا عند جاهزيتها."); },
+    onError: error => { setStartingTemplate(null); toast.error(error.message || "تعذر بدء البيئة."); },
+  });
+  const submitFlag = trpc.labs.submitFlag.useMutation({
+    onSuccess: result => { toast[result.correct ? "success" : "error"](result.correct ? "تم تأكيد العلم." : "العلم غير صحيح."); void instances.refetch(); },
+    onError: error => toast.error(error.message || "تعذر التحقق من العلم."),
+  });
+  const [flags,setFlags]=useState<Record<number,string>>({});
+  const safeStatus=(status:string)=>status.toLowerCase().replaceAll("_"," ");
+
+  return (
+    <section className="cj-labs-page module-stack">
+      <header className="learning-banner panel-card"><div><div className="section-tag">// SAFE VIRTUAL PRACTICE ENVIRONMENTS</div><h2>Practice Labs</h2><p>ابدأ بيئة تدريب فعلية، تابع حالة التشغيل، وأرسل العلم عند تجهيز المختبر. لا نعرض عنوان اتصال تجريبي أو غير مرتبط ببيئتك.</p></div><div className="roadmap-steps"><span className="active">01 / REQUEST</span><span>02 / PROVISION</span><span>03 / PRACTICE</span></div></header>
+      {!isAuthenticated && <div className="system-alert"><LockKeyhole size={15}/><span>سجّل الدخول لبدء بيئة تدريب وتتبع جلساتك.</span><button className="small-button" onClick={onSignIn}>Sign in</button></div>}
+      {templates.isLoading ? <ModuleState title="جارٍ تحميل قوالب المختبرات..." /> : templates.error ? <ModuleState title="تعذر تحميل قوالب المختبرات." error={templates.error}/> : !templates.data?.length ? <ModuleState title="لم يتم تفعيل أي قالب مختبر حتى الآن." empty/> : (
+        <div className="cj-labs-grid">{templates.data.map(template=>(
+          <article className="cj-lab-template panel-card" key={template.id}>
+            <div className="cj-lab-template-top"><span><Boxes size={23}/></span><em>{template.cpuLimit} vCPU</em></div>
+            <div className="section-tag">// {template.slug}</div><h3>{template.name}</h3><p>{template.description}</p>
+            <div className="cj-lab-specs"><span>{template.memoryMb} MB RAM</span><span>{template.diskMb} MB Disk</span><span>{Math.round(template.ttlSeconds/60)} min TTL</span></div>
+            <button className="primary-button compact" type="button" disabled={!isAuthenticated||start.isPending} onClick={()=>{if(!isAuthenticated){onSignIn();return;}setStartingTemplate(template.id);start.mutate({templateId:template.id});}}>{startingTemplate===template.id&&start.isPending?"Requesting...":"Launch environment"} <ArrowUpRight size={14}/></button>
+          </article>
+        ))}</div>
+      )}
+      <section className="cj-lab-sessions panel-card">
+        <div className="card-head"><div><div className="section-tag">// YOUR ACTIVE SESSIONS</div><h3>My lab instances</h3></div><span>{instances.data?.length??0} sessions</span></div>
+        {!isAuthenticated ? <p className="empty-state">سجّل الدخول لعرض جلساتك.</p> : instances.isLoading ? <ModuleState title="جارٍ تحميل جلسات المختبر..." /> : !instances.data?.length ? <ModuleState title="لا توجد جلسات مختبر بعد." empty/> : instances.data.map(instance=>(
+          <div className="cj-lab-session" key={instance.id}>
+            <div><strong>{instance.templateName}</strong><small>{instance.instanceId.slice(0,12)} · expires {new Date(instance.expiresAt).toLocaleString()}</small></div>
+            <span className={`cj-lab-status status-${instance.status.toLowerCase()}`}>{safeStatus(instance.status)}</span>
+            {safeExternalUrl(instance.targetUrl) ? <a className="small-button" href={safeExternalUrl(instance.targetUrl)} target="_blank" rel="noreferrer">Open environment <ArrowUpRight size={13}/></a> : <span className="cj-lab-pending">Environment endpoint pending</span>}
+            {instance.status==="READY"&&<form className="cj-lab-flag" onSubmit={event=>{event.preventDefault();const value=flags[instance.id]?.trim();if(value)submitFlag.mutate({instanceId:instance.id,flag:value});}}><input value={flags[instance.id]??""} onChange={event=>setFlags(old=>({...old,[instance.id]:event.target.value}))} placeholder="HTB{...}" autoComplete="off"/><button type="submit" disabled={!flags[instance.id]?.trim()||submitFlag.isPending}>Verify flag</button></form>}
+          </div>
+        ))}
+      </section>
+    </section>
+  );
+}
+
 function AdminView() {
   const [mode, setMode] = useState<"course" | "tool" | "cve">("course");
   const [form, setForm] = useState<Record<string, string>>({});
