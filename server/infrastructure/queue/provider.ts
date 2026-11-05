@@ -19,7 +19,7 @@ export class DatabaseQueue implements QueueProvider {
     if (!db) throw new Error("Database unavailable");
     const id = crypto.randomUUID();
     const createdAt = new Date();
-    await db.insert(jobs).values({ jobId: id, name, payloadJson: JSON.stringify(payload), createdAt });
+    await db.insert(jobs).values({ jobId: id, name, payloadJson: JSON.stringify(payload), createdAt, availableAt: createdAt });
     return { id, name, payload, createdAt };
   }
   async claim(name?: JobName) {
