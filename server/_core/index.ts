@@ -1,48 +1,13 @@
 import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
-import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { appRouter } from "../routers";
-import { createContext } from "./context";
-import { handleNvdSync } from "../nvdSync";
-import { registerGoogleAuthRoutes } from "../googleAuth";
-import { registerGitHubAuthRoutes } from "../githubAuth";
-import { registerPasswordAuthRoutes, registerSupportRoutes } from "../passwordAuth";
+import { createApp } from "./app";
 import { ENV } from "../config/env";
-import { HEALTH_PATH, READY_PATH } from "../config/constants";
-import { corsMiddleware, rateLimit, validateStateChangingOrigin } from "../core/security/middleware";
 import { logger } from "../core/logger";
 import { closeDatabase } from "../infrastructure/database/client";
-import { requestScopeMiddleware } from "../infrastructure/database/requestScopeMiddleware";
 import { startEmbeddedWorker } from "../worker";
 
-export function createApp() {
-  const app = express();
-  app.set("trust proxy", ENV.TRUST_PROXY ? 1 : false);
-  app.use(corsMiddleware);
-  app.use(validateStateChangingOrigin);
-  app.use(express.json({ limit: "10mb" }));
-  app.use(express.urlencoded({ limit: "2mb", extended: true }));
-  app.get(HEALTH_PATH, (_req, res) => res.json({ ok: true, service: "cyberjocx-api", timestamp: new Date().toISOString() }));
-  app.use(requestScopeMiddleware);
-  app.get(READY_PATH, async (_req, res) => {
-    const { getDb } = await import("../db");
-    const db = await getDb();
-    res.status(db ? 200 : 503).json({ ok: Boolean(db), database: Boolean(db) });
-  });
-  app.use("/api/auth/google", rateLimit(ENV.AUTH_RATE_LIMIT), (_req, _res, next) => next());
-  registerGoogleAuthRoutes(app);
-  app.use("/api/auth/github", rateLimit(ENV.AUTH_RATE_LIMIT), (_req, _res, next) => next());
-  registerGitHubAuthRoutes(app);
-  app.use("/api/auth", rateLimit(ENV.AUTH_RATE_LIMIT));
-  registerPasswordAuthRoutes(app);
-  app.use("/api/support", rateLimit(5));
-  registerSupportRoutes(app);
-  app.post("/api/scheduled/nvd-sync", rateLimit(10), handleNvdSync);
-  app.use("/api/trpc", rateLimit(ENV.PUBLIC_API_RATE_LIMIT));
-  app.use("/api/trpc", createExpressMiddleware({ router: appRouter, createContext }));
-  return app;
-}
+export { createApp } from "./app";
 
 export async function startServer() {
   const app = createApp();
