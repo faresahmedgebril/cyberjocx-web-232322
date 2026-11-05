@@ -50,6 +50,42 @@ jobs:
           path: dist/cloudflare-worker.js
           if-no-files-found: error
           retention-days: 7
+      - name: Verify production Worker health, Neon readiness and OAuth starts
+        shell: bash
+        env:
+          API_URL: https://cyberjocx-api.gebrilfares972.workers.dev
+        run: |
+          set -euo pipefail
+
+          curl --fail --silent --show-error --retry 3 --retry-delay 2 --max-time 30 \
+            "${API_URL}/health" -o /tmp/worker-health.json
+          node --input-type=module -e '
+            const data = JSON.parse(await (await import("node:fs/promises")).readFile("/tmp/worker-health.json", "utf8"));
+            if (data.ok !== true || data.service !== "cyberjocx-api") throw new Error("Worker health response is invalid");
+            console.log("Worker health passed");
+          '
+
+          curl --fail --silent --show-error --retry 3 --retry-delay 2 --max-time 30 \
+            "${API_URL}/ready" -o /tmp/worker-ready.json
+          node --input-type=module -e '
+            const data = JSON.parse(await (await import("node:fs/promises")).readFile("/tmp/worker-ready.json", "utf8"));
+            if (data.ok !== true || data.database !== true) throw new Error("Neon readiness check failed");
+            console.log("Neon readiness passed");
+          '
+
+          for provider in github google; do
+            headers="/tmp/${provider}-oauth.headers"
+            body="/tmp/${provider}-oauth.body"
+            status="$(curl --silent --show-error --max-time 20 -D "$headers" -o "$body" -w '%{http_code}' \
+              "${API_URL}/api/auth/${provider}/login")"
+            test "$status" = "302"
+            grep -Eqi "^location: https://(github\\.com|accounts\\.google\\.com)/" "$headers"
+            grep -Eqi "^set-cookie: __Host-cyberjocx_${provider}_oauth_state=" "$headers"
+            grep -Eqi 'HttpOnly' "$headers"
+            grep -Eqi 'Secure' "$headers"
+          done
+          echo "GitHub and Google OAuth initiation passed"
+
       - name: Verify production all-time leaderboard
         shell: bash
         env:
