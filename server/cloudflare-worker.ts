@@ -70,7 +70,7 @@ async function ensureApiInitialized(bindings: CyberJocxWorkerEnv): Promise<void>
         if (value) process.env[key] = value;
       }
 
-      const { createApp } = await import("./_core/index");
+      const { createApp } = await import("./_core/app");
       createApp().listen(3000);
     })().catch(error => {
       // A transient initialization error must not permanently poison this isolate.
