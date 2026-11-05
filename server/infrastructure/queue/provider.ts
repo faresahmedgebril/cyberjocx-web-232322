@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { and, asc, eq, lte } from "drizzle-orm";
+import { and, asc, eq, lte, sql } from "drizzle-orm";
 import { jobs } from "../../../drizzle/schema";
 import { getDb } from "../../db";
 
@@ -19,13 +19,16 @@ export class DatabaseQueue implements QueueProvider {
     if (!db) throw new Error("Database unavailable");
     const id = crypto.randomUUID();
     const createdAt = new Date();
-    await db.insert(jobs).values({ jobId: id, name, payloadJson: JSON.stringify(payload), createdAt });
+    await db.insert(jobs).values({ jobId: id, name, payloadJson: JSON.stringify(payload), createdAt, availableAt: createdAt });
     return { id, name, payload, createdAt };
   }
   async claim(name?: JobName) {
     const db = await getDb();
     if (!db) return undefined;
-    const conditions = [eq(jobs.status, "queued"), lte(jobs.availableAt, new Date())];
+    // Compare against PostgreSQL time, not the Worker clock. The database default for
+    // availableAt is also PostgreSQL now(); mixing clocks made fresh jobs invisible
+    // for a few milliseconds and caused them to wait until the next hourly Cron.
+    const conditions = [eq(jobs.status, "queued"), lte(jobs.availableAt, sql`now()`)];
     if (name) conditions.push(eq(jobs.name, name));
     // SELECT + conditional UPDATE is intentionally retried because multiple workers may
     // race for the same queued row. Only the worker whose UPDATE changes one row owns it.

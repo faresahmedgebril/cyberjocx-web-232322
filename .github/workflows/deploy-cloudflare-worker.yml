@@ -41,12 +41,20 @@ jobs:
       - name: Build Cloudflare Worker
         run: pnpm build:cloudflare-worker
 
-      - name: Deploy Worker and verify production
-        if: env.CLOUDFLARE_API_TOKEN != ''
-        run: node scripts/deploy-cloudflare-worker.mjs
+      - name: Preserve the tested Worker bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: cyberjocx-cloudflare-worker
+          path: dist/cloudflare-worker.js
+          if-no-files-found: error
+          retention-days: 7
 
-      - name: Report missing Cloudflare API token
+      - name: Require Cloudflare API token
         if: env.CLOUDFLARE_API_TOKEN == ''
         run: |
-          echo "::warning::Worker bundle was built and tested, but production upload was skipped because the CLOUDFLARE_API_TOKEN GitHub Actions secret is not configured."
-          echo "Add a scoped Cloudflare API token with Workers Scripts Write permission to enable automatic production releases."
+          echo "::error::CLOUDFLARE_API_TOKEN is missing. Production deployment was not attempted."
+          echo "Add a valid Cloudflare API token scoped to this account with Workers Scripts: Write permission."
+          exit 1
+
+      - name: Deploy Worker and verify production
+        run: node scripts/deploy-cloudflare-worker.mjs
