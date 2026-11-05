@@ -1,8 +1,8 @@
 name: Cloudflare Worker Production Release
 
+# Production auto-deploys are handled by the existing Cloudflare Workers Builds trigger.
+# Keep this workflow_dispatch path as a manual fallback requiring CLOUDFLARE_API_TOKEN.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
