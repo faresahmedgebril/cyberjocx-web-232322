@@ -115,3 +115,95 @@ jobs:
           tags: cyberjocx:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Deploy production Cloudflare Worker
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 91f0bdcf3f87b86358d38b5f7559dff1
+          WORKER_NAME: cyberjocx-api
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${CLOUDFLARE_API_TOKEN}" ]]; then
+            echo "::error::Missing GitHub Actions secret CLOUDFLARE_API_TOKEN. Add a Cloudflare API token with Account.Workers Scripts Write permission."
+            exit 1
+          fi
+
+          cat > /tmp/cyberjocx-worker-metadata.json <<'JSON'
+          {
+            "main_module": "cloudflare-worker.js",
+            "compatibility_date": "2026-11-01",
+            "compatibility_flags": ["nodejs_compat"],
+            "usage_model": "standard",
+            "bindings": [
+              {"type":"plain_text","name":"API_BASE_URL","text":"https://cyberjocx-api.gebrilfares972.workers.dev"},
+              {"type":"plain_text","name":"APP_WEB_URL","text":"https://faresahmedgebril.github.io/cyberjocx-web-232322"},
+              {"type":"plain_text","name":"AUTH_RATE_LIMIT","text":"20"},
+              {"type":"plain_text","name":"CORS_ORIGINS","text":"https://cyberjocx-api.gebrilfares972.workers.dev,https://faresahmedgebril.github.io"},
+              {"type":"hyperdrive","name":"HYPERDRIVE","id":"e561e68997b24fe58d158ee786def876"},
+              {"type":"plain_text","name":"NODE_ENV","text":"production"},
+              {"type":"plain_text","name":"PORT","text":"3000"},
+              {"type":"plain_text","name":"PUBLIC_API_RATE_LIMIT","text":"300"},
+              {"type":"plain_text","name":"SERVICE_ROLE","text":"api"}
+            ],
+            "observability": {
+              "enabled": true,
+              "head_sampling_rate": 1,
+              "redact_query_string": false,
+              "logs": {
+                "enabled": true,
+                "head_sampling_rate": 1,
+                "persist": true,
+                "invocation_logs": true
+              },
+              "traces": {
+                "enabled": false,
+                "persist": true,
+                "head_sampling_rate": 1
+              }
+            }
+          }
+          JSON
+
+          upload_response="$(curl --fail --silent --show-error --retry 3 --retry-delay 2 \
+            -X POST \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -F "metadata=@/tmp/cyberjocx-worker-metadata.json;type=application/json" \
+            -F "files=@dist/cloudflare-worker.js;type=application/javascript+module" \
+            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${WORKER_NAME}/versions")"
+
+          version_id="$(jq -er '.result.id' <<< "${upload_response}")"
+          echo "Uploaded Cloudflare Worker version: ${version_id}"
+
+          deployment_payload="$(jq -n --arg version_id "${version_id}" '{
+            strategy: "percentage",
+            versions: [{version_id: $version_id, percentage: 100}],
+            annotations: {"workers/message": "Deploy tested CyberJocx main build"}
+          }')"
+
+          deployment_response="$(curl --fail --silent --show-error --retry 3 --retry-delay 2 \
+            -X POST \
+            -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data "${deployment_payload}" \
+            "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/workers/scripts/${WORKER_NAME}/deployments")"
+
+          deployment_id="$(jq -er '.result.id' <<< "${deployment_response}")"
+          echo "Cloudflare Worker deployment created: ${deployment_id}"
+
+          for endpoint in health ready; do
+            curl --fail --silent --show-error --retry 5 --retry-delay 2 --max-time 30 \
+              "https://cyberjocx-api.gebrilfares972.workers.dev/${endpoint}" \
+              -o "/tmp/worker-${endpoint}.json"
+          done
+
+          node --input-type=module <<'NODE'
+          import fs from "node:fs";
+          const health = JSON.parse(fs.readFileSync("/tmp/worker-health.json", "utf8"));
+          const ready = JSON.parse(fs.readFileSync("/tmp/worker-ready.json", "utf8"));
+          if (health.ok !== true || health.service !== "cyberjocx-api") throw new Error("Post-deploy Worker health check failed");
+          if (ready.ok !== true || ready.database !== true) throw new Error("Post-deploy Neon readiness check failed");
+          console.log("Post-deploy Worker health and Neon readiness passed");
+          NODE
