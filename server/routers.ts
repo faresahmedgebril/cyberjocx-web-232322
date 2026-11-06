@@ -8,6 +8,7 @@ import { and, desc, eq, or, sql } from "drizzle-orm";
 import { askAI, personalizeAI } from "./modules/ai/service";
 import { readPublicProfile, toClientSafeUser, updateProfile, uploadProfileMedia } from "./modules/profile/service";
 import { sanitizeProfileUpdate } from "./modules/profile/permissions";
+import { rankLeaderboardEntries } from "./modules/leaderboard/ranking";
 import { nanoid } from "nanoid";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { getSessionToken, listActiveSessions, revokeOtherSessions as revokeOtherUserSessions, revokeSession } from "./core/auth/session";
@@ -58,13 +59,7 @@ export const appRouter = router({
         points: users.points,
       }).from(users).orderBy(desc(users.points), desc(users.id)).limit(50);
 
-      const entries = ranked
-        .filter(entry => Number(entry.points) > 0)
-        .map((entry, index) => ({
-          ...entry,
-          rank: index + 1,
-          isCurrentUser: entry.id === ctx.user?.id,
-        }));
+      const entries = rankLeaderboardEntries(ranked, ctx.user?.id);
 
       let currentUser: (Omit<(typeof entries)[number], "rank"> & { rank: number | null }) | null =
         entries.find(entry => entry.isCurrentUser) ?? null;
