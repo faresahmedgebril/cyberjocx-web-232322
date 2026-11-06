@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import FigmaDashboard from "@/components/FigmaDashboard";
 import { ComingSoonModal } from "@/components/ComingSoonModal";
 import SettingsView from "@/features/settings/SettingsView";
+import { loadNotificationPreferences, shouldShowNotification, NOTIFICATION_PREFERENCES_UPDATED_EVENT } from "@/features/settings/preferences";
 import LeaderboardView from "@/features/leaderboard/LeaderboardView";
 import NexusAssistantView from "@/features/ai/NexusAssistantView";
 import "./HomePagesPolish.css";
@@ -53,6 +54,18 @@ export default function Home() {
   const [postText, setPostText] = useState("");
   const [aiInput, setAiInput] = useState("");
   const [aiMessages, setAiMessages] = useState<{ role: "assistant" | "user"; content: string }[]>([]);
+  const [notificationPreferences, setNotificationPreferences] = useState(() => loadNotificationPreferences(user?.id));
+
+  useEffect(() => {
+    const refreshPreferences = () => setNotificationPreferences(loadNotificationPreferences(user?.id));
+    refreshPreferences();
+    window.addEventListener(NOTIFICATION_PREFERENCES_UPDATED_EVENT, refreshPreferences);
+    window.addEventListener("storage", refreshPreferences);
+    return () => {
+      window.removeEventListener(NOTIFICATION_PREFERENCES_UPDATED_EVENT, refreshPreferences);
+      window.removeEventListener("storage", refreshPreferences);
+    };
+  }, [user?.id]);
 
   const courseInput = useMemo(() => ({ search: courseSearch || undefined }), [courseSearch]);
   const cveInput = useMemo(() => ({ search: cveSearch || undefined, severity: severity === "all" ? undefined : severity }), [cveSearch, severity]);
@@ -89,7 +102,11 @@ export default function Home() {
   const cves = paginatedCvesQuery.data?.items ?? cvesQuery.data ?? [];
   const tools = toolsQuery.data ?? [];
   const cartCount = cartQuery.data?.reduce((total, item) => total + item.quantity, 0) ?? 0;
-  const unreadCount = notificationsQuery.data?.filter(item => !item.isRead).length ?? 0;
+  const visibleNotifications = useMemo(
+    () => (notificationsQuery.data ?? []).filter(item => shouldShowNotification(item.type, notificationPreferences)),
+    [notificationsQuery.data, notificationPreferences],
+  );
+  const unreadCount = visibleNotifications.filter(item => !item.isRead).length;
   const stats = { points: isAuthenticated ? (dashboard.data?.points ?? 0) : 0, coursesCompleted: dashboard.data?.coursesCompleted ?? 0, activeCourses: dashboard.data?.activeCourses ?? 0, cvesTracked: dashboard.data?.cvesTracked ?? cves.length, followers: dashboard.data?.followers ?? 0 };
   const syncError = authError || coursesQuery.error || cvesQuery.error || toolsQuery.error || postsQuery.error || booksQuery.error || roadmapsQuery.error || tracksQuery.error;
 
@@ -177,7 +194,7 @@ export default function Home() {
       userRole={user?.role ?? null}
       activePage={({ dashboard: "Home", profile: "Profile", learning: "Courses", tracks: "Roadmap", cves: "CVE Center", malware: "Malware", tools: "Labs", community: "Community", market: "Market", leaderboard: "Leaderboard", settings: "Settings", ai: "AI Assistant", admin: "Admin Console", instructor: "Instructor Studio", ctf: "CTF", labs: "Labs" } satisfies Record<Section, string>)[section]}
       pageContent={pageContent}
-      notifications={notificationsQuery.data ?? []}
+      notifications={visibleNotifications}
       onNotificationRead={id => markNotificationRead.mutate({ id })}
       onNotificationReadAll={() => markAllNotificationsRead.mutate()}
       onNavigate={handleFigmaNavigate}
