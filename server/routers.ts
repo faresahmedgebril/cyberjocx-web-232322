@@ -17,7 +17,7 @@ import { adminProcedure, instructorProcedure, ownerAdminProcedure, protectedProc
 import { books, cartItems, carts, certificates, courseProgress, courses, cves, friendRequests, follows, malwareFamilies, notifications, nvdSyncSettings, postLikes, posts, quizAttempts, quizQuestions, trackQuizzes, tracks, tools, users, getCart, getDashboardStats, getDb, getTrackProgress, getTrackRoadmap, getUserById, listBooks, listBooksAdvanced, listCourses, listCves, listCvesPaginated, listMalware, listPosts, listTools, listToolsAdvanced, listRoadmaps, listTracks, ensureCart } from "./db";
 import { z } from "zod";
 import { ENV } from "./config/env";
-import { notifyAll } from "./modules/notifications/service";
+import { NOTIFICATIONS_ENABLED, notifyAll } from "./modules/notifications/service";
 import { auditLogs, courseChangeRequests, labInstances, labTemplates } from "../drizzle/schema";
 
 export const appRouter = router({
@@ -292,17 +292,20 @@ export const appRouter = router({
   }),
   notifications: router({
     list: protectedProcedure.query(async ({ ctx }) => {
+      if (!NOTIFICATIONS_ENABLED) return [];
       const db = await getDb();
       if (!db) return [];
       return db.select().from(notifications).where(eq(notifications.userId, ctx.user.id)).orderBy(desc(notifications.createdAt)).limit(30);
     }),
     markRead: protectedProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      if (!NOTIFICATIONS_ENABLED) return { success: false, disabled: true };
       const db = await getDb();
       if (!db) return { success: false };
       await db.update(notifications).set({ isRead: true }).where(and(eq(notifications.id, input.id), eq(notifications.userId, ctx.user.id)));
       return { success: true };
     }),
     markAllRead: protectedProcedure.mutation(async ({ ctx }) => {
+      if (!NOTIFICATIONS_ENABLED) return { success: false, disabled: true };
       const db = await getDb();
       if (!db) return { success: false };
       await db.update(notifications).set({ isRead: true }).where(and(eq(notifications.userId, ctx.user.id), eq(notifications.isRead, false)));
@@ -478,7 +481,7 @@ export const appRouter = router({
         isPublished: false,
       }).returning({ id: courses.id, title: courses.title });
       const admins = await db.select({ id: users.id }).from(users).where(eq(users.role, "admin"));
-      if (admins.length) await db.insert(notifications).values(admins.map(admin => ({
+      if (NOTIFICATIONS_ENABLED && admins.length) await db.insert(notifications).values(admins.map(admin => ({
         userId: admin.id,
         type: "content" as const,
         title: "Course awaiting owner approval",
@@ -582,7 +585,7 @@ export const appRouter = router({
         .returning({ id: courses.id, title: courses.title });
       if (!row[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Draft course not found or already published." });
       const recipients = await db.select({ id: users.id }).from(users);
-      if (recipients.length) await db.insert(notifications).values(recipients.map(recipient => ({
+      if (NOTIFICATIONS_ENABLED && recipients.length) await db.insert(notifications).values(recipients.map(recipient => ({
         userId: recipient.id, type: "content" as const,
         title: "New course published", message: `${row[0].title} is now available on CyberJocx.`,
       })));
@@ -622,7 +625,7 @@ export const appRouter = router({
         reviewNote: input.note ?? null,
         reviewedAt: new Date(),
       }).where(eq(courseChangeRequests.id, input.requestId));
-      await db.insert(notifications).values({
+      if (NOTIFICATIONS_ENABLED) await db.insert(notifications).values({
         userId: request.instructorUserId,
         type: "content",
         title: input.decision === "approve" ? "Course changes approved" : "Course changes rejected",
@@ -656,7 +659,7 @@ export const appRouter = router({
       const changed = await db.update(users).set({ role: input.role }).where(eq(users.id, input.userId))
         .returning({ id: users.id, name: users.name, email: users.email, role: users.role });
       if (!changed[0]) throw new TRPCError({ code: "NOT_FOUND", message: "User not found." });
-      await db.insert(notifications).values({
+      if (NOTIFICATIONS_ENABLED) await db.insert(notifications).values({
         userId: changed[0].id,
         type: "system",
         title: input.role === "instructor" ? "Instructor access granted" : "Instructor access removed",

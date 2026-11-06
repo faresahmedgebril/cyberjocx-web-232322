@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { provisionLab } from "./modules/labs/service";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { cves, getDb, nvdSyncRuns, nvdSyncSettings } from "./db";
 import { ENV } from "./config/env";
 import { NVD_BATCH_SIZE, NVD_LOOKBACK_HOURS } from "./config/constants";
@@ -24,9 +24,15 @@ export async function syncRecentNvd() {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const startedAt = new Date();
+  await db.insert(nvdSyncSettings).values({ id: 1, lastStatus: "never", lastStartedAt: null }).onConflictDoNothing();
+  await db.update(nvdSyncRuns).set({ status: "failed", completedAt: new Date(), errorMessage: "Recovered abandoned sync run after 30 minutes" })
+    .where(and(eq(nvdSyncRuns.status, "running"), lt(nvdSyncRuns.startedAt, sql`now() - interval '30 minutes'`)));
+  const lease = await db.update(nvdSyncSettings).set({ lastStatus: "running", lastStartedAt: startedAt })
+    .where(or(ne(nvdSyncSettings.lastStatus, "running"), isNull(nvdSyncSettings.lastStartedAt), lt(nvdSyncSettings.lastStartedAt, sql`now() - interval '30 minutes'`)))
+    .returning({ id: nvdSyncSettings.id });
+  if (lease.length === 0) return { imported: 0, completedAt: startedAt, skipped: true };
   const run = await db.insert(nvdSyncRuns).values({ status: "running", startedAt }).returning({ id: nvdSyncRuns.id });
   const runId = run[0]?.id ?? 0;
-  await db.insert(nvdSyncSettings).values({ id: 1, lastStatus: "running", lastStartedAt: startedAt }).onConflictDoUpdate({ target: nvdSyncSettings.id, set: { lastStatus: "running", lastStartedAt: startedAt } });
   try {
     const end = new Date();
     const start = new Date(end.getTime() - NVD_LOOKBACK_HOURS * 60 * 60 * 1000);
