@@ -1,0 +1,151 @@
+
+/* CyberJocx feature-page polish. The dashboard home canvas is intentionally not targeted. */
+.figma-dashboard .cj-profile-layout{grid-template-columns:minmax(0,1.18fr) minmax(310px,.82fr);gap:18px}
+.figma-dashboard .cj-profile-intro{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:21px 24px;border:1px solid rgba(70,105,186,.5);border-radius:14px;background:radial-gradient(circle at 88% 18%,rgba(130,61,255,.2),transparent 32%),linear-gradient(125deg,rgba(5,20,48,.97),rgba(8,12,34,.98));box-shadow:inset 0 0 28px rgba(33,105,194,.07),0 12px 35px rgba(0,0,0,.14)}
+.figma-dashboard .cj-profile-kicker{color:#55cbf4;font:9px "DM Mono",monospace;letter-spacing:.15em}
+.figma-dashboard .cj-profile-intro h2{margin:7px 0 5px;color:#f1f5ff;font-size:23px;font-weight:800}
+.figma-dashboard .cj-profile-intro p{margin:0;color:#9eb4d7;font-size:11px;line-height:1.7}
+.figma-dashboard .cj-profile-visibility{display:inline-flex;align-items:center;gap:7px;flex:none;padding:9px 12px;border:1px solid rgba(36,196,185,.35);border-radius:8px;color:#7de5dc;background:rgba(13,111,106,.12);font-size:9px}
+.figma-dashboard .cj-profile-card,.figma-dashboard .cj-profile-editor,.figma-dashboard .cj-profile-posts,.figma-dashboard .cj-profile-friends{border:1px solid rgba(54,96,170,.48);border-radius:14px;background:linear-gradient(145deg,rgba(5,16,39,.98),rgba(4,10,29,.98));box-shadow:inset 0 0 25px rgba(31,79,151,.08),0 12px 32px rgba(0,0,0,.12)}
+.figma-dashboard .cj-profile-cover{height:205px;background:radial-gradient(circle at 76% 42%,rgba(142,68,255,.35),transparent 27%),radial-gradient(circle at 23% 55%,rgba(0,174,255,.16),transparent 32%),linear-gradient(125deg,#071b3a,#10132f 57%,#241448)}
+.figma-dashboard .cj-profile-cover:before{inset:20px;border-color:rgba(81,155,235,.24);color:rgba(126,181,255,.38);content:"CYBERJOCX // OPERATOR PROFILE // VERIFIED IDENTITY";font-size:9px;letter-spacing:.16em}
+.figma-dashboard .cj-profile-cover .profile-scan{background:repeating-linear-gradient(0deg,transparent 0 8px,rgba(95,169,255,.07) 9px 10px);opacity:.48}
+.figma-dashboard .cj-profile-body{padding:0 23px 22px}
+.figma-dashboard .cj-profile-identity{gap:17px;margin-top:-54px;align-items:flex-end}
+.figma-dashboard .cj-profile-avatar{width:96px;height:96px;border:2px solid #7c59ef;border-radius:20px;color:#fff;background:linear-gradient(145deg,#173d78,#54258d);box-shadow:0 0 0 6px #071329,0 0 28px rgba(105,73,255,.34)}
+.figma-dashboard .cj-profile-avatar img{width:100%;height:100%;object-fit:cover;border-radius:18px}
+.figma-dashboard .cj-profile-identity h2{color:#f4f6ff;font-size:25px}
+.figma-dashboard .cj-profile-identity .section-tag{color:#51c5f3}
+.figma-dashboard .cj-profile-identity span{display:inline-block;margin-top:2px;color:#9cb4d8}
+.figma-dashboard .cj-profile-stats{margin-top:22px;padding-top:17px;border-top:1px solid rgba(83,117,181,.27);gap:10px}
+.figma-dashboard .cj-profile-stats div{min-height:76px;padding:12px;border:1px solid rgba(62,104,174,.32);border-radius:10px;background:linear-gradient(140deg,rgba(13,37,79,.6),rgba(8,18,46,.62))}
+.figma-dashboard .cj-profile-stats strong{color:#83caff;font-size:17px}
+.figma-dashboard .cj-profile-stats span{color:#8da7ce;font-size:8px;letter-spacing:.08em}
+.figma-dashboard .cj-profile-editor{padding:22px}
+.figma-dashboard .cj-profile-editor .section-tag{color:#59c8f3}
+.figma-dashboard .cj-profile-editor h3{margin:9px 0 8px;color:#f0f5ff;font-size:18px}
+.figma-dashboard .cj-profile-editor .profile-helper{margin:0 0 19px;color:#92a9cd;font-size:10px;line-height:1.7}
+.figma-dashboard .cj-profile-editor .profile-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 12px}
+.figma-dashboard .cj-profile-editor .admin-field.full{grid-column:1/-1}
+.figma-dashboard .cj-profile-editor .admin-field>span{color:#9db8e1;font-size:10px}
+.figma-dashboard .cj-profile-editor .admin-field input,.figma-dashboard .cj-profile-editor .admin-field select,.figma-dashboard .cj-profile-editor .admin-field textarea{min-height:40px;border:1px solid rgba(64,112,186,.48);border-radius:8px;color:#e5efff;background:#06132d;transition:border-color .18s,box-shadow .18s}
+.figma-dashboard .cj-profile-editor .admin-field textarea{min-height:95px}
+.figma-dashboard .cj-profile-editor .admin-field input:focus,.figma-dashboard .cj-profile-editor .admin-field select:focus,.figma-dashboard .cj-profile-editor .admin-field textarea:focus{border-color:#8b64ff;box-shadow:0 0 0 3px rgba(124,78,255,.14);outline:0}
+.figma-dashboard .cj-profile-editor>.primary-button{min-height:42px;margin-top:4px;border-radius:9px}
+.figma-dashboard .cj-profile-posts,.figma-dashboard .cj-profile-friends{padding:20px}
+.figma-dashboard .cj-profile-posts .card-head,.figma-dashboard .cj-profile-friends .card-head{margin-bottom:9px}
+.figma-dashboard .cj-profile-posts .card-head h3,.figma-dashboard .cj-profile-friends .card-head h3{color:#ecf4ff;font-size:16px}
+.figma-dashboard .cj-profile-posts .card-head>span,.figma-dashboard .cj-profile-friends .card-head>span{color:#70bdf0;font:9px "DM Mono",monospace}
+.figma-dashboard .cj-profile-posts .profile-post{padding:15px 4px;border-color:rgba(59,100,166,.28)}
+.figma-dashboard .cj-profile-posts .profile-post p{color:#c1d2ed;font-size:11px;line-height:1.65}
+.figma-dashboard .cj-profile-posts .profile-post span{color:#7f9bc3}
+.figma-dashboard .cj-profile-friends .friend-card{border:1px solid rgba(58,105,177,.35);border-radius:9px;background:rgba(7,24,54,.54)}
+.figma-dashboard .cj-profile-friends .friend-card strong{color:#e1edff}
+.figma-dashboard .cj-profile-friends .friend-card small{color:#9b80d9}
+
+/* CVE and Malware intelligence */
+.figma-dashboard .cj-intel-page{gap:16px}
+.figma-dashboard .cj-intel-toolbar{padding:12px;border:1px solid rgba(52,93,164,.38);border-radius:12px;background:rgba(4,13,34,.72);box-shadow:inset 0 0 18px rgba(34,90,168,.05)}
+.figma-dashboard .cj-intel-toolbar .search-box{min-height:43px;border-color:rgba(69,118,195,.48);border-radius:8px;background:rgba(5,17,42,.86)}
+.figma-dashboard .cj-intel-toolbar .search-box:focus-within{border-color:#37bfff;box-shadow:0 0 0 3px rgba(35,177,255,.1)}
+.figma-dashboard .cj-intel-toolbar .search-box input{color:#ecf4ff}
+.figma-dashboard .cj-intel-toolbar .filter-tabs{gap:5px;padding:4px;border:1px solid rgba(61,103,171,.3);border-radius:8px;background:rgba(2,11,28,.5)}
+.figma-dashboard .cj-intel-toolbar .filter-tabs button{min-height:29px;padding:6px 9px;border-radius:6px;font-size:8px}
+.figma-dashboard .cj-intel-toolbar .filter-tabs button.active{color:#fff;background:linear-gradient(110deg,#3d3bac,#662ab4);box-shadow:0 0 12px rgba(105,64,235,.25)}
+.figma-dashboard .cj-page-hero{min-height:178px;padding:24px 27px;border:1px solid rgba(63,105,189,.54);border-radius:15px;position:relative;isolation:isolate;background:radial-gradient(circle at 84% 40%,rgba(90,58,205,.24),transparent 28%),linear-gradient(125deg,rgba(4,19,47,.98),rgba(9,12,38,.98));box-shadow:inset 0 0 36px rgba(40,113,202,.08),0 14px 36px rgba(0,0,0,.16)}
+.figma-dashboard .cj-page-hero:after{content:"";position:absolute;z-index:-1;inset:0;pointer-events:none;opacity:.36;background-image:linear-gradient(rgba(95,145,232,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(95,145,232,.07) 1px,transparent 1px);background-size:27px 27px;mask-image:linear-gradient(90deg,transparent 10%,#000 70%,transparent)}
+.figma-dashboard .cj-page-hero .intel-glyph{width:64px;height:64px;flex:none;border-radius:16px;color:#75c9ff;border:1px solid rgba(86,160,255,.48);background:linear-gradient(145deg,rgba(25,94,173,.25),rgba(92,44,179,.2));box-shadow:0 0 24px rgba(48,139,255,.15),inset 0 0 20px rgba(58,135,255,.1)}
+.figma-dashboard .cj-page-hero--malware .intel-glyph{color:#c49aff;border-color:rgba(171,103,255,.5);background:linear-gradient(145deg,rgba(96,49,179,.32),rgba(36,47,115,.2))}
+.figma-dashboard .cj-page-hero .section-tag{color:#5cc8f5}
+.figma-dashboard .cj-page-hero h2{color:#eff5ff;font-size:clamp(20px,2.1vw,27px);line-height:1.2}
+.figma-dashboard .cj-page-hero p{max-width:650px;color:#a4b9dc;font-size:11px;line-height:1.8}
+.figma-dashboard .cj-page-hero .intel-stat strong{color:#83c5ff;font-size:31px}
+.figma-dashboard .cj-page-hero .intel-stat span{color:#8da9d0;font-size:8px;line-height:1.5}
+.figma-dashboard .cj-intel-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+.figma-dashboard .cj-malware-page .cj-intel-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}
+.figma-dashboard .cj-intel-metrics article{min-width:0;min-height:102px;padding:14px 16px;display:flex;flex-direction:column;gap:5px;border:1px solid rgba(58,103,177,.42);border-radius:11px;background:linear-gradient(145deg,rgba(7,23,55,.92),rgba(5,13,35,.96));box-shadow:inset 0 0 18px rgba(37,95,170,.06)}
+.figma-dashboard .cj-intel-metrics article>span{color:#7fa2ce;font:8px "DM Mono",monospace;letter-spacing:.1em}
+.figma-dashboard .cj-intel-metrics article>strong{color:#eaf4ff;font:700 25px "DM Mono",monospace}
+.figma-dashboard .cj-intel-metrics article>strong.is-critical{color:#ff859e}
+.figma-dashboard .cj-intel-metrics article>strong.is-high{color:#ffc17b}
+.figma-dashboard .cj-intel-metrics article>small{color:#839fc6;font-size:9px;line-height:1.45}
+.figma-dashboard .cj-cve-table{border:1px solid rgba(55,102,177,.5);border-radius:13px;background:rgba(4,13,33,.94)}
+.figma-dashboard .cj-cve-table .table-head{background:rgba(13,34,73,.52);color:#8aa9d1}
+.figma-dashboard .cj-cve-table .table-row{transition:background .18s,border-color .18s;cursor:pointer}
+.figma-dashboard .cj-cve-table .table-row:hover{background:linear-gradient(90deg,rgba(34,84,156,.19),rgba(86,48,154,.1));border-color:rgba(83,156,234,.35)}
+.figma-dashboard .cj-cve-table .cve-id strong{color:#d6eaff}
+.figma-dashboard .cj-cve-table .cvss-score{font-size:13px}
+.figma-dashboard .cj-cve-table .row-link{width:30px;height:30px;border:1px solid rgba(64,140,218,.36);border-radius:8px;background:rgba(11,57,105,.2)}
+.figma-dashboard .cj-cve-table .row-link:hover{color:#fff;border-color:#41c4ff;background:rgba(25,126,194,.28)}
+.figma-dashboard .cj-cve-detail{border:1px solid rgba(72,130,212,.65);border-radius:15px;background:linear-gradient(145deg,#091b3d,#10102f)}
+.figma-dashboard .cj-cve-detail h2{color:#f2f6ff;font-size:24px;line-height:1.35}
+.figma-dashboard .cj-cve-detail>p{color:#b0c4e4;line-height:1.8}
+.figma-dashboard .cj-cve-detail .primary-button{border-radius:8px}
+
+/* Malware family cards */
+.figma-dashboard .cj-malware-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.figma-dashboard .cj-malware-card{min-width:0;display:flex;flex-direction:column;gap:10px;padding:18px;border:1px solid rgba(82,76,172,.46);border-radius:13px;background:linear-gradient(145deg,rgba(8,17,46,.97),rgba(5,12,33,.98));transition:transform .2s,border-color .2s,box-shadow .2s}
+.figma-dashboard .cj-malware-card:hover{transform:translateY(-4px);border-color:rgba(164,116,255,.7);box-shadow:0 13px 28px rgba(0,0,0,.2),0 0 20px rgba(114,73,227,.12)}
+.figma-dashboard .cj-malware-card .tool-card-top{justify-content:space-between}
+.figma-dashboard .cj-malware-card .tool-icon{width:42px;height:42px;border-radius:12px;color:#c2a0ff;border-color:rgba(156,107,255,.45);background:linear-gradient(145deg,rgba(105,57,198,.25),rgba(32,54,118,.2))}
+.figma-dashboard .cj-malware-card .tool-category{margin-left:auto}
+.figma-dashboard .cj-malware-card h3{color:#f0f3ff;font-size:17px;line-height:1.3}
+.figma-dashboard .cj-malware-card>p{min-height:60px;color:#a9badd;font-size:10px;line-height:1.7}
+.figma-dashboard .cj-malware-card .command-line{border:1px solid rgba(60,100,164,.32);border-radius:7px;color:#9cb8dc;background:rgba(2,10,28,.8)}
+.figma-dashboard .cj-malware-card .detail-meta{display:flex;flex-wrap:wrap;gap:6px}
+.figma-dashboard .cj-malware-card .detail-meta span{padding:5px 7px;border:1px solid rgba(82,104,180,.35);border-radius:6px;color:#9ab5dc;background:rgba(39,35,96,.2);font:8px "DM Mono",monospace}
+.figma-dashboard .cj-malware-card .tool-link{min-height:35px;justify-content:center;margin-top:auto;padding:8px 10px;border:1px solid rgba(133,91,239,.48);border-radius:8px;color:#d3b9ff;background:rgba(88,48,164,.16)}
+.figma-dashboard .cj-malware-card .tool-link:hover{color:#fff;border-color:#ac7aff;background:rgba(111,61,196,.3)}
+.figma-dashboard .cj-malware-detail{border:1px solid rgba(143,100,227,.65);border-radius:15px;background:linear-gradient(145deg,#101b42,#21133b)}
+.figma-dashboard .cj-malware-detail h2{color:#f2edff}
+.figma-dashboard .cj-malware-detail>p{color:#b7c2e2;line-height:1.8}
+
+/* Honest course placeholders; visual-only and not inserted into the database. */
+.figma-dashboard .cj-preview-catalog-banner{border:1px solid rgba(88,106,205,.5);border-radius:15px;background:radial-gradient(circle at 83% 19%,rgba(115,66,225,.23),transparent 35%),linear-gradient(125deg,#071a3b,#101433)}
+.figma-dashboard .cj-preview-catalog-banner h2{color:#f1f5ff}
+.figma-dashboard .cj-preview-catalog-banner p{color:#a9bce0;max-width:650px;line-height:1.8}
+.figma-dashboard .cj-preview-notice{display:flex;align-items:center;gap:8px;padding:10px 13px;border:1px solid rgba(225,179,94,.35);border-radius:9px;color:#e7c78f;background:rgba(99,66,17,.12);font-size:10px}
+.figma-dashboard .cj-preview-course-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.figma-dashboard .cj-preview-course-card{overflow:hidden;border:1px solid rgba(55,100,179,.46);border-radius:13px;background:linear-gradient(145deg,rgba(6,20,47,.98),rgba(5,12,32,.98));transition:transform .2s,border-color .2s,box-shadow .2s}
+.figma-dashboard .cj-preview-course-card:hover{transform:translateY(-3px);border-color:rgba(115,96,237,.7);box-shadow:0 12px 28px rgba(0,0,0,.18),0 0 18px rgba(96,68,217,.12)}
+.figma-dashboard .cj-preview-course-art{height:125px;background:linear-gradient(135deg,#0a3156,#21134b)}
+.figma-dashboard .cj-preview-course-art.art-2{background:linear-gradient(135deg,#0d3650,#182052)}
+.figma-dashboard .cj-preview-course-art.art-3{background:linear-gradient(135deg,#311b55,#102444)}
+.figma-dashboard .cj-preview-course-art .art-icon{color:#d8c5ff;filter:drop-shadow(0 0 14px rgba(137,105,255,.5))}
+.figma-dashboard .cj-preview-course-card .course-card-content{padding:16px}
+.figma-dashboard .cj-preview-course-card .course-row-meta{color:#7fc8f2;font:8px "DM Mono",monospace}
+.figma-dashboard .cj-preview-course-card h3{min-height:44px;margin:8px 0;color:#edf4ff;font-size:15px;line-height:1.4}
+.figma-dashboard .cj-preview-course-card p{min-height:60px;color:#a4b6d7;font-size:10px;line-height:1.7}
+.figma-dashboard .cj-preview-course-card .course-card-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;padding-top:12px;border-top:1px solid rgba(57,99,165,.3);color:#8ba8d0;font-size:9px}
+.figma-dashboard .cj-preview-course-card .course-card-foot>span{display:inline-flex;align-items:center;gap:5px}
+.figma-dashboard .cj-preview-status{padding:5px 8px;border:1px solid rgba(226,176,91,.45);border-radius:6px;color:#e6c17d;background:rgba(119,78,18,.14)}
+
+@media(max-width:1050px){
+  .figma-dashboard .cj-malware-grid,.figma-dashboard .cj-preview-course-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .figma-dashboard .cj-malware-page .cj-intel-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:800px){
+  .figma-dashboard .cj-profile-layout{grid-template-columns:minmax(0,1fr)}
+  .figma-dashboard .cj-profile-intro{align-items:flex-start;flex-direction:column}
+  .figma-dashboard .cj-profile-editor{grid-column:1}
+  .figma-dashboard .cj-profile-editor .profile-form-grid{grid-template-columns:minmax(0,1fr)}
+  .figma-dashboard .cj-profile-editor .admin-field.full{grid-column:1}
+  .figma-dashboard .cj-profile-posts,.figma-dashboard .cj-profile-friends{grid-column:1}
+  .figma-dashboard .cj-page-hero{align-items:flex-start;flex-direction:column}
+  .figma-dashboard .cj-intel-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .figma-dashboard .cj-preview-course-grid{grid-template-columns:minmax(0,1fr)}
+  .figma-dashboard .cj-preview-course-card h3,.figma-dashboard .cj-preview-course-card p{min-height:0}
+}
+@media(max-width:560px){
+  .figma-dashboard .cj-profile-intro{padding:17px}
+  .figma-dashboard .cj-profile-intro h2{font-size:19px}
+  .figma-dashboard .cj-profile-identity{align-items:flex-start;flex-direction:column;margin-top:-45px}
+  .figma-dashboard .cj-profile-avatar{width:82px;height:82px}
+  .figma-dashboard .cj-profile-stats{grid-template-columns:1fr 1fr}
+  .figma-dashboard .cj-page-hero{padding:18px}
+  .figma-dashboard .cj-page-hero h2{font-size:20px}
+  .figma-dashboard .cj-intel-metrics,.figma-dashboard .cj-malware-page .cj-intel-metrics{grid-template-columns:1fr 1fr}
+  .figma-dashboard .cj-intel-toolbar .search-box{min-width:0;width:100%}
+  .figma-dashboard .cj-intel-toolbar .filter-tabs{width:100%;overflow-x:auto;flex-wrap:nowrap}
+  .figma-dashboard .cj-intel-toolbar .filter-tabs button{flex:none}
+}
