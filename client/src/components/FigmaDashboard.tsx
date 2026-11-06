@@ -1,6 +1,7 @@
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import "./FigmaDashboard.css";
+import { isMobileNavigationViewport } from "./navigation";
 import { ComingSoonModal } from "@/components/ComingSoonModal";
 
 type IconName =
@@ -212,7 +213,7 @@ export default function FigmaDashboard({
         {search && <small>{matches.length} course{matches.length === 1 ? "" : "s"}</small>}
       </label>
       <div className="top-actions">
-        <button className="round-button nav-toggle" type="button" aria-label={mobileNavOpen ? "Close navigation" : "Open navigation"} aria-expanded={mobileNavOpen} onClick={() => { if (window.innerWidth <= 760) setMobileNavOpen(value => !value); else setNavCollapsed(value => !value); }}>
+        <button className="round-button nav-toggle" type="button" aria-label={mobileNavOpen ? "Close navigation" : "Open navigation"} aria-expanded={mobileNavOpen} onClick={() => { if (isMobileNavigationViewport(window.innerWidth)) setMobileNavOpen(value => !value); else setNavCollapsed(value => !value); }}>
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
         </button>
         <div className="notification-anchor">
@@ -253,7 +254,7 @@ export default function FigmaDashboard({
     {mobileNavOpen && <button className="sidebar-overlay" type="button" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)} />}
     <aside className={`sidebar ${mobileNavOpen ? "is-open" : ""} ${navCollapsed ? "is-collapsed" : ""}`}>
       <nav aria-label="Dashboard navigation">
-        {visibleNavigation.map((item) => <button key={item.label} type="button" className={`nav-item ${activeNav === item.label ? "active" : ""} ${item.dividerBefore ? "nav-item--section" : ""}`} onClick={() => { setMobileNavOpen(false); if (item.target === "logout") { onLogout?.(); return; } if (!item.target) { setComingSoonOpen(true); return; } setActiveNav(item.label); onNavigate(item.target); }}><Icon name={item.icon} size={23} /><span>{item.label}</span></button>)}
+        {visibleNavigation.map((item) => <button key={item.label} type="button" className={`nav-item ${activeNav === item.label ? "active" : ""} ${item.dividerBefore ? "nav-item--section" : ""}`} title={item.label} aria-label={item.label} onClick={() => { setMobileNavOpen(false); if (item.target === "logout") { onLogout?.(); return; } if (!item.target) { setComingSoonOpen(true); return; } setActiveNav(item.label); onNavigate(item.target); }}><Icon name={item.icon} size={23} /><span>{item.label}</span></button>)}
       </nav>
       <div className="sidebar-brand" role="button" tabIndex={0} onClick={() => onNavigate("dashboard")} onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onNavigate("dashboard"); } }}>
         <img src={`${import.meta.env.BASE_URL}assets/cyber-hacker.jpg`} alt="Hooded CyberJocx character" />

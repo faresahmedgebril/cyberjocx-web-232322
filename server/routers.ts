@@ -7,9 +7,11 @@ import { TRPCError } from "@trpc/server";
 import { and, desc, eq, or, sql } from "drizzle-orm";
 import { askAI, personalizeAI } from "./modules/ai/service";
 import { readPublicProfile, toClientSafeUser, updateProfile, uploadProfileMedia } from "./modules/profile/service";
+import { sanitizeProfileUpdate } from "./modules/profile/permissions";
+import { rankLeaderboardEntries } from "./modules/leaderboard/ranking";
 import { nanoid } from "nanoid";
 import { getSessionCookieOptions } from "./_core/cookies";
-import { getSessionToken, revokeSession } from "./core/auth/session";
+import { getSessionToken, listActiveSessions, revokeOtherSessions as revokeOtherUserSessions, revokeSession } from "./core/auth/session";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, instructorProcedure, ownerAdminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { books, cartItems, carts, certificates, courseProgress, courses, cves, friendRequests, follows, malwareFamilies, notifications, nvdSyncSettings, postLikes, posts, quizAttempts, quizQuestions, trackQuizzes, tracks, tools, users, getCart, getDashboardStats, getDb, getTrackProgress, getTrackRoadmap, getUserById, listBooks, listBooksAdvanced, listCourses, listCves, listCvesPaginated, listMalware, listPosts, listTools, listToolsAdvanced, listRoadmaps, listTracks, ensureCart } from "./db";
@@ -22,6 +24,17 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(({ ctx }) => ctx.user ? toClientSafeUser(ctx.user) : null),
+    activeSessions: protectedProcedure.query(({ ctx }) => {
+      const token = getSessionToken(ctx.req);
+      if (!token) throw new TRPCError({ code: "UNAUTHORIZED", message: "A valid session is required." });
+      return listActiveSessions(ctx.user.id, token);
+    }),
+    revokeOtherSessions: protectedProcedure.mutation(async ({ ctx }) => {
+      const token = getSessionToken(ctx.req);
+      if (!token) throw new TRPCError({ code: "UNAUTHORIZED", message: "A valid session is required." });
+      const revokedCount = await revokeOtherUserSessions(ctx.user.id, token);
+      return { success: true as const, revokedCount };
+    }),
     logout: publicProcedure.mutation(async ({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       try {
@@ -46,13 +59,7 @@ export const appRouter = router({
         points: users.points,
       }).from(users).orderBy(desc(users.points), desc(users.id)).limit(50);
 
-      const entries = ranked
-        .filter(entry => Number(entry.points) > 0)
-        .map((entry, index) => ({
-          ...entry,
-          rank: index + 1,
-          isCurrentUser: entry.id === ctx.user?.id,
-        }));
+      const entries = rankLeaderboardEntries(ranked, ctx.user?.id);
 
       let currentUser: (Omit<(typeof entries)[number], "rank"> & { rank: number | null }) | null =
         entries.find(entry => entry.isCurrentUser) ?? null;
@@ -87,7 +94,7 @@ export const appRouter = router({
     me: protectedProcedure.query(({ ctx }) => toClientSafeUser(ctx.user)),
     byId: publicProcedure.input(z.object({ userId: z.number() })).query(({ input }) => readPublicProfile(input.userId)),
     update: protectedProcedure.input(z.object({ name: z.string().min(2).max(120).optional(), bio: z.string().max(500).optional(), avatarUrl: z.string().url().optional(), bannerUrl: z.string().url().optional(), phone: z.string().max(32).optional(), linkedinUrl: z.string().url().optional(), memberRank: z.enum(["learner", "contributor", "analyst", "mentor", "elite"]).optional(), primaryTrackId: z.number().optional() })).mutation(async ({ ctx, input }) => {
-      return updateProfile(ctx.user.id, input);
+      return updateProfile(ctx.user.id, sanitizeProfileUpdate(ctx.user.role, input));
     }),
     uploadMedia: protectedProcedure.input(z.object({ kind: z.enum(["avatar", "banner"]), dataUrl: z.string().max(4_200_000) })).mutation(async ({ ctx, input }) => {
       return uploadProfileMedia(ctx.user.id, input.kind, input.dataUrl);

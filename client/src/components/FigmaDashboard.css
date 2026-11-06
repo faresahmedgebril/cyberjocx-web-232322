@@ -148,7 +148,7 @@
   .figma-dashboard .sidebar{position:fixed;z-index:70;left:0;top:65px;bottom:0;width:272px;height:auto;transform:translateX(-105%);transition:transform .22s ease;display:flex;overflow:hidden;border-right:1px solid #2457a9;border-top:0}
   .figma-dashboard .sidebar.is-open{transform:translateX(0)}
   .figma-dashboard .sidebar nav{width:100%;height:100%;padding:16px 12px 24px;overflow:auto;display:grid;grid-auto-rows:min-content;gap:3px}
-  .figma-dashboard .sidebar .nav-item{width:100%;min-height:42px;justify-content:flex-start;padding:8px 16px}
+  .figma-dashboard .sidebar .nav-item{display:flex;width:100%;min-height:42px;justify-content:flex-start;padding:8px 16px}
   .figma-dashboard .sidebar .nav-item span{display:inline}
   .figma-dashboard .sidebar .sidebar-brand{display:none}
   .figma-dashboard .sidebar-overlay{position:fixed;z-index:65;inset:65px 0 0;border:0;background:rgba(0,5,18,.68);backdrop-filter:blur(2px)}
@@ -350,4 +350,30 @@
 @media(max-width:760px){
   .figma-dashboard .course-empty-catalog{align-items:stretch;flex-direction:column;padding:18px}
   .figma-dashboard .course-empty-catalog h2{font-size:21px}
+}
+
+
+/* Navigation overflow fix: keep the dashboard canvas untouched; make long nav menus scroll. */
+.figma-dashboard .sidebar nav{
+  flex:1 1 0;
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(89,119,190,.55) transparent;
+}
+.figma-dashboard .sidebar nav::-webkit-scrollbar{width:6px}
+.figma-dashboard .sidebar nav::-webkit-scrollbar-track{background:transparent}
+.figma-dashboard .sidebar nav::-webkit-scrollbar-thumb{border-radius:8px;background:rgba(89,119,190,.42)}
+.figma-dashboard .sidebar nav::-webkit-scrollbar-thumb:hover{background:rgba(142,91,255,.68)}
+
+
+/* Keep the mobile drawer full-width even when desktop navigation was collapsed before resizing. */
+@media(max-width:760px){
+  .figma-dashboard.nav-collapsed{padding-left:0}
+  .figma-dashboard.nav-collapsed .sidebar{width:272px}
+  .figma-dashboard.nav-collapsed .sidebar nav{padding:16px 12px 24px}
+  .figma-dashboard.nav-collapsed .sidebar .nav-item{justify-content:flex-start;padding:8px 16px}
+  .figma-dashboard.nav-collapsed .sidebar .nav-item span{display:inline}
 }

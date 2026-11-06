@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Bell, Check, ChevronRight, CreditCard, Globe, Link2, LockKeyhole, Moon,
-  Shield, Sun, Trash2, UserRound, Monitor, Pencil, Sparkles,
+  Shield, Sun, Trash2, UserRound, Monitor, Pencil, Sparkles, Laptop,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { trpc } from "@/lib/trpc";
 import { ComingSoonModal } from "@/components/ComingSoonModal";
+import { loadNotificationPreferences, saveNotificationPreferences } from "./preferences";
 import "./settings.css";
 
 type SettingsTab = "account" | "security" | "notifications" | "appearance" | "privacy" | "billing" | "connected" | "language";
@@ -16,6 +17,7 @@ type UserSummary = {
   email?: string | null;
   bio?: string | null;
   memberRank?: string | null;
+  loginMethod?: string | null;
 };
 
 const settingsTabs: { id: SettingsTab; label: string; icon: typeof UserRound }[] = [
@@ -49,7 +51,16 @@ export default function SettingsView({
     return savedAccent && accentColors.includes(savedAccent) ? savedAccent : accentColors[1];
   });
   const [comingOpen, setComingOpen] = useState(false);
-  const { theme, toggleTheme } = useTheme();
+  const [notificationPreferences, setNotificationPreferences] = useState(() => loadNotificationPreferences(user?.id));
+  const { preference, setThemePreference } = useTheme();
+  const activeSessions = trpc.auth.activeSessions.useQuery(undefined, { enabled: isAuthenticated && tab === "security" });
+  const revokeOtherSessions = trpc.auth.revokeOtherSessions.useMutation({
+    onSuccess: async result => {
+      await activeSessions.refetch();
+      toast.success(result.revokedCount ? `تم إنهاء ${result.revokedCount} جلسة أخرى.` : "لا توجد جلسات أخرى مفتوحة.");
+    },
+    onError: error => toast.error(error.message || "تعذر إنهاء الجلسات الأخرى."),
+  });
   const updateProfile = trpc.profile.update.useMutation({
     onSuccess: () => toast.success("تم حفظ إعدادات الحساب."),
     onError: () => toast.error("تعذر حفظ إعدادات الحساب الآن."),
@@ -58,7 +69,8 @@ export default function SettingsView({
   useEffect(() => {
     setName(user?.name ?? "");
     setBio(user?.bio ?? "");
-  }, [user?.name, user?.bio]);
+    setNotificationPreferences(loadNotificationPreferences(user?.id));
+  }, [user?.id, user?.name, user?.bio]);
 
   useEffect(() => {
     document.documentElement.style.setProperty("--cj-accent", accent);
@@ -111,9 +123,9 @@ export default function SettingsView({
                 <div className="cj-settings-divider" />
                 <h3>Theme</h3>
                 <div className="cj-theme-options">
-                  <button type="button" className={theme === "light" ? "selected" : ""} aria-pressed={theme === "light"} onClick={() => { if (theme !== "light") toggleTheme?.(); }}><Sun size={22} />Light{theme === "light" && <Check size={15} />}</button>
-                  <button type="button" className={theme === "dark" ? "selected" : ""} aria-pressed={theme === "dark"} onClick={() => { if (theme !== "dark") toggleTheme?.(); }}><Moon size={22} />Dark{theme === "dark" && <Check size={15} />}</button>
-                  <button type="button" onClick={openComingSoon}><Monitor size={22} />Auto</button>
+                  <button type="button" className={preference === "light" ? "selected" : ""} aria-pressed={preference === "light"} onClick={() => setThemePreference("light")}><Sun size={22} />Light{preference === "light" && <Check size={15} />}</button>
+                  <button type="button" className={preference === "dark" ? "selected" : ""} aria-pressed={preference === "dark"} onClick={() => setThemePreference("dark")}><Moon size={22} />Dark{preference === "dark" && <Check size={15} />}</button>
+                  <button type="button" className={preference === "system" ? "selected" : ""} aria-pressed={preference === "system"} onClick={() => setThemePreference("system")}><Monitor size={22} />Auto{preference === "system" && <Check size={15} />}</button>
                 </div>
                 <div className="cj-settings-divider" />
                 <h3>Accent Color</h3>
@@ -141,12 +153,65 @@ export default function SettingsView({
             </section>
           )}
 
-          {tab !== "appearance" && tab !== "account" && (
-            <section className="cj-settings-coming">
-              <div><Sparkles size={26} /></div>
-              <span>// {tabTitle.toUpperCase()}</span>
-              <h3>Coming Soon</h3>
-              <button type="button" onClick={openComingSoon}>View status</button>
+          {tab === "security" && (
+            <section className="cj-settings-card cj-session-panel">
+              <div className="cj-settings-card-title"><Shield size={23} /><div><strong>Security & active sessions</strong><span>راجع الجلسات المفتوحة وأنهِ أي جلسة لا تعرفها.</span></div></div>
+              <div className="cj-settings-divider" />
+              <div className="cj-session-heading"><h3>Active sessions</h3><button type="button" disabled={!isAuthenticated || revokeOtherSessions.isPending || !(activeSessions.data?.some(session => !session.isCurrent))} onClick={() => revokeOtherSessions.mutate()}>{revokeOtherSessions.isPending ? "Signing out…" : "Sign out other sessions"}</button></div>
+              {!isAuthenticated ? <p className="cj-settings-hint">سجّل الدخول لعرض جلسات حسابك.</p> :
+                activeSessions.isLoading ? <p className="cj-session-status">جارٍ تحميل الجلسات…</p> :
+                activeSessions.error ? <p className="cj-settings-hint">تعذر تحميل الجلسات: {activeSessions.error.message}</p> :
+                activeSessions.data?.length ? <div className="cj-session-list">{activeSessions.data.map(session => (
+                  <article className="cj-session-item" key={session.id}>
+                    <span className="cj-session-device"><Laptop size={19} /></span>
+                    <div><strong>{session.isCurrent ? "This device · Current session" : "Signed-in device"}</strong><small>{session.userAgent || "Browser details unavailable"}</small><small>Started {new Date(session.createdAt).toLocaleString()} · Expires {new Date(session.expiresAt).toLocaleDateString()}</small></div>
+                    {session.isCurrent && <span className="cj-session-current">CURRENT</span>}
+                  </article>
+                ))}</div> : <p className="cj-session-status">لا توجد جلسات نشطة مسجلة.</p>}
+              <p className="cj-settings-hint">الجلسة الحالية لا يمكن إنهاؤها من هذا الزر حتى لا يتم قطع اتصالك قبل تأكيد العملية.</p>
+            </section>
+          )}
+
+          {tab === "notifications" && (
+            <section className="cj-settings-card">
+              <div className="cj-settings-card-title"><Bell size={23} /><div><strong>In-app notification preferences</strong><span>اختار أنواع التنبيهات التي تظهر داخل حسابك على هذا المتصفح.</span></div></div>
+              <div className="cj-settings-divider" />
+              {([
+                { key: "cve" as const, title: "CVE intelligence alerts", description: "تنبيهات الثغرات والمخاطر الأمنية." },
+                { key: "content" as const, title: "Learning & community updates", description: "تحديثات المحتوى والتعلم ونشاط المجتمع." },
+                { key: "system" as const, title: "System notifications", description: "رسائل وحالة المنصة والتحديثات العامة." },
+              ]).map(item => (
+                <label className="cj-setting-toggle" key={item.key}>
+                  <span><strong>{item.title}</strong><small>{item.description}</small></span>
+                  <input type="checkbox" checked={notificationPreferences[item.key]} onChange={event => {
+                    const next = { ...notificationPreferences, [item.key]: event.target.checked };
+                    setNotificationPreferences(next);
+                    saveNotificationPreferences(user?.id, next);
+                  }} />
+                </label>
+              ))}
+              <p className="cj-settings-hint">التفضيلات محفوظة محليًا لهذا الحساب على هذا المتصفح. لا توقف رسائل البريد الإلكتروني الخارجية.</p>
+            </section>
+          )}
+
+          {tab === "privacy" && (
+            <section className="cj-settings-card">
+              <div className="cj-settings-card-title"><LockKeyhole size={23} /><div><strong>Profile privacy</strong><span>ملخص للبيانات التي تظهر للآخرين حاليًا.</span></div></div>
+              <div className="cj-settings-divider" />
+              <div className="cj-privacy-row"><span>Public profile</span><strong>Display name, avatar, bio and learning identity</strong></div>
+              <div className="cj-privacy-row"><span>Private account details</span><strong>Email, phone number and LinkedIn URL</strong></div>
+              <p className="cj-settings-hint">بيانات البريد والهاتف وLinkedIn تُستبعد من استجابة الملف العام على الخادم. التحكم الفردي في إخفاء بقية عناصر الملف لم يُنفذ بعد.</p>
+              <button className="cj-settings-secondary-action" type="button" onClick={onOpenProfile}>Review my profile</button>
+            </section>
+          )}
+
+          {(tab === "billing" || tab === "connected" || tab === "language") && (
+            <section className="cj-settings-card cj-settings-unavailable">
+              <div className="cj-settings-card-title"><Sparkles size={23} /><div><strong>{tabTitle}</strong><span>الحالة الحالية للخدمة</span></div></div>
+              <div className="cj-settings-divider" />
+              {tab === "billing" && <><h3>Payment provider not configured</h3><p>لا يوجد مزود دفع مربوط بالإنتاج حاليًا؛ لذلك لا يمكن عرض خطط مدفوعة أو تنفيذ اشتراكات بأمان.</p></>}
+              {tab === "connected" && <><h3>Sign-in providers</h3><p>تسجيل الدخول عبر {user?.loginMethod === "google" ? "Google" : user?.loginMethod === "github" ? "GitHub" : "الحساب الحالي"} متاح. ربط أكثر من هوية بحساب واحد غير مدعوم حاليًا.</p></>}
+              {tab === "language" && <><h3>Full localization is not ready</h3><p>الواجهة تحتوي نصوصًا إنجليزية وعربية غير مكتملة الترجمة؛ تغيير اللغة الآن سيترك أجزاء من التطبيق بلغة مختلفة، لذلك لن أظهر اختيارًا وهميًا.</p></>}
             </section>
           )}
         </div>
@@ -156,16 +221,16 @@ export default function SettingsView({
             <div className="cj-aside-title"><UserRound size={19} /><strong>Account Settings</strong><button type="button" onClick={onOpenProfile}>Manage</button></div>
             <button className="cj-settings-row" type="button" onClick={openComingSoon}><span className="security-icon purple"><LockKeyhole size={18} /></span><span><b>Change Password</b><small>Update your account password</small></span><ChevronRight size={17} /></button>
             <button className="cj-settings-row" type="button" onClick={openComingSoon}><span className="security-icon blue"><Shield size={18} /></span><span><b>Two-Factor Authentication</b><small>Protect your account with another step</small></span><ChevronRight size={17} /></button>
-            <button className="cj-settings-row" type="button" onClick={openComingSoon}><span className="security-icon cyan"><Bell size={18} /></span><span><b>Login Activity</b><small>Review recent account sessions</small></span><ChevronRight size={17} /></button>
+            <button className="cj-settings-row" type="button" onClick={() => setTab("security")}><span className="security-icon cyan"><Laptop size={18} /></span><span><b>Login Activity</b><small>Review and revoke active sessions</small></span><ChevronRight size={17} /></button>
           </section>
 
           <section className="cj-settings-card">
-            <div className="cj-aside-title"><Bell size={19} /><strong>Notifications Preferences</strong><button type="button" onClick={openComingSoon}>Manage</button></div>
+            <div className="cj-aside-title"><Bell size={19} /><strong>Notifications Preferences</strong><button type="button" onClick={() => setTab("notifications")}>Manage</button></div>
             {["Course Updates", "CTF Challenges", "Community Activity", "System Notifications"].map((label, index) => (
-              <button className="cj-settings-row" type="button" key={label} onClick={openComingSoon}>
+              <button className="cj-settings-row" type="button" key={label} onClick={() => setTab("notifications")}>
                 <span className={`security-icon ${["blue","purple","cyan","green"][index]}`}><Bell size={17} /></span>
                 <span><b>{label}</b><small>{["New courses and labs","New challenge activity","Likes, comments and mentions","Important platform updates"][index]}</small></span>
-                <span className="cj-preference-soon">Soon</span>
+                <span className="cj-preference-soon">Manage</span>
               </button>
             ))}
           </section>
