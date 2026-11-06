@@ -1,7 +1,6 @@
 export type LeaderboardInput = {
   id: number;
   points: number | string;
-  [key: string]: unknown;
 };
 
 export type RankedLeaderboardEntry<T extends LeaderboardInput> = T & {
