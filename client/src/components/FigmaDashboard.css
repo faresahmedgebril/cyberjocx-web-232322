@@ -148,7 +148,7 @@
   .figma-dashboard .sidebar{position:fixed;z-index:70;left:0;top:65px;bottom:0;width:272px;height:auto;transform:translateX(-105%);transition:transform .22s ease;display:flex;overflow:hidden;border-right:1px solid #2457a9;border-top:0}
   .figma-dashboard .sidebar.is-open{transform:translateX(0)}
   .figma-dashboard .sidebar nav{width:100%;height:100%;padding:16px 12px 24px;overflow:auto;display:grid;grid-auto-rows:min-content;gap:3px}
-  .figma-dashboard .sidebar .nav-item{width:100%;min-height:42px;justify-content:flex-start;padding:8px 16px}
+  .figma-dashboard .sidebar .nav-item{display:flex;width:100%;min-height:42px;justify-content:flex-start;padding:8px 16px}
   .figma-dashboard .sidebar .nav-item span{display:inline}
   .figma-dashboard .sidebar .sidebar-brand{display:none}
   .figma-dashboard .sidebar-overlay{position:fixed;z-index:65;inset:65px 0 0;border:0;background:rgba(0,5,18,.68);backdrop-filter:blur(2px)}
