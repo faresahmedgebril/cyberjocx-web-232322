@@ -1,6 +1,7 @@
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import "./FigmaDashboard.css";
+import { isMobileNavigationViewport } from "./navigation";
 import { ComingSoonModal } from "@/components/ComingSoonModal";
 
 type IconName =
@@ -212,7 +213,7 @@ export default function FigmaDashboard({
         {search && <small>{matches.length} course{matches.length === 1 ? "" : "s"}</small>}
       </label>
       <div className="top-actions">
-        <button className="round-button nav-toggle" type="button" aria-label={mobileNavOpen ? "Close navigation" : "Open navigation"} aria-expanded={mobileNavOpen} onClick={() => { if (window.innerWidth <= 760) setMobileNavOpen(value => !value); else setNavCollapsed(value => !value); }}>
+        <button className="round-button nav-toggle" type="button" aria-label={mobileNavOpen ? "Close navigation" : "Open navigation"} aria-expanded={mobileNavOpen} onClick={() => { if (isMobileNavigationViewport(window.innerWidth)) setMobileNavOpen(value => !value); else setNavCollapsed(value => !value); }}>
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
         </button>
         <div className="notification-anchor">
