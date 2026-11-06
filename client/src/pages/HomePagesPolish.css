@@ -156,3 +156,63 @@
   color:#c6d7f2;background:rgba(6,19,45,.62);font:10px "DM Mono",monospace
 }
 .figma-dashboard .cj-rank-readonly small{color:#829dc2;font:9px inherit}
+
+
+/* Light-theme support for the feature pages; keep the branded intelligence heroes dark. */
+.figma-dashboard.light-theme .cj-profile-intro,
+.figma-dashboard.light-theme .cj-profile-card,
+.figma-dashboard.light-theme .cj-profile-editor,
+.figma-dashboard.light-theme .cj-profile-posts,
+.figma-dashboard.light-theme .cj-profile-friends,
+.figma-dashboard.light-theme .cj-intel-toolbar,
+.figma-dashboard.light-theme .cj-intel-metrics article,
+.figma-dashboard.light-theme .cj-cve-table,
+.figma-dashboard.light-theme .cj-malware-card,
+.figma-dashboard.light-theme .cj-preview-course-card{
+  color:#234266;border-color:#c8d8ee;background:#fff;
+  box-shadow:0 8px 24px rgba(35,67,111,.07)
+}
+.figma-dashboard.light-theme .cj-profile-intro h2,
+.figma-dashboard.light-theme .cj-profile-editor h3,
+.figma-dashboard.light-theme .cj-profile-posts .card-head h3,
+.figma-dashboard.light-theme .cj-profile-friends .card-head h3,
+.figma-dashboard.light-theme .cj-profile-identity h2,
+.figma-dashboard.light-theme .cj-malware-card h3,
+.figma-dashboard.light-theme .cj-preview-course-card h3{color:#19385f}
+.figma-dashboard.light-theme .cj-profile-intro p,
+.figma-dashboard.light-theme .cj-profile-editor .profile-helper,
+.figma-dashboard.light-theme .cj-profile-posts .profile-post p,
+.figma-dashboard.light-theme .cj-profile-friends .friend-card strong,
+.figma-dashboard.light-theme .cj-malware-card>p,
+.figma-dashboard.light-theme .cj-preview-course-card p{color:#587395}
+.figma-dashboard.light-theme .cj-profile-editor .admin-field>span{color:#4f6f96}
+.figma-dashboard.light-theme .cj-profile-editor .admin-field input,
+.figma-dashboard.light-theme .cj-profile-editor .admin-field select,
+.figma-dashboard.light-theme .cj-profile-editor .admin-field textarea,
+.figma-dashboard.light-theme .cj-rank-readonly{
+  color:#24446b;background:#f7faff;border-color:#c8d9ef
+}
+.figma-dashboard.light-theme .cj-profile-editor .admin-field input:focus,
+.figma-dashboard.light-theme .cj-profile-editor .admin-field select:focus,
+.figma-dashboard.light-theme .cj-profile-editor .admin-field textarea:focus{border-color:#7956df}
+.figma-dashboard.light-theme .cj-profile-stats div{background:#f5f8ff;border-color:#d6e2f1}
+.figma-dashboard.light-theme .cj-profile-stats span,
+.figma-dashboard.light-theme .cj-profile-posts .profile-post span,
+.figma-dashboard.light-theme .cj-profile-friends .friend-card small{color:#7188a7}
+.figma-dashboard.light-theme .cj-intel-toolbar .search-box{background:#f7faff;border-color:#ccd9ec}
+.figma-dashboard.light-theme .cj-intel-toolbar .search-box input{color:#24446b}
+.figma-dashboard.light-theme .cj-intel-toolbar .filter-tabs{background:#f3f7fd;border-color:#d4e0ef}
+.figma-dashboard.light-theme .cj-intel-toolbar .filter-tabs button{color:#58769b}
+.figma-dashboard.light-theme .cj-intel-metrics article>span{color:#6b84a5}
+.figma-dashboard.light-theme .cj-intel-metrics article>strong{color:#213f68}
+.figma-dashboard.light-theme .cj-intel-metrics article>small{color:#6b84a5}
+.figma-dashboard.light-theme .cj-cve-table .table-head{color:#5b7599;background:#edf4ff}
+.figma-dashboard.light-theme .cj-cve-table .table-row{color:#27496f;border-color:#e1eaf5}
+.figma-dashboard.light-theme .cj-cve-table .table-row>div:nth-child(2) strong{color:#233f63}
+.figma-dashboard.light-theme .cj-cve-table .table-row>div:nth-child(2) span{color:#6d85a4}
+.figma-dashboard.light-theme .cj-malware-card .command-line{color:#49698e;background:#f3f7fd;border-color:#d9e5f2}
+.figma-dashboard.light-theme .cj-malware-card .detail-meta span{color:#526f95;background:#f2f6fd;border-color:#d4e1f0}
+.figma-dashboard.light-theme .cj-malware-card .tool-link{color:#6041b4;background:#f5f1ff;border-color:#d6c8f4}
+.figma-dashboard.light-theme .cj-preview-course-card .course-row-meta{color:#4778a9}
+.figma-dashboard.light-theme .cj-preview-course-card .course-card-foot{color:#6683a6;border-color:#dce6f2}
+.figma-dashboard.light-theme .cj-preview-notice{color:#8a611f;background:#fff9e9;border-color:#ead6a5}
