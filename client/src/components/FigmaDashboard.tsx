@@ -253,7 +253,7 @@ export default function FigmaDashboard({
     {mobileNavOpen && <button className="sidebar-overlay" type="button" aria-label="Close navigation" onClick={() => setMobileNavOpen(false)} />}
     <aside className={`sidebar ${mobileNavOpen ? "is-open" : ""} ${navCollapsed ? "is-collapsed" : ""}`}>
       <nav aria-label="Dashboard navigation">
-        {visibleNavigation.map((item) => <button key={item.label} type="button" className={`nav-item ${activeNav === item.label ? "active" : ""} ${item.dividerBefore ? "nav-item--section" : ""}`} onClick={() => { setMobileNavOpen(false); if (item.target === "logout") { onLogout?.(); return; } if (!item.target) { setComingSoonOpen(true); return; } setActiveNav(item.label); onNavigate(item.target); }}><Icon name={item.icon} size={23} /><span>{item.label}</span></button>)}
+        {visibleNavigation.map((item) => <button key={item.label} type="button" className={`nav-item ${activeNav === item.label ? "active" : ""} ${item.dividerBefore ? "nav-item--section" : ""}`} title={item.label} aria-label={item.label} onClick={() => { setMobileNavOpen(false); if (item.target === "logout") { onLogout?.(); return; } if (!item.target) { setComingSoonOpen(true); return; } setActiveNav(item.label); onNavigate(item.target); }}><Icon name={item.icon} size={23} /><span>{item.label}</span></button>)}
       </nav>
       <div className="sidebar-brand" role="button" tabIndex={0} onClick={() => onNavigate("dashboard")} onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onNavigate("dashboard"); } }}>
         <img src={`${import.meta.env.BASE_URL}assets/cyber-hacker.jpg`} alt="Hooded CyberJocx character" />
