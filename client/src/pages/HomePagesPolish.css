@@ -149,3 +149,10 @@
   .figma-dashboard .cj-intel-toolbar .filter-tabs{width:100%;overflow-x:auto;flex-wrap:nowrap}
   .figma-dashboard .cj-intel-toolbar .filter-tabs button{flex:none}
 }
+
+.figma-dashboard .cj-rank-readonly{
+  min-height:40px;display:flex;align-items:center;justify-content:space-between;gap:9px;
+  padding:9px 10px;border:1px solid rgba(64,112,186,.36);border-radius:8px;
+  color:#c6d7f2;background:rgba(6,19,45,.62);font:10px "DM Mono",monospace
+}
+.figma-dashboard .cj-rank-readonly small{color:#829dc2;font:9px inherit}
