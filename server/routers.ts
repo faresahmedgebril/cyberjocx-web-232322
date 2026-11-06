@@ -10,7 +10,7 @@ import { readPublicProfile, toClientSafeUser, updateProfile, uploadProfileMedia 
 import { sanitizeProfileUpdate } from "./modules/profile/permissions";
 import { nanoid } from "nanoid";
 import { getSessionCookieOptions } from "./_core/cookies";
-import { getSessionToken, revokeSession } from "./core/auth/session";
+import { getSessionToken, listActiveSessions, revokeOtherSessions as revokeOtherUserSessions, revokeSession } from "./core/auth/session";
 import { systemRouter } from "./_core/systemRouter";
 import { adminProcedure, instructorProcedure, ownerAdminProcedure, protectedProcedure, publicProcedure, router } from "./_core/trpc";
 import { books, cartItems, carts, certificates, courseProgress, courses, cves, friendRequests, follows, malwareFamilies, notifications, nvdSyncSettings, postLikes, posts, quizAttempts, quizQuestions, trackQuizzes, tracks, tools, users, getCart, getDashboardStats, getDb, getTrackProgress, getTrackRoadmap, getUserById, listBooks, listBooksAdvanced, listCourses, listCves, listCvesPaginated, listMalware, listPosts, listTools, listToolsAdvanced, listRoadmaps, listTracks, ensureCart } from "./db";
@@ -23,6 +23,17 @@ export const appRouter = router({
   system: systemRouter,
   auth: router({
     me: publicProcedure.query(({ ctx }) => ctx.user ? toClientSafeUser(ctx.user) : null),
+    activeSessions: protectedProcedure.query(({ ctx }) => {
+      const token = getSessionToken(ctx.req);
+      if (!token) throw new TRPCError({ code: "UNAUTHORIZED", message: "A valid session is required." });
+      return listActiveSessions(ctx.user.id, token);
+    }),
+    revokeOtherSessions: protectedProcedure.mutation(async ({ ctx }) => {
+      const token = getSessionToken(ctx.req);
+      if (!token) throw new TRPCError({ code: "UNAUTHORIZED", message: "A valid session is required." });
+      const revokedCount = await revokeOtherUserSessions(ctx.user.id, token);
+      return { success: true as const, revokedCount };
+    }),
     logout: publicProcedure.mutation(async ({ ctx }) => {
       const cookieOptions = getSessionCookieOptions(ctx.req);
       try {
