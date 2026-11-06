@@ -7,6 +7,7 @@ import { TRPCError } from "@trpc/server";
 import { and, desc, eq, or, sql } from "drizzle-orm";
 import { askAI, personalizeAI } from "./modules/ai/service";
 import { readPublicProfile, toClientSafeUser, updateProfile, uploadProfileMedia } from "./modules/profile/service";
+import { sanitizeProfileUpdate } from "./modules/profile/permissions";
 import { nanoid } from "nanoid";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { getSessionToken, revokeSession } from "./core/auth/session";
@@ -87,7 +88,7 @@ export const appRouter = router({
     me: protectedProcedure.query(({ ctx }) => toClientSafeUser(ctx.user)),
     byId: publicProcedure.input(z.object({ userId: z.number() })).query(({ input }) => readPublicProfile(input.userId)),
     update: protectedProcedure.input(z.object({ name: z.string().min(2).max(120).optional(), bio: z.string().max(500).optional(), avatarUrl: z.string().url().optional(), bannerUrl: z.string().url().optional(), phone: z.string().max(32).optional(), linkedinUrl: z.string().url().optional(), memberRank: z.enum(["learner", "contributor", "analyst", "mentor", "elite"]).optional(), primaryTrackId: z.number().optional() })).mutation(async ({ ctx, input }) => {
-      return updateProfile(ctx.user.id, input);
+      return updateProfile(ctx.user.id, sanitizeProfileUpdate(ctx.user.role, input));
     }),
     uploadMedia: protectedProcedure.input(z.object({ kind: z.enum(["avatar", "banner"]), dataUrl: z.string().max(4_200_000) })).mutation(async ({ ctx, input }) => {
       return uploadProfileMedia(ctx.user.id, input.kind, input.dataUrl);
