@@ -137,6 +137,7 @@ jobs:
             "compatibility_date": "2026-11-01",
             "compatibility_flags": ["nodejs_compat"],
             "usage_model": "standard",
+            "keep_bindings": ["secret_text"],
             "bindings": [
               {"type":"plain_text","name":"API_BASE_URL","text":"https://cyberjocx-api.gebrilfares972.workers.dev"},
               {"type":"plain_text","name":"APP_WEB_URL","text":"https://faresahmedgebril.github.io/cyberjocx-web-232322"},
