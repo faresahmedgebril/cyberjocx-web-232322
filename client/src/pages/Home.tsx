@@ -221,9 +221,40 @@ function ProfileView({ user }: { user: any }) {
   const tracks = trpc.tracks.list.useQuery();
   const profile = trpc.profile.byId.useQuery({ userId: user?.id ?? 0 }, { enabled: Boolean(user?.id) });
   const friends = trpc.community.friends.useQuery(undefined, { enabled: Boolean(user?.id) });
-  const updateProfile = trpc.profile.update.useMutation({ onSuccess: () => { profile.refetch(); toast.success("تم حفظ ملفك الشخصي"); } });
-  const uploadMedia = trpc.profile.uploadMedia.useMutation({ onSuccess: (data, variables) => { if (variables.kind === "avatar") setAvatarUrl(data.url); else setBannerUrl(data.url); toast.success("تم رفع الصورة بنجاح"); } });
-  const pickMedia = (kind: "avatar" | "banner", file?: File) => { if (!file) return; if (!file.type.startsWith("image/")) return toast.error("اختر ملف صورة صالحًا."); const reader = new FileReader(); reader.onload = () => uploadMedia.mutate({ kind, dataUrl: String(reader.result) }); reader.readAsDataURL(file); };
+  const updateProfile = trpc.profile.update.useMutation({
+    onSuccess: () => { profile.refetch(); toast.success("تم حفظ ملفك الشخصي"); },
+    onError: error => toast.error(error.message || "تعذر حفظ الملف الشخصي."),
+  });
+  const uploadMedia = trpc.profile.uploadMedia.useMutation({
+    onSuccess: (data, variables) => {
+      if (variables.kind === "avatar") setAvatarUrl(data.url);
+      else setBannerUrl(data.url);
+      toast.success("تم رفع الصورة بنجاح");
+    },
+    onError: error => toast.error(error.message || "تعذر رفع الصورة. تحقق من إعدادات التخزين وحجم الملف."),
+  });
+  const pickMedia = (kind: "avatar" | "banner", file?: File) => {
+    if (!file) return;
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+      toast.error("الامتدادات المدعومة هي PNG وJPG وWEBP فقط.");
+      return;
+    }
+    if (file.size > 3 * 1024 * 1024) {
+      toast.error("حجم الصورة يجب ألا يتجاوز 3 ميجابايت.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => toast.error("تعذر قراءة ملف الصورة من جهازك.");
+    reader.onabort = () => toast.error("تم إلغاء قراءة الصورة.");
+    reader.onload = () => {
+      if (typeof reader.result !== "string") {
+        toast.error("تعذر تجهيز الصورة للرفع.");
+        return;
+      }
+      uploadMedia.mutate({ kind, dataUrl: reader.result });
+    };
+    reader.readAsDataURL(file);
+  };
   const posts = profile.data?.posts ?? [];
   return <section className="profile-layout cj-profile-layout"><header className="cj-profile-intro"><div><span className="cj-profile-kicker">CYBERJOCX / OPERATOR IDENTITY</span><h2>ملفك داخل المنظومة</h2><p>هوية مهنية تجمع مسارك ونشاطك ومساهماتك في مكان واحد.</p></div><span className="cj-profile-visibility"><LockKeyhole size={13} /> بياناتك الحساسة تظل خاصة</span></header><div className="profile-card panel-card cj-profile-card"><div className="profile-cover cj-profile-cover" style={bannerUrl ? { backgroundImage: `linear-gradient(90deg, rgba(3,10,14,.55), rgba(45,11,59,.45)), url(${bannerUrl})` } : undefined}><div className="profile-scan" /><label className="media-upload banner-upload">تغيير البانر <input type="file" accept="image/png,image/jpeg,image/webp" onChange={event => pickMedia("banner", event.target.files?.[0])} /></label></div><div className="profile-body cj-profile-body"><div className="profile-identity cj-profile-identity"><div className="profile-avatar avatar-photo cj-profile-avatar">{avatarUrl ? <img src={avatarUrl} alt="صورة الحساب" /> : name?.[0] ?? "G"}<label className="media-upload avatar-upload"><Plus size={14} /><input type="file" accept="image/png,image/jpeg,image/webp" onChange={event => pickMedia("avatar", event.target.files?.[0])} /></label></div><div><div className="section-tag">// YOUR IDENTITY</div><h2>{name || "GHOST_OPERATOR"}</h2><span>{user?.email ?? "البريد غير متاح"} · {rank.toUpperCase()}</span></div></div><div className="profile-stats cj-profile-stats"><div><strong>{user?.points ?? 0}</strong><span>XP POINTS</span></div><div><strong>{rank.toUpperCase()}</strong><span>MEMBER RANK</span></div><div><strong>{posts.length}</strong><span>POSTS</span></div></div></div></div><div className="profile-editor panel-card cj-profile-editor"><div className="section-tag">// EDIT YOUR PROFILE</div><h3>رتّب هويتك وسجلّك المهني.</h3><p className="profile-helper">البريد والهاتف وLinkedIn بيانات خاصة لحسابك ولا تظهر في الملف العام تلقائيًا.</p><div className="profile-form-grid"><label className="admin-field"><span>الاسم المعروض</span><input value={name} onChange={event => setName(event.target.value)} placeholder="اسمك داخل CyberJocx" /></label><label className="admin-field"><span>الهاتف</span><input value={phone} onChange={event => setPhone(event.target.value)} placeholder="01xxxxxxxxx" /></label><label className="admin-field"><span>LinkedIn URL</span><input value={linkedinUrl} onChange={event => setLinkedinUrl(event.target.value)} placeholder="https://linkedin.com/in/..." /></label><label className="admin-field"><span>التصنيف</span>{user?.role === "admin" ? <select value={rank} onChange={event => setRank(event.target.value)}><option value="learner">Learner</option><option value="contributor">Contributor</option><option value="analyst">Analyst</option><option value="mentor">Mentor</option><option value="elite">Elite</option></select> : <div className="cj-rank-readonly">{rank.toUpperCase()}<small>يُحدد بواسطة الإدارة</small></div>}</label><label className="admin-field"><span>المسار الأساسي</span><select value={primaryTrackId} onChange={event => setPrimaryTrackId(event.target.value)}><option value="">اختر مسارك</option>{tracks.data?.map(track => <option key={track.id} value={track.id}>{track.title}</option>)}</select></label><label className="admin-field full"><span>نبذة شخصية</span><textarea value={bio} onChange={event => setBio(event.target.value)} placeholder="اكتب ما تتعلمه وما المجال الذي تبني فيه خبرتك..." /></label></div><button className="primary-button" onClick={() => updateProfile.mutate({ name, bio, avatarUrl: avatarUrl || undefined, bannerUrl: bannerUrl || undefined, phone: phone || undefined, linkedinUrl: linkedinUrl || undefined, memberRank: rank as "learner" | "contributor" | "analyst" | "mentor" | "elite", primaryTrackId: primaryTrackId ? Number(primaryTrackId) : undefined })} disabled={updateProfile.isPending || uploadMedia.isPending}><Check size={15} /> حفظ الملف</button></div><div className="profile-posts panel-card cj-profile-posts"><div className="card-head"><div><div className="section-tag">// YOUR POSTS</div><h3>منشوراتك داخل المجتمع</h3></div><span>{posts.length} POSTS</span></div>{posts.length ? posts.map((post: any) => <article className="profile-post" key={post.id}><p>{post.content}</p><span>{new Date(post.createdAt).toLocaleDateString("ar-EG")} · {post.likesCount} إعجاب</span></article>) : <div className="empty-state"><MessageSquare size={21} /><p>لم تنشر أي إشارة بعد. ابدأ من صفحة المجتمع.</p></div>}</div><div className="profile-friends panel-card cj-profile-friends"><div className="card-head"><div><div className="section-tag">// YOUR CIRCLE</div><h3>الأصدقاء</h3></div><span>{friends.data?.length ?? 0} FRIENDS</span></div>{friends.data?.length ? <div className="friend-grid">{friends.data.map(friend => <div className="friend-card" key={friend.id}>{friend.avatarUrl ? <img src={friend.avatarUrl} alt="" /> : <span>{friend.name?.[0] ?? "C"}</span>}<div><strong>{friend.name ?? "عضو CyberJocx"}</strong><small>{friend.memberRank ?? "learner"}</small></div></div>)}</div> : <div className="empty-state"><Users size={21} /><p>لا يوجد أصدقاء بعد. أرسل طلبًا من صفحة المجتمع.</p></div>}</div></section>;
 }
