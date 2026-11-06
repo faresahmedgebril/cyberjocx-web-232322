@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import type { Request } from "express";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, ne } from "drizzle-orm";
 import { sessions, users } from "../../../drizzle/schema";
 import { getDb, getUserById, upsertUser } from "../../db";
 import { COOKIE_NAME } from "../../config/constants";
@@ -28,6 +28,42 @@ export async function createSession(userId: number, req?: Pick<Request, "headers
   });
   return { token, expiresAt };
 }
+export async function listActiveSessions(userId: number, currentToken: string) {
+  if (!currentToken) throw authenticationError();
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable; active sessions could not be loaded.");
+  const currentTokenHash = hashToken(currentToken);
+  const rows = await db.select({
+    id: sessions.id,
+    createdAt: sessions.createdAt,
+    expiresAt: sessions.expiresAt,
+    userAgent: sessions.userAgent,
+    tokenHash: sessions.tokenHash,
+  }).from(sessions).where(and(
+    eq(sessions.userId, userId),
+    isNull(sessions.revokedAt),
+    gt(sessions.expiresAt, new Date()),
+  )).orderBy(desc(sessions.createdAt));
+
+  return rows.map(({ tokenHash, ...session }) => ({
+    ...session,
+    isCurrent: tokenHash === currentTokenHash,
+  }));
+}
+
+export async function revokeOtherSessions(userId: number, currentToken: string) {
+  if (!currentToken) throw authenticationError();
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable; other sessions could not be revoked.");
+  const revoked = await db.update(sessions).set({ revokedAt: new Date() }).where(and(
+    eq(sessions.userId, userId),
+    isNull(sessions.revokedAt),
+    gt(sessions.expiresAt, new Date()),
+    ne(sessions.tokenHash, hashToken(currentToken)),
+  )).returning({ id: sessions.id });
+  return revoked.length;
+}
+
 export async function revokeSession(token: string | undefined) {
   if (!token) return;
   const db = await getDb();
