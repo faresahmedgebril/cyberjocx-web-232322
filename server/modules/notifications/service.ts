@@ -2,6 +2,8 @@ import { and, eq } from "drizzle-orm";
 import { notifications, users } from "../../../drizzle/schema";
 import { getDb } from "../../db";
 
+export const NOTIFICATIONS_ENABLED = false;
+
 export type NotificationInput = {
   type: "cve" | "content" | "system";
   title: string;
@@ -9,6 +11,7 @@ export type NotificationInput = {
 };
 
 export async function notifyUsers(userIds: number[], input: NotificationInput) {
+  if (!NOTIFICATIONS_ENABLED) return 0;
   const db = await getDb();
   if (!db || userIds.length === 0) return 0;
   await db.insert(notifications).values(userIds.map(userId => ({ userId, ...input })));
@@ -16,6 +19,7 @@ export async function notifyUsers(userIds: number[], input: NotificationInput) {
 }
 
 export async function notifyAll(input: NotificationInput) {
+  if (!NOTIFICATIONS_ENABLED) return 0;
   const db = await getDb();
   if (!db) return 0;
   const rows = await db.select({ id: users.id }).from(users);
@@ -28,6 +32,7 @@ export async function notifyAll(input: NotificationInput) {
  * genuinely new events (not periodic refreshes of existing content).
  */
 export async function notifyAllMany(inputs: NotificationInput[]) {
+  if (!NOTIFICATIONS_ENABLED) return 0;
   const db = await getDb();
   if (!db || inputs.length === 0) return 0;
   const recipients = await db.select({ id: users.id }).from(users);
@@ -53,6 +58,7 @@ export async function notifyAllMany(inputs: NotificationInput[]) {
 }
 
 export async function markNotificationRead(userId: number, id: number) {
+  if (!NOTIFICATIONS_ENABLED) return false;
   const db = await getDb();
   if (!db) return false;
   await db.update(notifications).set({ isRead: true }).where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
@@ -60,6 +66,7 @@ export async function markNotificationRead(userId: number, id: number) {
 }
 
 export async function markAllNotificationsRead(userId: number) {
+  if (!NOTIFICATIONS_ENABLED) return false;
   const db = await getDb();
   if (!db) return false;
   await db.update(notifications).set({ isRead: true }).where(and(eq(notifications.userId, userId), eq(notifications.isRead, false)));
