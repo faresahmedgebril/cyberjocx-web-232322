@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { and, asc, eq, lte, sql } from "drizzle-orm";
+import { and, asc, eq, lte, lt, sql } from "drizzle-orm";
 import { jobs } from "../../../drizzle/schema";
 import { getDb } from "../../db";
 
