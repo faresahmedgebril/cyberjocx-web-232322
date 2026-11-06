@@ -351,3 +351,19 @@
   .figma-dashboard .course-empty-catalog{align-items:stretch;flex-direction:column;padding:18px}
   .figma-dashboard .course-empty-catalog h2{font-size:21px}
 }
+
+
+/* Navigation overflow fix: keep the dashboard canvas untouched; make long nav menus scroll. */
+.figma-dashboard .sidebar nav{
+  flex:1 1 0;
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(89,119,190,.55) transparent;
+}
+.figma-dashboard .sidebar nav::-webkit-scrollbar{width:6px}
+.figma-dashboard .sidebar nav::-webkit-scrollbar-track{background:transparent}
+.figma-dashboard .sidebar nav::-webkit-scrollbar-thumb{border-radius:8px;background:rgba(89,119,190,.42)}
+.figma-dashboard .sidebar nav::-webkit-scrollbar-thumb:hover{background:rgba(142,91,255,.68)}
