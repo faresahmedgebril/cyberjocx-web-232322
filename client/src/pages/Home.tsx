@@ -246,7 +246,7 @@ function LearningView({ courses, roadmaps, tracks, loading, error, search, setSe
         <span>03 / PUBLISH</span>
       </div>
     </div>
-    <div className="cj-preview-notice"><Shield size={15} /><span>بيانات تجريبية للمعاينة فقط — حالة كل العناصر: قريبًا</span></div>
+    <div className="cj-preview-notice"><ShieldCheck size={15} /><span>بيانات تجريبية للمعاينة فقط — حالة كل العناصر: قريبًا</span></div>
     <div className="course-cards cj-preview-course-grid">{previewCourses.map((course, index) => <article className="course-card panel-card cj-preview-course-card" key={course.code}>
       <div className={`course-art art-${(index % 3) + 1} cj-preview-course-art`}><span className="art-code">{course.code}</span><span className="course-coming-soon-badge">PREVIEW</span><div className="art-grid" /><div className="art-icon">{course.icon}</div></div>
       <div className="course-card-content"><div className="course-row-meta">{course.category} <span>•</span> {course.level}</div><h3>{course.title}</h3><p>{course.description}</p>
