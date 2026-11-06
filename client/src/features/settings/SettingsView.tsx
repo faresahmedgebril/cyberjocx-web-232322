@@ -52,7 +52,7 @@ export default function SettingsView({
   });
   const [comingOpen, setComingOpen] = useState(false);
   const [notificationPreferences, setNotificationPreferences] = useState(() => loadNotificationPreferences(user?.id));
-  const { theme, preference, setThemePreference } = useTheme();
+  const { preference, setThemePreference } = useTheme();
   const activeSessions = trpc.auth.activeSessions.useQuery(undefined, { enabled: isAuthenticated && tab === "security" });
   const revokeOtherSessions = trpc.auth.revokeOtherSessions.useMutation({
     onSuccess: async result => {
