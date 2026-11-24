@@ -18,7 +18,9 @@ import { books, cartItems, carts, certificates, courseProgress, courses, cves, f
 import { z } from "zod";
 import { ENV } from "./config/env";
 import { NOTIFICATIONS_ENABLED, notifyAll } from "./modules/notifications/service";
-import { auditLogs, courseChangeRequests, labInstances, labTemplates } from "../drizzle/schema";
+import { auditLogs, courseChangeRequests, courseLessons, instructorApplications, labInstances, labTemplates, trackLevelModules, trackLevels, tracks as tracksTable } from "../drizzle/schema";
+import { encryptCourseContent, decryptCourseContent } from "./modules/courses/content";
+import { getStorageProvider } from "./infrastructure/storage/provider";
 
 export const appRouter = router({
   system: systemRouter,
@@ -134,6 +136,38 @@ export const appRouter = router({
     }),
   }),
   courses: router({
+    lessons: protectedProcedure.input(z.object({ courseId: z.number().int().positive() })).query(async ({ input }) => {
+      if (ENV.COURSES_COMING_SOON) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Course lessons are not open yet." });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const course = (await db.select({ id: courses.id, isPublished: courses.isPublished }).from(courses)
+        .where(eq(courses.id, input.courseId)).limit(1))[0];
+      if (!course?.isPublished) throw new TRPCError({ code: "NOT_FOUND", message: "Published course not found." });
+      return db.select({ id: courseLessons.id, title: courseLessons.title, orderIndex: courseLessons.orderIndex, hasAsset: sql<boolean>`CASE WHEN ${courseLessons.assetObjectKey} IS NULL THEN false ELSE true END` })
+        .from(courseLessons).where(and(eq(courseLessons.courseId, input.courseId), eq(courseLessons.isPublished, true))).orderBy(courseLessons.orderIndex);
+    }),
+    lesson: protectedProcedure.input(z.object({ lessonId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+      if (ENV.COURSES_COMING_SOON) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Course lessons are not open yet." });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const row = (await db.select({
+        lesson: courseLessons, courseIsPublished: courses.isPublished,
+      }).from(courseLessons).innerJoin(courses, eq(courseLessons.courseId, courses.id))
+        .where(and(eq(courseLessons.id, input.lessonId), eq(courseLessons.isPublished, true), eq(courses.isPublished, true))).limit(1))[0];
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Published lesson not found." });
+      let assetUrl: string | null = null;
+      if (row.lesson.assetObjectKey) {
+        assetUrl = await getStorageProvider().signedDownload(row.lesson.assetObjectKey);
+      }
+      return {
+        id: row.lesson.id, courseId: row.lesson.courseId, title: row.lesson.title,
+        content: decryptCourseContent({
+          ciphertext: row.lesson.contentCiphertext, iv: row.lesson.contentIv,
+          authTag: row.lesson.contentAuthTag,
+        }),
+        assetUrl, assetContentType: row.lesson.assetContentType,
+      };
+    }),
     list: publicProcedure.input(z.object({ search: z.string().optional() }).optional()).query(async ({ input }) => (await listCourses(input?.search)).map(course => ({ ...course, availabilityStatus: ENV.COURSES_COMING_SOON ? "coming-soon" as const : "available" as const }))),
     byId: publicProcedure.input(z.object({ id: z.number() })).query(async ({ input }) => {
       const db = await getDb();
@@ -404,6 +438,55 @@ export const appRouter = router({
     })).mutation(({ ctx, input }) => submitChallenge(ctx.user.id, input.challengeId, input.answer)),
   }),
   instructor: router({
+    applicationStatus: protectedProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable." });
+      if (ctx.user.role === "instructor" || ctx.user.role === "admin") return { role: ctx.user.role, application: null };
+      const application = (await db.select({
+        id: instructorApplications.id,
+        expertise: instructorApplications.expertise,
+        teachingExperience: instructorApplications.teachingExperience,
+        portfolioUrl: instructorApplications.portfolioUrl,
+        linkedinUrl: instructorApplications.linkedinUrl,
+        sampleContentUrl: instructorApplications.sampleContentUrl,
+        status: instructorApplications.status,
+        reviewNote: instructorApplications.reviewNote,
+        createdAt: instructorApplications.createdAt,
+        reviewedAt: instructorApplications.reviewedAt,
+      }).from(instructorApplications).where(eq(instructorApplications.userId, ctx.user.id)).limit(1))[0] ?? null;
+      return { role: ctx.user.role, application };
+    }),
+    apply: protectedProcedure.input(z.object({
+      expertise: z.string().trim().min(3).max(255),
+      teachingExperience: z.string().trim().min(30).max(5000),
+      portfolioUrl: z.string().url().optional().or(z.literal("")),
+      linkedinUrl: z.string().url().optional().or(z.literal("")),
+      sampleContentUrl: z.string().url().optional().or(z.literal("")),
+    })).mutation(async ({ ctx, input }) => {
+      if (ctx.user.role !== "user") throw new TRPCError({ code: "FORBIDDEN", message: "This account does not need an instructor application." });
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable." });
+      const existing = (await db.select().from(instructorApplications).where(eq(instructorApplications.userId, ctx.user.id)).limit(1))[0];
+      if (existing?.status === "pending") throw new TRPCError({ code: "CONFLICT", message: "You already have a pending instructor application." });
+      const values = {
+        expertise: input.expertise,
+        teachingExperience: input.teachingExperience,
+        portfolioUrl: input.portfolioUrl || null,
+        linkedinUrl: input.linkedinUrl || null,
+        sampleContentUrl: input.sampleContentUrl || null,
+        status: "pending",
+        reviewNote: null,
+        reviewedBy: null,
+        reviewedAt: null,
+        updatedAt: new Date(),
+      };
+      if (existing) {
+        await db.update(instructorApplications).set(values).where(eq(instructorApplications.id, existing.id));
+      } else {
+        await db.insert(instructorApplications).values({ ...values, userId: ctx.user.id });
+      }
+      return { success: true };
+    }),
     dashboard: instructorProcedure.query(async ({ ctx }) => {
       const db = await getDb();
       if (!db) return { courses: [], students: [], requests: [], totals: { courses: 0, published: 0, students: 0, averageProgress: 0 } };
@@ -489,6 +572,113 @@ export const appRouter = router({
       })));
       return { success: true, course: created[0] };
     }),
+    listCourseLessons: instructorProcedure.input(z.object({ courseId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const course = (await db.select({ id: courses.id, isPublished: courses.isPublished }).from(courses)
+        .where(and(eq(courses.id, input.courseId), eq(courses.instructorUserId, ctx.user.id))).limit(1))[0];
+      if (!course) throw new TRPCError({ code: "NOT_FOUND", message: "Course not found in your workspace." });
+      const rows = await db.select().from(courseLessons).where(eq(courseLessons.courseId, input.courseId)).orderBy(courseLessons.orderIndex);
+      return rows.map(row => ({
+        id: row.id, courseId: row.courseId, title: row.title,
+        content: decryptCourseContent({ ciphertext: row.contentCiphertext, iv: row.contentIv, authTag: row.contentAuthTag }),
+        orderIndex: row.orderIndex, isPublished: row.isPublished,
+        hasAsset: Boolean(row.assetObjectKey), assetContentType: row.assetContentType,
+        assetSizeBytes: row.assetSizeBytes,
+      }));
+    }),
+    saveCourseLesson: instructorProcedure.input(z.object({
+      courseId: z.number().int().positive(),
+      lessonId: z.number().int().positive().optional(),
+      title: z.string().trim().min(3).max(255),
+      content: z.string().trim().min(20).max(100000),
+      orderIndex: z.number().int().min(0).max(1000).default(0),
+    })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const course = (await db.select({ id: courses.id, isPublished: courses.isPublished }).from(courses)
+        .where(and(eq(courses.id, input.courseId), eq(courses.instructorUserId, ctx.user.id))).limit(1))[0];
+      if (!course || course.isPublished) throw new TRPCError({ code: "FORBIDDEN", message: "Lesson editing is available only for your unpublished course drafts. Ask the owner to reopen a published course." });
+      const encrypted = encryptCourseContent(input.content);
+      if (input.lessonId) {
+        const lesson = (await db.select({ id: courseLessons.id }).from(courseLessons)
+          .where(and(eq(courseLessons.id, input.lessonId), eq(courseLessons.courseId, input.courseId))).limit(1))[0];
+        if (!lesson) throw new TRPCError({ code: "NOT_FOUND", message: "Lesson not found in this course." });
+        await db.update(courseLessons).set({
+          title: input.title, contentCiphertext: encrypted.ciphertext,
+          contentIv: encrypted.iv, contentAuthTag: encrypted.authTag,
+          keyVersion: encrypted.keyVersion, orderIndex: input.orderIndex, updatedAt: new Date(),
+        }).where(eq(courseLessons.id, input.lessonId));
+        return { success: true, lessonId: input.lessonId };
+      }
+      const created = await db.insert(courseLessons).values({
+        courseId: input.courseId, title: input.title,
+        contentCiphertext: encrypted.ciphertext, contentIv: encrypted.iv,
+        contentAuthTag: encrypted.authTag, keyVersion: encrypted.keyVersion,
+        orderIndex: input.orderIndex, isPublished: false,
+      }).returning({ id: courseLessons.id });
+      return { success: true, lessonId: created[0]?.id };
+    }),
+    deleteCourseLesson: instructorProcedure.input(z.object({ courseId: z.number().int().positive(), lessonId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const course = (await db.select({ id: courses.id, isPublished: courses.isPublished }).from(courses)
+        .where(and(eq(courses.id, input.courseId), eq(courses.instructorUserId, ctx.user.id))).limit(1))[0];
+      if (!course || course.isPublished) throw new TRPCError({ code: "FORBIDDEN" });
+      await db.delete(courseLessons).where(and(eq(courseLessons.id, input.lessonId), eq(courseLessons.courseId, input.courseId)));
+      return { success: true };
+    }),
+    requestLessonAssetUpload: instructorProcedure.input(z.object({
+      courseId: z.number().int().positive(),
+      lessonId: z.number().int().positive(),
+      fileName: z.string().trim().min(1).max(180),
+      contentType: z.enum(["application/pdf", "video/mp4", "video/webm", "application/zip"]),
+      sizeBytes: z.number().int().positive().max(500 * 1024 * 1024),
+    })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const course = (await db.select({ id: courses.id, isPublished: courses.isPublished }).from(courses)
+        .where(and(eq(courses.id, input.courseId), eq(courses.instructorUserId, ctx.user.id))).limit(1))[0];
+      const lesson = (await db.select({ id: courseLessons.id }).from(courseLessons)
+        .where(and(eq(courseLessons.id, input.lessonId), eq(courseLessons.courseId, input.courseId))).limit(1))[0];
+      if (!course || course.isPublished || !lesson) throw new TRPCError({ code: "FORBIDDEN", message: "Assets can only be attached to lessons in your unpublished drafts." });
+      const cleanName = input.fileName.replace(/[^a-zA-Z0-9._-]/g, "-").slice(-100);
+      const objectKey = `courses/${input.courseId}/lessons/${input.lessonId}/${nanoid(16)}-${cleanName}`;
+      const upload = await getStorageProvider().signedUpload(objectKey, input.contentType);
+      await db.update(courseLessons).set({
+        assetObjectKey: objectKey, assetContentType: input.contentType,
+        assetSizeBytes: input.sizeBytes, updatedAt: new Date(),
+      }).where(eq(courseLessons.id, input.lessonId));
+      return { uploadUrl: upload.url, objectKey, headers: { "Content-Type": input.contentType }, expiresInSeconds: 900 };
+    }),
+    myLabProposals: instructorProcedure.query(async ({ ctx }) => {
+      const db = await getDb();
+      if (!db) return [];
+      return db.select({
+        id: labTemplates.id, slug: labTemplates.slug, name: labTemplates.name,
+        description: labTemplates.description, reviewStatus: labTemplates.reviewStatus,
+        active: labTemplates.active, createdAt: labTemplates.createdAt,
+      }).from(labTemplates).where(eq(labTemplates.submittedByUserId, ctx.user.id)).orderBy(desc(labTemplates.createdAt));
+    }),
+    proposeLabTemplate: instructorProcedure.input(z.object({
+      slug: z.string().trim().min(3).max(255).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+      name: z.string().trim().min(3).max(255),
+      image: z.string().url(),
+      description: z.string().trim().min(20).max(5000),
+      cpuLimit: z.number().int().min(1).max(8),
+      memoryMb: z.number().int().min(256).max(16384),
+      diskMb: z.number().int().min(512).max(65536),
+      ttlSeconds: z.number().int().min(300).max(14400),
+      exposedPorts: z.array(z.number().int().min(1).max(65535)).max(12),
+    })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const created = await db.insert(labTemplates).values({
+        ...input, exposedPortsJson: JSON.stringify(input.exposedPorts),
+        active: false, submittedByUserId: ctx.user.id, reviewStatus: "pending",
+      }).returning({ id: labTemplates.id, name: labTemplates.name });
+      return { success: true, proposal: created[0] };
+    }),
     requestCourseUpdate: instructorProcedure.input(z.object({
       courseId: z.number().int().positive(),
       changes: z.object({
@@ -526,6 +716,148 @@ export const appRouter = router({
     }),
   }),
   admin: router({
+    createMalware: ownerAdminProcedure.input(z.object({
+      name: z.string().trim().min(2).max(255),
+      category: z.string().trim().min(2).max(100),
+      severity: z.enum(["critical", "high", "medium", "low"]),
+      description: z.string().trim().min(20).max(10000),
+      targets: z.string().trim().min(2).max(2000),
+      mitreTechniques: z.string().trim().max(2000).default(""),
+      sourceUrl: z.string().url().optional(),
+    })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const created = await db.insert(malwareFamilies).values({ ...input, sourceUrl: input.sourceUrl ?? null }).returning({ id: malwareFamilies.id, name: malwareFamilies.name });
+      await db.insert(auditLogs).values({ actorUserId: ctx.user.id, action: "malware.create", resourceType: "malwareFamily", resourceId: created[0]!.id });
+      return { success: true, malware: created[0] };
+    }),
+    updateMalware: ownerAdminProcedure.input(z.object({
+      id: z.number().int().positive(),
+      changes: z.object({
+        name: z.string().trim().min(2).max(255).optional(),
+        category: z.string().trim().min(2).max(100).optional(),
+        severity: z.enum(["critical", "high", "medium", "low"]).optional(),
+        description: z.string().trim().min(20).max(10000).optional(),
+        targets: z.string().trim().min(2).max(2000).optional(),
+        mitreTechniques: z.string().trim().max(2000).optional(),
+        sourceUrl: z.string().url().nullable().optional(),
+      }).refine(value => Object.keys(value).length > 0, "At least one field must be updated."),
+    })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const updated = await db.update(malwareFamilies).set({ ...input.changes, updatedAt: new Date() })
+        .where(eq(malwareFamilies.id, input.id)).returning({ id: malwareFamilies.id, name: malwareFamilies.name });
+      if (!updated[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Malware family not found." });
+      await db.insert(auditLogs).values({ actorUserId: ctx.user.id, action: "malware.update", resourceType: "malwareFamily", resourceId: input.id });
+      return { success: true };
+    }),
+    deleteMalware: ownerAdminProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const deleted = await db.delete(malwareFamilies).where(eq(malwareFamilies.id, input.id)).returning({ id: malwareFamilies.id });
+      if (!deleted[0]) throw new TRPCError({ code: "NOT_FOUND" });
+      await db.insert(auditLogs).values({ actorUserId: ctx.user.id, action: "malware.delete", resourceType: "malwareFamily", resourceId: input.id });
+      return { success: true };
+    }),
+    instructorApplicationQueue: ownerAdminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      return db.select({
+        id: instructorApplications.id, userId: instructorApplications.userId,
+        expertise: instructorApplications.expertise, teachingExperience: instructorApplications.teachingExperience,
+        portfolioUrl: instructorApplications.portfolioUrl, linkedinUrl: instructorApplications.linkedinUrl,
+        sampleContentUrl: instructorApplications.sampleContentUrl, createdAt: instructorApplications.createdAt,
+        name: users.name, email: users.email,
+      }).from(instructorApplications).innerJoin(users, eq(instructorApplications.userId, users.id))
+        .where(eq(instructorApplications.status, "pending")).orderBy(desc(instructorApplications.createdAt)).limit(100);
+    }),
+    reviewInstructorApplication: ownerAdminProcedure.input(z.object({
+      applicationId: z.number().int().positive(),
+      decision: z.enum(["approve", "reject"]),
+      note: z.string().trim().max(2000).optional(),
+    })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const application = (await db.select().from(instructorApplications)
+        .where(and(eq(instructorApplications.id, input.applicationId), eq(instructorApplications.status, "pending"))).limit(1))[0];
+      if (!application) throw new TRPCError({ code: "NOT_FOUND", message: "Pending application not found." });
+      await db.transaction(async tx => {
+        await tx.update(instructorApplications).set({
+          status: input.decision === "approve" ? "approved" : "rejected",
+          reviewNote: input.note ?? null, reviewedBy: ctx.user.id, reviewedAt: new Date(), updatedAt: new Date(),
+        }).where(eq(instructorApplications.id, application.id));
+        if (input.decision === "approve") await tx.update(users).set({ role: "instructor" }).where(eq(users.id, application.userId));
+        await tx.insert(auditLogs).values({
+          actorUserId: ctx.user.id, action: `instructor-application.${input.decision}`,
+          resourceType: "instructorApplication", resourceId: application.id,
+          metadataJson: JSON.stringify({ userId: application.userId, note: input.note ?? null }),
+        });
+      });
+      return { success: true };
+    }),
+    labProposalQueue: ownerAdminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return [];
+      return db.select({
+        id: labTemplates.id, slug: labTemplates.slug, name: labTemplates.name, image: labTemplates.image,
+        description: labTemplates.description, cpuLimit: labTemplates.cpuLimit, memoryMb: labTemplates.memoryMb,
+        diskMb: labTemplates.diskMb, ttlSeconds: labTemplates.ttlSeconds,
+        exposedPortsJson: labTemplates.exposedPortsJson, createdAt: labTemplates.createdAt,
+        instructorName: users.name, instructorEmail: users.email,
+      }).from(labTemplates).leftJoin(users, eq(labTemplates.submittedByUserId, users.id))
+        .where(eq(labTemplates.reviewStatus, "pending")).orderBy(desc(labTemplates.createdAt)).limit(100);
+    }),
+    reviewLabProposal: ownerAdminProcedure.input(z.object({
+      labTemplateId: z.number().int().positive(),
+      decision: z.enum(["approve", "reject"]),
+    })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const status = input.decision === "approve" ? "approved" : "rejected";
+      const rows = await db.update(labTemplates).set({
+        reviewStatus: status, active: input.decision === "approve", reviewedBy: ctx.user.id,
+      }).where(and(eq(labTemplates.id, input.labTemplateId), eq(labTemplates.reviewStatus, "pending")))
+        .returning({ id: labTemplates.id, name: labTemplates.name });
+      if (!rows[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Pending lab proposal not found." });
+      await db.insert(auditLogs).values({
+        actorUserId: ctx.user.id, action: `lab-template.${input.decision}`,
+        resourceType: "labTemplate", resourceId: input.labTemplateId,
+      });
+      return { success: true };
+    }),
+    roadmapLinkOptions: ownerAdminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) return { tracks: [], levels: [], modules: [], courses: [], labs: [] };
+      const [trackRows, levelRows, moduleRows, courseRows, labRows] = await Promise.all([
+        db.select({ id: tracksTable.id, title: tracksTable.title }).from(tracksTable).orderBy(tracksTable.title),
+        db.select({ id: trackLevels.id, trackId: trackLevels.trackId, title: trackLevels.title, orderIndex: trackLevels.orderIndex }).from(trackLevels).orderBy(trackLevels.orderIndex),
+        db.select({ id: trackLevelModules.id, trackLevelId: trackLevelModules.trackLevelId, title: trackLevelModules.title, courseId: trackLevelModules.courseId, labTemplateId: trackLevelModules.labTemplateId }).from(trackLevelModules).orderBy(trackLevelModules.orderIndex),
+        db.select({ id: courses.id, title: courses.title, isPublished: courses.isPublished }).from(courses).orderBy(courses.title),
+        db.select({ id: labTemplates.id, name: labTemplates.name, active: labTemplates.active }).from(labTemplates).where(eq(labTemplates.active, true)).orderBy(labTemplates.name),
+      ]);
+      return { tracks: trackRows, levels: levelRows, modules: moduleRows, courses: courseRows, labs: labRows };
+    }),
+    linkRoadmapModule: ownerAdminProcedure.input(z.object({
+      moduleId: z.number().int().positive(),
+      courseId: z.number().int().positive().nullable(),
+      labTemplateId: z.number().int().positive().nullable(),
+    })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+      const module = (await db.select({ id: trackLevelModules.id }).from(trackLevelModules).where(eq(trackLevelModules.id, input.moduleId)).limit(1))[0];
+      if (!module) throw new TRPCError({ code: "NOT_FOUND", message: "Roadmap module not found." });
+      if (input.courseId !== null) {
+        const course = (await db.select({ id: courses.id }).from(courses).where(eq(courses.id, input.courseId)).limit(1))[0];
+        if (!course) throw new TRPCError({ code: "BAD_REQUEST", message: "Selected course does not exist." });
+      }
+      if (input.labTemplateId !== null) {
+        const lab = (await db.select({ id: labTemplates.id }).from(labTemplates).where(and(eq(labTemplates.id, input.labTemplateId), eq(labTemplates.active, true))).limit(1))[0];
+        if (!lab) throw new TRPCError({ code: "BAD_REQUEST", message: "Selected lab is not active." });
+      }
+      await db.update(trackLevelModules).set({ courseId: input.courseId, labTemplateId: input.labTemplateId }).where(eq(trackLevelModules.id, input.moduleId));
+      await db.insert(auditLogs).values({ actorUserId: ctx.user.id, action: "roadmap.module.link", resourceType: "trackLevelModule", resourceId: input.moduleId, metadataJson: JSON.stringify({ courseId: input.courseId, labTemplateId: input.labTemplateId }) });
+      return { success: true };
+    }),
     createChallenge: adminProcedure.input(z.object({
       slug: z.string().min(2).max(255),
       title: z.string().min(2).max(255),
@@ -584,6 +916,7 @@ export const appRouter = router({
         .where(and(eq(courses.id, input.id), eq(courses.isPublished, false)))
         .returning({ id: courses.id, title: courses.title });
       if (!row[0]) throw new TRPCError({ code: "NOT_FOUND", message: "Draft course not found or already published." });
+      await db.update(courseLessons).set({ isPublished: true, updatedAt: new Date() }).where(eq(courseLessons.courseId, input.id));
       const recipients = await db.select({ id: users.id }).from(users);
       if (NOTIFICATIONS_ENABLED && recipients.length) await db.insert(notifications).values(recipients.map(recipient => ({
         userId: recipient.id, type: "content" as const,
