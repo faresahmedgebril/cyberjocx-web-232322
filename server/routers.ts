@@ -723,7 +723,7 @@ export const appRouter = router({
       description: z.string().trim().min(20).max(10000),
       targets: z.string().trim().min(2).max(2000),
       mitreTechniques: z.string().trim().max(2000).default(""),
-      sourceUrl: z.string().url().optional(),
+      sourceUrl: z.string().url(),
     })).mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
