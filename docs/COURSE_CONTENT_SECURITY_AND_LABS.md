@@ -28,6 +28,14 @@ Do not use `db:push` to bypass the committed migration. Verify that the new tabl
 
 ## 3. Private course assets
 
+The deployed `cyberjocx-api` Worker must be given these bindings so the API runtime can see the storage credentials:
+
+- Plain-text bindings: `STORAGE_PROVIDER=r2`, `STORAGE_ENDPOINT=https://<ACCOUNT_ID>.r2.cloudflarestorage.com`, `STORAGE_REGION=auto`, `STORAGE_BUCKET=<private-bucket-name>`.
+- Secret bindings: `STORAGE_ACCESS_KEY` and `STORAGE_SECRET_KEY`.
+- Keep `STORAGE_PUBLIC_BASE_URL` unset for this private bucket.
+
+The R2 service must first be enabled for the Cloudflare account in the dashboard. Then create a dedicated private bucket (for example `cyberjocx-course-assets`) and create scoped R2 API credentials for that bucket. The Cloudflare account currently returned “Please enable R2 through the Cloudflare Dashboard” on its bucket-list API, so no bucket was created by this change.
+
 Course lesson files use object keys (not public URLs) in PostgreSQL. The API issues a 15-minute signed upload URL to an instructor for a lesson in their own unpublished course draft; students receive a 15-minute signed download URL only after both the course and lesson are published and the course catalog is open.
 
 Configure the configured S3/R2 bucket as private. Do not attach a public R2 custom domain to the course-content bucket and do not set `STORAGE_PUBLIC_BASE_URL` for it. Configure bucket CORS to allow `PUT` from the CyberJocx frontend origin and allow the `Content-Type` header. The current app-level AES-256-GCM encryption covers lesson **text**; uploaded video/PDF/ZIP assets are access-controlled using private storage and short-lived signed URLs, not browser-proof DRM.
@@ -41,7 +49,7 @@ Configure the configured S3/R2 bucket as private. Do not attach a public R2 cust
 5. The owner approves course drafts and lab proposals. Only approved active Lab templates are visible to learners.
 6. The owner links Roadmap modules to courses and active Lab templates from Admin > Roadmap graph.
 
-No real container runtime is provisioned by this change. Approving a Lab template only makes the template selectable in CyberJocx; actual execution still depends on the existing isolated Lab Manager service and its `LAB_MANAGER_URL` / `LAB_MANAGER_TOKEN` configuration.
+No real container runtime is provisioned by this change. The production Worker previously did not pass `LAB_MANAGER_URL` / `LAB_MANAGER_TOKEN` into the API runtime; this PR now forwards these bindings. Actual execution still depends on deploying a separate isolated Lab Manager service that implements `POST /v1/instances` and `DELETE /v1/instances/{instanceId}`, then configuring `LAB_MANAGER_URL` as plain text and `LAB_MANAGER_TOKEN` as a Worker secret. The Labs UI and proposal flow do not start containers until that service is online.
 
 ## 5. Access and rollout notes
 
