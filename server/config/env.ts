@@ -48,6 +48,7 @@ const envSchema = z.object({
   AI_RATE_LIMIT: z.coerce.number().int().positive().default(20),
   PUBLIC_API_RATE_LIMIT: z.coerce.number().int().positive().default(300),
   USER_MUTATION_RATE_LIMIT: z.coerce.number().int().positive().default(120),
+  COURSE_CONTENT_ENCRYPTION_KEY: z.string().optional(),
   COURSES_COMING_SOON: z.preprocess(value => {
     if (typeof value === "boolean") return value;
     if (typeof value === "string") return value.toLowerCase() === "true";
@@ -91,6 +92,7 @@ if (raw.NODE_ENV === "production") {
     if (!raw.GMAIL_SCRIPT_URL || !raw.GMAIL_SCRIPT_TOKEN) console.warn("[config] Support and password reset emails are disabled until GMAIL_SCRIPT_URL and GMAIL_SCRIPT_TOKEN are configured.");
     if (raw.STORAGE_PROVIDER === "s3" && (!raw.STORAGE_BUCKET || !raw.STORAGE_ACCESS_KEY || !raw.STORAGE_SECRET_KEY)) console.warn("[config] S3 uploads are disabled until STORAGE_BUCKET, STORAGE_ACCESS_KEY and STORAGE_SECRET_KEY are configured.");
     if (!raw.CRON_SECRET) console.warn("[config] CRON_SECRET is not configured; scheduled NVD sync will be unavailable.");
+    if (!raw.COURSE_CONTENT_ENCRYPTION_KEY) console.warn("[config] COURSE_CONTENT_ENCRYPTION_KEY is not configured; encrypted course lesson publishing/reading will be unavailable.");
   }
 }
 
