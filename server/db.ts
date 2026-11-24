@@ -10,6 +10,7 @@ import {
   cves,
   friendRequests,
   follows,
+  labTemplates,
   malwareFamilies,
   notifications,
   nvdSyncRuns,
