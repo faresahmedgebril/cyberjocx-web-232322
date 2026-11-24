@@ -7,7 +7,7 @@ import { ComingSoonModal } from "@/components/ComingSoonModal";
 type IconName =
   | "home" | "server" | "target" | "trophy" | "user" | "book" | "roadmap"
   | "shield" | "bug" | "tools" | "users" | "store" | "settings" | "sun" | "moon"
-  | "bell" | "search" | "star" | "terminal" | "check" | "lock" | "bolt"
+  | "search" | "star" | "terminal" | "check" | "lock" | "bolt"
   | "code" | "network" | "linux" | "chevron" | "message" | "close" | "expand" | "logout"
 
 const iconPaths: Record<IconName, ReactNode> = {
@@ -26,7 +26,6 @@ const iconPaths: Record<IconName, ReactNode> = {
   settings: <><circle cx="12" cy="12" r="3" /><path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.4 3.1a7 7 0 0 0-1.7 1L5 6.1 3 9.5 5.1 11a7 7 0 0 0 0 2L3 14.5l2 3.4 2.4-1a7 7 0 0 0 1.7 1l.4 3.1h5l.4-3.1a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2.1-1.5c.1-.3.1-.7.1-1Z" /></>,
   sun: <><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M5 19l1.5-1.5M17.5 6.5 19 5" /></>,
   moon: <path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11Z" />,
-  bell: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4" /></>,
   search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-4-4" /></>,
   star: <path d="m12 2 3 6 6.5 1-4.8 4.6 1.2 6.4-5.9-3.1L6.1 20l1.2-6.4L2.5 9 9 8Z" />,
   terminal: <><path d="m5 7 4 4-4 4M11 16h7" /><rect x="2" y="3" width="20" height="18" rx="2" /></>,
@@ -78,36 +77,21 @@ function SectionTitle({ icon, children, action, onAction }: { icon: IconName; ch
 
 export function DashboardRightRail({
   onNavigate,
-  notifications = [],
   stats,
   courses = [],
 }: {
   onNavigate: (target: string) => void;
-  notifications?: Array<{ id: number; type: "cve" | "content" | "system"; title: string; message: string; createdAt: string | Date; isRead: boolean }>;
   stats: { points: number; coursesCompleted: number; activeCourses: number; cvesTracked: number };
   courses?: Array<{ id?: number | string; title: string; category?: string; level?: string; progress?: number }>;
 }) {
-  const recent = notifications.slice(0, 4);
   const nextCourse = courses.find(course => Number(course.progress ?? 0) < 100);
 
   return (
     <div className="right-column">
-      <Panel className="activity-panel">
-        <SectionTitle icon="bolt" action="Open CVE Center" onAction={() => onNavigate("cves")}>Recent Activity</SectionTitle>
-        {recent.length ? (
-          <div className="activity-list">
-            {recent.map(item => (
-              <article className="activity-item" key={item.id}>
-                <span className={item.type === "cve" ? "purple" : item.type === "content" ? "green" : "blue"}>
-                  <Icon name={item.type === "cve" ? "shield" : item.type === "content" ? "book" : "bolt"} size={18} />
-                </span>
-                <div><strong>{item.title}</strong><small>{item.message}</small></div>
-              </article>
-            ))}
-          </div>
-        ) : (
-          <div className="dashboard-placeholder">Your latest platform activity will appear here.</div>
-        )}
+      <Panel className="activity-panel cj-threat-snapshot">
+        <SectionTitle icon="shield" action="Open CVE Center" onAction={() => onNavigate("cves")}>Threat Snapshot</SectionTitle>
+        <div className="cj-threat-count"><strong>{stats.cvesTracked.toLocaleString("en-US")}</strong><span>سجل ثغرة مفهرس في قاعدة البيانات</span></div>
+        <p>تم إيقاف الإشعارات داخل المنصة لتقليل التخزين والطلبات الخلفية. يمكن متابعة سجل الثغرات من مركز CVE.</p>
       </Panel>
 
       <Panel className="terminal-panel">
@@ -133,15 +117,6 @@ export function DashboardRightRail({
 }
 
 
-type DashboardNotification = {
-  id: number;
-  type: "cve" | "content" | "system";
-  title: string;
-  message: string;
-  isRead: boolean;
-  createdAt: string | Date;
-};
-
 type FigmaDashboardProps = {
   stats: { points: number; coursesCompleted: number; activeCourses: number; cvesTracked: number };
   learningCourses: Array<{ id?: number | string; title: string; category?: string; level?: string; progress?: number; availabilityStatus?: "coming-soon" | "available" }>;
@@ -150,9 +125,6 @@ type FigmaDashboardProps = {
   userRole?: string | null;
   activePage?: string;
   pageContent?: ReactNode;
-  notifications?: DashboardNotification[];
-  onNotificationRead?: (id: number) => void;
-  onNotificationReadAll?: () => void;
   onNavigate: (target: string) => void;
   onOpenAuth: () => void;
   onLogout?: () => void;
@@ -166,9 +138,6 @@ export default function FigmaDashboard({
   userRole,
   activePage = "Home",
   pageContent,
-  notifications = [],
-  onNotificationRead,
-  onNotificationReadAll,
   onNavigate,
   onOpenAuth,
   onLogout,
@@ -191,9 +160,7 @@ export default function FigmaDashboard({
   const [comingSoonOpen, setComingSoonOpen] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [navCollapsed, setNavCollapsed] = useState(false)
-  const [notificationsOpen, setNotificationsOpen] = useState(false)
   const { theme, toggleTheme } = useTheme();
-  const unreadNotifications = notifications.filter(item => !item.isRead);
   const visibleNavigation = navigation.filter(item => (!item.adminOnly || userRole === "admin") && (!item.instructorOnly || userRole === "instructor" || userRole === "admin"));
 
   useEffect(() => setActiveNav(activePage), [activePage]);
@@ -216,31 +183,6 @@ export default function FigmaDashboard({
         <button className="round-button nav-toggle" type="button" aria-label={mobileNavOpen ? "Close navigation" : "Open navigation"} aria-expanded={mobileNavOpen} onClick={() => { if (isMobileNavigationViewport(window.innerWidth)) setMobileNavOpen(value => !value); else setNavCollapsed(value => !value); }}>
           <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" /></svg>
         </button>
-        <div className="notification-anchor">
-          <button className="round-button notification" type="button" aria-label="Notifications" aria-expanded={notificationsOpen} onClick={() => setNotificationsOpen(value => !value)}>
-            <Icon name="bell" size={26} />
-            {unreadNotifications.length > 0 && <i>{unreadNotifications.length > 99 ? "99+" : unreadNotifications.length}</i>}
-          </button>
-          {notificationsOpen && (
-            <div className="notification-popover" role="dialog" aria-label="Notifications">
-              <div className="notification-popover-head">
-                <strong>Notifications</strong>
-                <button type="button" onClick={onNotificationReadAll} disabled={unreadNotifications.length === 0}>Mark all read</button>
-              </div>
-              <div className="notification-list">
-                {notifications.length === 0 ? (
-                  <p className="notification-empty">No notifications yet.</p>
-                ) : notifications.slice(0, 20).map(item => (
-                  <button type="button" key={item.id} className={`notification-item ${item.isRead ? "is-read" : "is-unread"}`} onClick={() => { if (!item.isRead) onNotificationRead?.(item.id); }}>
-                    <span className={`notification-type ${item.type}`}><Icon name={item.type === "cve" ? "shield" : item.type === "content" ? "book" : "bolt"} size={16} /></span>
-                    <span className="notification-copy"><b>{item.title}</b><small>{item.message}</small><time>{new Date(item.createdAt).toLocaleString()}</time></span>
-                    {!item.isRead && <i className="notification-unread-dot" />}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
         <button className="round-button" type="button" aria-label={theme === "dark" ? "Switch to daylight mode" : "Switch to night mode"} aria-pressed={theme === "dark"} onClick={toggleTheme}>
           <Icon name={theme === "dark" ? "sun" : "moon"} size={25} />
         </button>
@@ -295,7 +237,7 @@ export default function FigmaDashboard({
           </Panel>
         </div>
 
-        <DashboardRightRail onNavigate={onNavigate} notifications={notifications} stats={liveStats} courses={learningCourses} />
+        <DashboardRightRail onNavigate={onNavigate} stats={liveStats} courses={learningCourses} />
       </div>}
     </main>
 

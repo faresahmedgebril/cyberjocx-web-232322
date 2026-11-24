@@ -1,0 +1,88 @@
+name: Weekly encrypted Neon backup to Google Drive
+
+on:
+  schedule:
+    - cron: "0 0 * * 0"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cyberjocx-weekly-drive-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    name: Dump, encrypt and upload Neon production backup
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check required secrets
+        shell: bash
+        env:
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+          BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          missing=()
+          [[ -n "$NEON_DATABASE_URL" ]] || missing+=("NEON_DATABASE_URL")
+          [[ -n "$GOOGLE_SERVICE_ACCOUNT_JSON" ]] || missing+=("GOOGLE_SERVICE_ACCOUNT_JSON")
+          [[ -n "$GOOGLE_DRIVE_FOLDER_ID" ]] || missing+=("GOOGLE_DRIVE_FOLDER_ID")
+          [[ -n "$BACKUP_ENCRYPTION_PASSPHRASE" ]] || missing+=("BACKUP_ENCRYPTION_PASSPHRASE")
+          if (( ${#missing[@]} )); then
+            printf 'Missing GitHub repository secrets: %s\n' "${missing[*]}"
+            echo "Follow docs/BACKUP_TO_GOOGLE_DRIVE.md before enabling the scheduled backup."
+            exit 1
+          fi
+          if (( ${#BACKUP_ENCRYPTION_PASSPHRASE} < 32 )); then
+            echo "BACKUP_ENCRYPTION_PASSPHRASE must contain at least 32 characters."
+            exit 1
+          fi
+
+      - name: Create PostgreSQL 18 custom-format dump
+        id: dump
+        shell: bash
+        env:
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          backup_name="cyberjocx-neon-weekly-$(date -u +%Y%m%dT%H%M%SZ).dump"
+          docker run --rm \
+            --env NEON_DATABASE_URL \
+            --env BACKUP_FILENAME="$backup_name" \
+            --volume "$RUNNER_TEMP:/backup" \
+            postgres:18-alpine \
+            sh -ec 'pg_dump --dbname="$NEON_DATABASE_URL" --format=custom --no-owner --no-acl --file="/backup/$BACKUP_FILENAME"'
+          backup_path="$RUNNER_TEMP/$backup_name"
+          test -s "$backup_path"
+          echo "backup_path=$backup_path" >> "$GITHUB_OUTPUT"
+          echo "Created a PostgreSQL custom-format dump (contents are not printed)."
+
+      - name: Install backup uploader dependencies
+        run: |
+          python -m pip install --disable-pip-version-check \
+            "google-api-python-client>=2.150,<3" \
+            "google-auth>=2.35,<3" \
+            "cryptography>=43,<47"
+
+      - name: Encrypt and upload to Google Drive Shared Drive
+        shell: bash
+        env:
+          BACKUP_FILE: ${{ steps.dump.outputs.backup_path }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          GOOGLE_DRIVE_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_FOLDER_ID }}
+          BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          python scripts/backup_neon_to_drive.py --input "$BACKUP_FILE"
+
+      - name: Clean temporary backup files
+        if: always()
+        shell: bash
+        run: |
+          find "$RUNNER_TEMP" -maxdepth 1 -type f \
+            \( -name 'cyberjocx-neon-weekly-*.dump' -o -name 'cyberjocx-neon-weekly-*.dump.enc' \) \
+            -delete
