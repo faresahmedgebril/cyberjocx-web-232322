@@ -71,6 +71,24 @@ export const courses = pgTable("courses", {
   updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
 });
 
+export const instructorApplications = pgTable("instructorApplications", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull().references(() => users.id, { onDelete: "cascade" }).unique(),
+  expertise: varchar("expertise", { length: 255 }).notNull(),
+  teachingExperience: text("teachingExperience").notNull(),
+  portfolioUrl: text("portfolioUrl"),
+  linkedinUrl: text("linkedinUrl"),
+  sampleContentUrl: text("sampleContentUrl"),
+  status: varchar("status", { length: 24 }).default("pending").notNull(),
+  reviewNote: text("reviewNote"),
+  reviewedBy: integer("reviewedBy").references(() => users.id, { onDelete: "set null" }),
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
+}, table => [
+  index("instructorApplications_status_createdAt_idx").on(table.status, table.createdAt),
+]);
+
 export const courseChangeRequests = pgTable("courseChangeRequests", {
   id: serial("id").primaryKey(),
   courseId: integer("courseId").notNull().references(() => courses.id, { onDelete: "cascade" }),
@@ -93,6 +111,25 @@ export const roadmaps = pgTable("roadmaps", {
   focus: varchar("focus", { length: 120 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
+
+export const courseLessons = pgTable("courseLessons", {
+  id: serial("id").primaryKey(),
+  courseId: integer("courseId").notNull().references(() => courses.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 255 }).notNull(),
+  contentCiphertext: text("contentCiphertext").notNull(),
+  contentIv: varchar("contentIv", { length: 64 }).notNull(),
+  contentAuthTag: varchar("contentAuthTag", { length: 64 }).notNull(),
+  keyVersion: varchar("keyVersion", { length: 16 }).default("v1").notNull(),
+  assetObjectKey: text("assetObjectKey"),
+  assetContentType: varchar("assetContentType", { length: 120 }),
+  assetSizeBytes: integer("assetSizeBytes"),
+  orderIndex: integer("orderIndex").default(0).notNull(),
+  isPublished: boolean("isPublished").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().$onUpdate(() => new Date()).notNull(),
+}, table => [
+  index("courseLessons_course_order_idx").on(table.courseId, table.orderIndex),
+]);
 
 export const roadmapCourses = pgTable("roadmapCourses", {
   id: serial("id").primaryKey(),
@@ -175,6 +212,8 @@ export const trackLevelModules = pgTable("trackLevelModules", {
   actionItems: text("actionItems").notNull(),
   videoUrl: text("videoUrl"),
   orderIndex: integer("orderIndex").notNull(),
+  courseId: integer("courseId"),
+  labTemplateId: integer("labTemplateId"),
 });
 
 export const userTrackLevels = pgTable("userTrackLevels", {
@@ -443,6 +482,9 @@ export const labTemplates = pgTable("labTemplates", {
   ttlSeconds: integer("ttlSeconds").default(3600).notNull(),
   exposedPortsJson: text("exposedPortsJson").notNull(),
   active: boolean("active").default(true).notNull(),
+  submittedByUserId: integer("submittedByUserId").references(() => users.id, { onDelete: "set null" }),
+  reviewStatus: varchar("reviewStatus", { length: 24 }).default("approved").notNull(),
+  reviewedBy: integer("reviewedBy").references(() => users.id, { onDelete: "set null" }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -587,6 +629,8 @@ export type InsertUser = typeof users.$inferInsert;
 export type Session = typeof sessions.$inferSelect;
 export type Course = typeof courses.$inferSelect;
 export type CourseChangeRequest = typeof courseChangeRequests.$inferSelect;
+export type InstructorApplication = typeof instructorApplications.$inferSelect;
+export type CourseLesson = typeof courseLessons.$inferSelect;
 export type Roadmap = typeof roadmaps.$inferSelect;
 export type Track = typeof tracks.$inferSelect;
 export type CVE = typeof cves.$inferSelect;

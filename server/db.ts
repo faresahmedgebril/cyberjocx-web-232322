@@ -10,6 +10,7 @@ import {
   cves,
   friendRequests,
   follows,
+  labTemplates,
   malwareFamilies,
   notifications,
   nvdSyncRuns,
@@ -185,7 +186,15 @@ export async function getTrackRoadmap(userId: number | undefined, trackId: numbe
     const quiz = (await db.select().from(trackQuizzes).where(eq(trackQuizzes.trackLevelId, level.id)).limit(1))[0];
     const questions = quiz ? await db.select().from(quizQuestions).where(eq(quizQuestions.quizId, quiz.id)).orderBy(quizQuestions.orderIndex) : [];
     const certificate = userId ? (await db.select().from(certificates).where(and(eq(certificates.userId, userId), eq(certificates.trackLevelId, level.id))).limit(1))[0] : undefined;
-    return { ...level, completed: completedLevels.has(level.orderIndex), active: (userLevel?.currentLevel ?? 1) === level.orderIndex, modules: await db.select().from(trackLevelModules).where(eq(trackLevelModules.trackLevelId, level.id)).orderBy(trackLevelModules.orderIndex), quiz: quiz ? { ...quiz, questions } : null, certificate: certificate ?? null };
+    const moduleRows = await db.select().from(trackLevelModules).where(eq(trackLevelModules.trackLevelId, level.id)).orderBy(trackLevelModules.orderIndex);
+    const modules = await Promise.all(moduleRows.map(async module => {
+      const [course, lab] = await Promise.all([
+        module.courseId ? db.select({ id: courses.id, title: courses.title, category: courses.category, level: courses.level, isPublished: courses.isPublished }).from(courses).where(eq(courses.id, module.courseId)).limit(1) : Promise.resolve([]),
+        module.labTemplateId ? db.select({ id: labTemplates.id, name: labTemplates.name, description: labTemplates.description, active: labTemplates.active }).from(labTemplates).where(and(eq(labTemplates.id, module.labTemplateId), eq(labTemplates.active, true))).limit(1) : Promise.resolve([]),
+      ]);
+      return { ...module, course: course[0] ?? null, lab: lab[0] ?? null };
+    }));
+    return { ...level, completed: completedLevels.has(level.orderIndex), active: (userLevel?.currentLevel ?? 1) === level.orderIndex, modules, quiz: quiz ? { ...quiz, questions } : null, certificate: certificate ?? null };
   }));
   return { track, currentLevel: userLevel?.currentLevel ?? 1, levels: levelData };
 }

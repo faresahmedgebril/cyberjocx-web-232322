@@ -15,6 +15,13 @@
       "when": 1793793300000,
       "tag": "0001_instructor_course_approval",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795536000000,
+      "tag": "0002_instructor_malware_course_labs_roadmaps",
+      "breakpoints": true
     }
   ]
 }
