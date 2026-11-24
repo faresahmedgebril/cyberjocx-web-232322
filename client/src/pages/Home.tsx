@@ -13,6 +13,9 @@ import { ComingSoonModal } from "@/components/ComingSoonModal";
 import SettingsView from "@/features/settings/SettingsView";
 import LeaderboardView from "@/features/leaderboard/LeaderboardView";
 import NexusAssistantView from "@/features/ai/NexusAssistantView";
+import MalwareManager from "@/features/admin/MalwareManager";
+import AdminTrainingManager from "@/features/admin/AdminTrainingManager";
+import { InstructorApplicationView, InstructorStudioView } from "@/features/instructor/InstructorPortal";
 import "./HomePagesPolish.css";
 
 function safeExternalUrl(value: unknown): string | undefined {
@@ -25,10 +28,10 @@ function safeExternalUrl(value: unknown): string | undefined {
   }
 }
 
-type Section = "dashboard" | "profile" | "learning" | "tracks" | "cves" | "malware" | "tools" | "community" | "market" | "leaderboard" | "settings" | "ai" | "admin" | "instructor" | "ctf" | "labs";
+type Section = "dashboard" | "profile" | "learning" | "tracks" | "cves" | "malware" | "tools" | "community" | "market" | "leaderboard" | "settings" | "ai" | "admin" | "instructor" | "instructorApply" | "ctf" | "labs";
 
 function SectionIcon({ section }: { section: Section }) {
-  const icons = { dashboard: LayoutDashboard, profile: CircleUserRound, learning: Library, tracks: Network, cves: ShieldAlert, malware: Bug, tools: Wrench, community: Users, market: ShoppingBag, leaderboard: Trophy, settings: Settings2, ai: Bot, admin: Gauge, instructor: BookOpen, ctf: Terminal, labs: Boxes };
+  const icons = { dashboard: LayoutDashboard, profile: CircleUserRound, learning: Library, tracks: Network, cves: ShieldAlert, malware: Bug, tools: Wrench, community: Users, market: ShoppingBag, leaderboard: Trophy, settings: Settings2, ai: Bot, admin: Gauge, instructor: BookOpen, instructorApply: UserPlus, ctf: Terminal, labs: Boxes };
   const Icon = icons[section];
   return <Icon size={17} strokeWidth={1.8} />;
 }
@@ -99,13 +102,14 @@ export default function Home() {
     { id: "ai", label: "NEXUS AI", meta: "AI" },
     { id: "settings", label: "الإعدادات", meta: "CFG" },
   ];
+  if (user?.role === "user" || !isAuthenticated) navItems.push({ id: "instructorApply", label: "انضم كمدرّس", meta: "TEACH" });
   if (user?.role === "instructor" || user?.role === "admin") navItems.push({ id: "instructor", label: "Instructor Studio", meta: "TEACH" });
   if (user?.role === "admin") navItems.push({ id: "admin", label: "غرفة المدير", meta: "A" });
 
   const navigate = (target: Section) => { setSection(target); setMobileOpen(false); };
-  const figmaTargets: Record<string, Section> = { dashboard: "dashboard", profile: "profile", learning: "learning", tracks: "tracks", cves: "cves", malware: "malware", tools: "tools", community: "community", market: "market", leaderboard: "leaderboard", settings: "settings", ai: "ai", admin: "admin", instructor: "instructor", ctf: "ctf", labs: "labs" };
+  const figmaTargets: Record<string, Section> = { dashboard: "dashboard", profile: "profile", learning: "learning", tracks: "tracks", cves: "cves", malware: "malware", tools: "tools", community: "community", market: "market", leaderboard: "leaderboard", settings: "settings", ai: "ai", admin: "admin", instructor: "instructor", instructorApply: "instructorApply", ctf: "ctf", labs: "labs" };
   const handleFigmaNavigate = (target: string) => { const destination = figmaTargets[target]; if (destination) navigate(destination); else toast.info(`${target} module is not available yet.`); };
-  const titleMap: Record<Section, string> = { dashboard: "CYBERJOCX", profile: "YOUR PROFILE", learning: "مسارات التعلّم", tracks: "مساراتك التعليمية", cves: "مركز الثغرات CVE", malware: "مركز Malware", tools: "دليل الأدوات", community: "المجتمع", market: "مكتبة CyberJocx", leaderboard: "LEADERBOARD", settings: "SETTINGS", ai: "NEXUS", admin: "إدارة المنصة", instructor: "INSTRUCTOR STUDIO", ctf: "CTF ARENA", labs: "PRACTICE LABS" };
+  const titleMap: Record<Section, string> = { dashboard: "CYBERJOCX", profile: "YOUR PROFILE", learning: "مسارات التعلّم", tracks: "مساراتك التعليمية", cves: "مركز الثغرات CVE", malware: "مركز Malware", tools: "دليل الأدوات", community: "المجتمع", market: "مكتبة CyberJocx", leaderboard: "LEADERBOARD", settings: "SETTINGS", ai: "NEXUS", admin: "إدارة المنصة", instructor: "INSTRUCTOR STUDIO", instructorApply: "INSTRUCTOR APPLICATION", ctf: "CTF ARENA", labs: "PRACTICE LABS" };
 
   if (loading) return (
     <div className="launch-loader" role="status" aria-live="polite">
@@ -153,8 +157,9 @@ export default function Home() {
       {section === "leaderboard" && <LeaderboardView stats={{ points: isAuthenticated ? stats.points : null, coursesCompleted: isAuthenticated ? stats.coursesCompleted : null, cvesTracked: isAuthenticated ? (stats.cvesTracked || cves.length) : null }} userName={displayUserName} onSignIn={() => isAuthenticated ? navigate("profile") : startLogin()} />}
       {section === "settings" && <SettingsView user={user} isAuthenticated={isAuthenticated} onOpenProfile={() => navigate("profile")} />}
       {section === "ai" && <NexusAssistantView messages={aiMessages} input={aiInput} setInput={setAiInput} onAsk={() => { const message = aiInput.trim(); if (!message || !isAuthenticated || askAI.isPending) return; setAiMessages(messages => [...messages, { role: "user", content: message }]); askAI.mutate({ message, history: aiMessages.slice(-12) }); setAiInput(""); }} onNewChat={() => { setAiMessages([]); setAiInput(""); }} isLoading={askAI.isPending} isAuthenticated={isAuthenticated} onSignIn={startLogin} />}
-      {section === "admin" && (user?.role === "admin" ? <><AdminView /><AdminWorkflowPanel /></> : <ModuleState title="لوحة الإدارة مخصصة لحساب المدير فقط." error />)}
-      {section === "instructor" && (user?.role === "instructor" || user?.role === "admin" ? <InstructorView /> : <ModuleState title="مساحة المدرّس مخصصة للحسابات المعتمدة فقط." error />)}
+      {section === "admin" && (user?.role === "admin" ? <><AdminView /><AdminWorkflowPanel /><MalwareManager /><AdminTrainingManager /></> : <ModuleState title="لوحة الإدارة مخصصة لحساب المدير فقط." error />)}
+      {section === "instructorApply" && <InstructorApplicationView isAuthenticated={isAuthenticated} />}
+      {section === "instructor" && (user?.role === "instructor" || user?.role === "admin" ? <InstructorStudioView /> : <ModuleState title="مساحة المدرّس مخصصة للحسابات المعتمدة فقط." error />)}
       {section === "ctf" && <CtfView isAuthenticated={isAuthenticated} onSignIn={startLogin} />}
       {section === "labs" && <LabsView isAuthenticated={isAuthenticated} onSignIn={startLogin} />}
     </section>
@@ -167,7 +172,7 @@ export default function Home() {
       userName={displayUserName}
       userAvatarUrl={user?.avatarUrl ?? null}
       userRole={user?.role ?? null}
-      activePage={({ dashboard: "Home", profile: "Profile", learning: "Courses", tracks: "Roadmap", cves: "CVE Center", malware: "Malware", tools: "Labs", community: "Community", market: "Market", leaderboard: "Leaderboard", settings: "Settings", ai: "AI Assistant", admin: "Admin Console", instructor: "Instructor Studio", ctf: "CTF", labs: "Labs" } satisfies Record<Section, string>)[section]}
+      activePage={({ dashboard: "Home", profile: "Profile", learning: "Courses", tracks: "Roadmap", cves: "CVE Center", malware: "Malware", tools: "Labs", community: "Community", market: "Market", leaderboard: "Leaderboard", settings: "Settings", ai: "AI Assistant", admin: "Admin Console", instructor: "Instructor Studio", instructorApply: "Instructor Application", ctf: "CTF", labs: "Labs" } satisfies Record<Section, string>)[section]}
       pageContent={pageContent}
       onNavigate={handleFigmaNavigate}
       onOpenAuth={() => isAuthenticated ? navigate("profile") : startLogin()}
