@@ -6,7 +6,7 @@ import { trpc } from "@/lib/trpc";
 export function InstructorApplicationView({ isAuthenticated }: { isAuthenticated: boolean }) {
   const status = trpc.instructor.applicationStatus.useQuery(undefined, { enabled: isAuthenticated });
   const [form, setForm] = useState({ expertise: "", teachingExperience: "", portfolioUrl: "", linkedinUrl: "", sampleContentUrl: "" });
-  const apply = trpc.instructor.apply.useMutation({
+  const apply = trpc.instructor.submitApplication.useMutation({
     onSuccess: async () => { await status.refetch(); toast.success("اترسل طلبك للمراجعة. الصلاحية مش هتتفتح غير بعد اعتماد الإدارة."); },
     onError: error => toast.error(error.message || "تعذر إرسال الطلب."),
   });
