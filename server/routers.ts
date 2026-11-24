@@ -456,7 +456,7 @@ export const appRouter = router({
       }).from(instructorApplications).where(eq(instructorApplications.userId, ctx.user.id)).limit(1))[0] ?? null;
       return { role: ctx.user.role, application };
     }),
-    apply: protectedProcedure.input(z.object({
+    submitApplication: protectedProcedure.input(z.object({
       expertise: z.string().trim().min(3).max(255),
       teachingExperience: z.string().trim().min(30).max(5000),
       portfolioUrl: z.string().url().optional().or(z.literal("")),
