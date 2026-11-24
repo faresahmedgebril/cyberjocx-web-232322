@@ -11,6 +11,15 @@ interface CyberJocxWorkerEnv {
   PUBLIC_API_RATE_LIMIT?: string;
   CRON_SECRET?: string;
   COURSE_CONTENT_ENCRYPTION_KEY?: string;
+  STORAGE_PROVIDER?: string;
+  STORAGE_ENDPOINT?: string;
+  STORAGE_REGION?: string;
+  STORAGE_BUCKET?: string;
+  STORAGE_ACCESS_KEY?: string;
+  STORAGE_SECRET_KEY?: string;
+  STORAGE_PUBLIC_BASE_URL?: string;
+  LAB_MANAGER_URL?: string;
+  LAB_MANAGER_TOKEN?: string;
   OWNER_OPEN_ID?: string;
   RESEND_API_KEY?: string;
   AUTH_EMAIL_FROM?: string;
@@ -57,6 +66,15 @@ async function ensureApiInitialized(bindings: CyberJocxWorkerEnv): Promise<void>
       const optionalEnvironment: Record<string, string | undefined> = {
         CRON_SECRET: bindings.CRON_SECRET,
         COURSE_CONTENT_ENCRYPTION_KEY: bindings.COURSE_CONTENT_ENCRYPTION_KEY,
+        STORAGE_PROVIDER: bindings.STORAGE_PROVIDER,
+        STORAGE_ENDPOINT: bindings.STORAGE_ENDPOINT,
+        STORAGE_REGION: bindings.STORAGE_REGION,
+        STORAGE_BUCKET: bindings.STORAGE_BUCKET,
+        STORAGE_ACCESS_KEY: bindings.STORAGE_ACCESS_KEY,
+        STORAGE_SECRET_KEY: bindings.STORAGE_SECRET_KEY,
+        STORAGE_PUBLIC_BASE_URL: bindings.STORAGE_PUBLIC_BASE_URL,
+        LAB_MANAGER_URL: bindings.LAB_MANAGER_URL,
+        LAB_MANAGER_TOKEN: bindings.LAB_MANAGER_TOKEN,
         OWNER_OPEN_ID: bindings.OWNER_OPEN_ID,
         RESEND_API_KEY: bindings.RESEND_API_KEY,
         AUTH_EMAIL_FROM: bindings.AUTH_EMAIL_FROM,
