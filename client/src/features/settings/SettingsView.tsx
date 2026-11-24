@@ -1,16 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  Bell, Check, ChevronRight, CreditCard, Globe, Link2, LockKeyhole, Moon,
+  Check, ChevronRight, CreditCard, Globe, Link2, LockKeyhole, Moon,
   Shield, Sun, Trash2, UserRound, Monitor, Pencil, Sparkles, Laptop,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/contexts/ThemeContext";
 import { trpc } from "@/lib/trpc";
 import { ComingSoonModal } from "@/components/ComingSoonModal";
-import { loadNotificationPreferences, saveNotificationPreferences } from "./preferences";
 import "./settings.css";
 
-type SettingsTab = "account" | "security" | "notifications" | "appearance" | "privacy" | "billing" | "connected" | "language";
+type SettingsTab = "account" | "security" | "appearance" | "privacy" | "billing" | "connected" | "language";
 type UserSummary = {
   id?: number;
   name?: string | null;
@@ -23,7 +22,6 @@ type UserSummary = {
 const settingsTabs: { id: SettingsTab; label: string; icon: typeof UserRound }[] = [
   { id: "account", label: "Account", icon: UserRound },
   { id: "security", label: "Security", icon: Shield },
-  { id: "notifications", label: "Notifications", icon: Bell },
   { id: "appearance", label: "Appearance", icon: Moon },
   { id: "privacy", label: "Privacy", icon: LockKeyhole },
   { id: "billing", label: "Billing & Plans", icon: CreditCard },
@@ -51,7 +49,6 @@ export default function SettingsView({
     return savedAccent && accentColors.includes(savedAccent) ? savedAccent : accentColors[1];
   });
   const [comingOpen, setComingOpen] = useState(false);
-  const [notificationPreferences, setNotificationPreferences] = useState(() => loadNotificationPreferences(user?.id));
   const { preference, setThemePreference } = useTheme();
   const activeSessions = trpc.auth.activeSessions.useQuery(undefined, { enabled: isAuthenticated && tab === "security" });
   const revokeOtherSessions = trpc.auth.revokeOtherSessions.useMutation({
@@ -69,7 +66,6 @@ export default function SettingsView({
   useEffect(() => {
     setName(user?.name ?? "");
     setBio(user?.bio ?? "");
-    setNotificationPreferences(loadNotificationPreferences(user?.id));
   }, [user?.id, user?.name, user?.bio]);
 
   useEffect(() => {
@@ -172,28 +168,6 @@ export default function SettingsView({
             </section>
           )}
 
-          {tab === "notifications" && (
-            <section className="cj-settings-card">
-              <div className="cj-settings-card-title"><Bell size={23} /><div><strong>In-app notification preferences</strong><span>اختار أنواع التنبيهات التي تظهر داخل حسابك على هذا المتصفح.</span></div></div>
-              <div className="cj-settings-divider" />
-              {([
-                { key: "cve" as const, title: "CVE intelligence alerts", description: "تنبيهات الثغرات والمخاطر الأمنية." },
-                { key: "content" as const, title: "Learning & community updates", description: "تحديثات المحتوى والتعلم ونشاط المجتمع." },
-                { key: "system" as const, title: "System notifications", description: "رسائل وحالة المنصة والتحديثات العامة." },
-              ]).map(item => (
-                <label className="cj-setting-toggle" key={item.key}>
-                  <span><strong>{item.title}</strong><small>{item.description}</small></span>
-                  <input type="checkbox" checked={notificationPreferences[item.key]} onChange={event => {
-                    const next = { ...notificationPreferences, [item.key]: event.target.checked };
-                    setNotificationPreferences(next);
-                    saveNotificationPreferences(user?.id, next);
-                  }} />
-                </label>
-              ))}
-              <p className="cj-settings-hint">التفضيلات محفوظة محليًا لهذا الحساب على هذا المتصفح. لا توقف رسائل البريد الإلكتروني الخارجية.</p>
-            </section>
-          )}
-
           {tab === "privacy" && (
             <section className="cj-settings-card">
               <div className="cj-settings-card-title"><LockKeyhole size={23} /><div><strong>Profile privacy</strong><span>ملخص للبيانات التي تظهر للآخرين حاليًا.</span></div></div>
@@ -224,15 +198,9 @@ export default function SettingsView({
             <button className="cj-settings-row" type="button" onClick={() => setTab("security")}><span className="security-icon cyan"><Laptop size={18} /></span><span><b>Login Activity</b><small>Review and revoke active sessions</small></span><ChevronRight size={17} /></button>
           </section>
 
-          <section className="cj-settings-card">
-            <div className="cj-aside-title"><Bell size={19} /><strong>Notifications Preferences</strong><button type="button" onClick={() => setTab("notifications")}>Manage</button></div>
-            {["Course Updates", "CTF Challenges", "Community Activity", "System Notifications"].map((label, index) => (
-              <button className="cj-settings-row" type="button" key={label} onClick={() => setTab("notifications")}>
-                <span className={`security-icon ${["blue","purple","cyan","green"][index]}`}><Bell size={17} /></span>
-                <span><b>{label}</b><small>{["New courses and labs","New challenge activity","Likes, comments and mentions","Important platform updates"][index]}</small></span>
-                <span className="cj-preference-soon">Manage</span>
-              </button>
-            ))}
+          <section className="cj-settings-card cj-notifications-disabled">
+            <div className="cj-aside-title"><Shield size={19} /><strong>Notifications Disabled</strong></div>
+            <p className="cj-settings-hint">تم إيقاف الإشعارات داخل المنصة وحذف السجلات القديمة لتقليل استهلاك التخزين والطلبات الخلفية. لن يتم إنشاء سجلات إشعارات جديدة حاليًا.</p>
           </section>
 
           <section className="cj-settings-card cj-danger-card">
