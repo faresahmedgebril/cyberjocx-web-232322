@@ -11,7 +11,6 @@ import { toast } from "sonner";
 import FigmaDashboard from "@/components/FigmaDashboard";
 import { ComingSoonModal } from "@/components/ComingSoonModal";
 import SettingsView from "@/features/settings/SettingsView";
-import { loadNotificationPreferences, shouldShowNotification, NOTIFICATION_PREFERENCES_UPDATED_EVENT } from "@/features/settings/preferences";
 import LeaderboardView from "@/features/leaderboard/LeaderboardView";
 import NexusAssistantView from "@/features/ai/NexusAssistantView";
 import "./HomePagesPolish.css";
@@ -54,21 +53,7 @@ export default function Home() {
   const [postText, setPostText] = useState("");
   const [aiInput, setAiInput] = useState("");
   const [aiMessages, setAiMessages] = useState<{ role: "assistant" | "user"; content: string }[]>([]);
-  const [notificationPreferences, setNotificationPreferences] = useState(() => loadNotificationPreferences(user?.id));
-
-  useEffect(() => {
-    const refreshPreferences = () => setNotificationPreferences(loadNotificationPreferences(user?.id));
-    refreshPreferences();
-    window.addEventListener(NOTIFICATION_PREFERENCES_UPDATED_EVENT, refreshPreferences);
-    window.addEventListener("storage", refreshPreferences);
-    return () => {
-      window.removeEventListener(NOTIFICATION_PREFERENCES_UPDATED_EVENT, refreshPreferences);
-      window.removeEventListener("storage", refreshPreferences);
-    };
-  }, [user?.id]);
-
   const courseInput = useMemo(() => ({ search: courseSearch || undefined }), [courseSearch]);
-  const cveInput = useMemo(() => ({ search: cveSearch || undefined, severity: severity === "all" ? undefined : severity }), [cveSearch, severity]);
   const toolInput = useMemo(() => ({ search: toolSearch || undefined, category: toolCategory, sort: toolSort }), [toolSearch, toolCategory, toolSort]);
   const bookInput = useMemo(() => ({ search: bookSearch || undefined, category: bookCategory, maxPoints: bookMaxPoints ? Number(bookMaxPoints) : undefined, sort: bookSort }), [bookSearch, bookCategory, bookMaxPoints, bookSort]);
   const paginatedCveInput = useMemo(() => ({ search: cveSearch || undefined, severity: severity === "all" ? undefined : severity, page: cvePage, pageSize: 10 }), [cveSearch, severity, cvePage]);
@@ -76,14 +61,12 @@ export default function Home() {
   const coursesQuery = trpc.courses.list.useQuery(courseInput);
   const roadmapsQuery = trpc.roadmaps.list.useQuery();
   const tracksQuery = trpc.tracks.list.useQuery();
-  const cvesQuery = trpc.cves.list.useQuery(cveInput);
   const paginatedCvesQuery = trpc.cves.paginated.useQuery(paginatedCveInput);
   const toolsQuery = trpc.tools.advanced.useQuery(toolInput);
   const postsQuery = trpc.community.feed.useQuery();
   const friendRequestsQuery = trpc.community.friendRequests.useQuery(undefined, { enabled: isAuthenticated });
   const booksQuery = trpc.market.booksAdvanced.useQuery(bookInput);
   const cartQuery = trpc.market.cart.useQuery(undefined, { enabled: isAuthenticated });
-  const notificationsQuery = trpc.notifications.list.useQuery(undefined, { enabled: isAuthenticated, refetchInterval: isAuthenticated ? 30_000 : false, refetchOnWindowFocus: true });
   const nvdStatusQuery = trpc.nvd.status.useQuery();
   const malwareQuery = trpc.malware.list.useQuery({ search: malwareSearch || undefined, category: malwareCategory === "all" ? undefined : malwareCategory });
   const createPost = trpc.community.create.useMutation({ onSuccess: () => { setPostText(""); postsQuery.refetch(); toast.success("تم بث الإشارة إلى المجتمع"); } });
@@ -95,20 +78,12 @@ export default function Home() {
   const addToCart = trpc.market.addToCart.useMutation({ onSuccess: () => { cartQuery.refetch(); toast.success("تمت إضافة العنصر إلى السلة"); } });
   const removeFromCart = trpc.market.removeFromCart.useMutation({ onSuccess: () => cartQuery.refetch() });
   const askAI = trpc.ai.ask.useMutation({ onSuccess: data => { setAiMessages(messages => [...messages, { role: "assistant", content: data.answer }]); }, onError: () => toast.error("تعذر الوصول إلى NEXUS الآن") });
-  const markNotificationRead = trpc.notifications.markRead.useMutation({ onSuccess: () => notificationsQuery.refetch() });
-  const markAllNotificationsRead = trpc.notifications.markAllRead.useMutation({ onSuccess: () => notificationsQuery.refetch() });
-
   const courses = coursesQuery.data ?? [];
-  const cves = paginatedCvesQuery.data?.items ?? cvesQuery.data ?? [];
+  const cves = paginatedCvesQuery.data?.items ?? [];
   const tools = toolsQuery.data ?? [];
   const cartCount = cartQuery.data?.reduce((total, item) => total + item.quantity, 0) ?? 0;
-  const visibleNotifications = useMemo(
-    () => (notificationsQuery.data ?? []).filter(item => shouldShowNotification(item.type, notificationPreferences)),
-    [notificationsQuery.data, notificationPreferences],
-  );
-  const unreadCount = visibleNotifications.filter(item => !item.isRead).length;
-  const stats = { points: isAuthenticated ? (dashboard.data?.points ?? 0) : 0, coursesCompleted: dashboard.data?.coursesCompleted ?? 0, activeCourses: dashboard.data?.activeCourses ?? 0, cvesTracked: dashboard.data?.cvesTracked ?? cves.length, followers: dashboard.data?.followers ?? 0 };
-  const syncError = authError || coursesQuery.error || cvesQuery.error || toolsQuery.error || postsQuery.error || booksQuery.error || roadmapsQuery.error || tracksQuery.error;
+  const stats = { points: isAuthenticated ? (dashboard.data?.points ?? 0) : 0, coursesCompleted: dashboard.data?.coursesCompleted ?? 0, activeCourses: dashboard.data?.activeCourses ?? 0, cvesTracked: dashboard.data?.cvesTracked ?? paginatedCvesQuery.data?.total ?? cves.length, followers: dashboard.data?.followers ?? 0 };
+  const syncError = authError || coursesQuery.error || paginatedCvesQuery.error || toolsQuery.error || postsQuery.error || booksQuery.error || roadmapsQuery.error || tracksQuery.error;
 
   const navItems: { id: Section; label: string; meta?: string }[] = [
     { id: "dashboard", label: "الرئيسية", meta: "01" },
@@ -170,7 +145,7 @@ export default function Home() {
       {section === "profile" && <ProfileView user={user} />}
       {section === "learning" && <LearningView courses={courses} roadmaps={roadmapsQuery.data ?? []} tracks={tracksQuery.data ?? []} loading={coursesQuery.isLoading || roadmapsQuery.isLoading || tracksQuery.isLoading} error={coursesQuery.error || roadmapsQuery.error || tracksQuery.error} search={courseSearch} setSearch={setCourseSearch} onStart={course => isAuthenticated ? progressMutation.mutate({ courseId: course.id, progress: 10 }) : startLogin()} />}
       {section === "tracks" && <TracksView tracks={tracksQuery.data ?? []} loading={tracksQuery.isLoading} error={tracksQuery.error} />}
-      {section === "cves" && <CvesView cves={cves} loading={cvesQuery.isLoading || paginatedCvesQuery.isLoading} error={cvesQuery.error || paginatedCvesQuery.error} search={cveSearch} setSearch={value => { setCveSearch(value); setCvePage(1); }} severity={severity} setSeverity={value => { setSeverity(value); setCvePage(1); }} page={cvePage} totalPages={paginatedCvesQuery.data?.totalPages ?? 0} onPage={setCvePage} lastUpdated={nvdStatusQuery.data?.lastCompletedAt ? new Date(nvdStatusQuery.data.lastCompletedAt).toLocaleString("ar-EG") : nvdStatusQuery.data?.lastStatus ?? "لم تبدأ بعد"} />}
+      {section === "cves" && <CvesView cves={cves} total={paginatedCvesQuery.data?.total ?? 0} loading={paginatedCvesQuery.isLoading} error={paginatedCvesQuery.error} search={cveSearch} setSearch={value => { setCveSearch(value); setCvePage(1); }} severity={severity} setSeverity={value => { setSeverity(value); setCvePage(1); }} page={cvePage} totalPages={paginatedCvesQuery.data?.totalPages ?? 0} onPage={setCvePage} lastUpdated={nvdStatusQuery.data?.lastCompletedAt ? new Date(nvdStatusQuery.data.lastCompletedAt).toLocaleString("ar-EG") : nvdStatusQuery.data?.lastStatus ?? "لم تبدأ بعد"} />}
       {section === "malware" && <MalwareView items={malwareQuery.data ?? []} loading={malwareQuery.isLoading} error={malwareQuery.error} search={malwareSearch} setSearch={setMalwareSearch} category={malwareCategory} setCategory={setMalwareCategory} />}
       {section === "tools" && <ToolsView tools={tools} loading={toolsQuery.isLoading} error={toolsQuery.error} search={toolSearch} setSearch={setToolSearch} category={toolCategory} setCategory={setToolCategory} sort={toolSort} setSort={setToolSort} />}
       {section === "community" && <CommunityView posts={postsQuery.data ?? []} requests={friendRequestsQuery.data ?? []} loading={postsQuery.isLoading} error={postsQuery.error} postText={postText} setPostText={setPostText} onPost={() => isAuthenticated ? createPost.mutate({ content: postText }) : startLogin()} onLike={postId => isAuthenticated ? likePost.mutate({ postId }) : startLogin()} onFollow={userId => isAuthenticated ? followUser.mutate({ userId }) : startLogin()} onFriend={userId => isAuthenticated ? sendFriendRequest.mutate({ userId }) : startLogin()} onRespond={(requestId, accept) => respondFriendRequest.mutate({ requestId, accept })} />}
@@ -194,9 +169,6 @@ export default function Home() {
       userRole={user?.role ?? null}
       activePage={({ dashboard: "Home", profile: "Profile", learning: "Courses", tracks: "Roadmap", cves: "CVE Center", malware: "Malware", tools: "Labs", community: "Community", market: "Market", leaderboard: "Leaderboard", settings: "Settings", ai: "AI Assistant", admin: "Admin Console", instructor: "Instructor Studio", ctf: "CTF", labs: "Labs" } satisfies Record<Section, string>)[section]}
       pageContent={pageContent}
-      notifications={visibleNotifications}
-      onNotificationRead={id => markNotificationRead.mutate({ id })}
-      onNotificationReadAll={() => markAllNotificationsRead.mutate()}
       onNavigate={handleFigmaNavigate}
       onOpenAuth={() => isAuthenticated ? navigate("profile") : startLogin()}
       onLogout={() => { void logout(); }}
@@ -317,15 +289,97 @@ function TracksView({ tracks, loading, error }: { tracks: any[]; loading: boolea
   return <section className="module-stack"><div className="learning-banner panel-card"><div><div className="section-tag">// OPERATOR ROADMAP</div><h2>اختر طريقك داخل النظام.</h2><p>كل track يوضح المهارات، الدورات، الأدوات، ونسبة تقدمك حتى الشهادة.</p></div><div className="roadmap-steps"><span className="active">01 / SELECT TRACK</span><span>02 / COMPLETE NODES</span><span>03 / EARN CERTIFICATE</span></div></div><div className="track-grid">{tracks.map((track: any) => { const progress = track.courses?.length ? Math.round(track.courses.reduce((sum: number, course: any) => sum + course.progress, 0) / track.courses.length) : 0; return <article className="track-card panel-card" key={track.id}><div className="section-tag">// {track.slug}</div><h3>{track.title}</h3><p>{track.description}</p><div className="track-progress"><div><span>TRACK PROGRESS</span><b>{progress}%</b></div><i><em style={{ width: `${progress}%` }} /></i></div><div className="track-course-list">{track.courses?.map((course: any, index: number) => <div className="track-course-row" key={course.id}><span>{`0${index + 1}`}</span><strong>{course.title}</strong><b>{course.progress}%</b></div>)}</div><div className="track-tools">{track.tools?.slice(0, 5).map((tool: any) => <span key={tool.id}>{tool.name}</span>)}</div><div className="track-outcome"><span>OUTCOME</span><p>{track.outcome}</p></div><button className="primary-button compact" onClick={() => { setSelectedTrackId(track.id); setAnswers([]); }}>OPEN PROGRESS CONSOLE <ArrowUpRight size={13} /></button></article>; })}</div>{selectedTrackId !== null && <div className="modal-backdrop" onClick={() => setSelectedTrackId(null)}><div className="detail-modal panel-card track-detail-modal" onClick={event => event.stopPropagation()}><button className="modal-close" onClick={() => setSelectedTrackId(null)}><X size={16} /></button><div className="section-tag">// PROGRESS CONSOLE {detail.isLoading ? "SYNCING" : "LIVE"}</div><h2>{detail.data?.track.title ?? "Track dashboard"}</h2><p>{detail.data?.track.description ?? "جارٍ تحميل خطة المسار..."}</p><div className="detail-progress-hero"><strong>{detail.data?.averageProgress ?? 0}%</strong><span>متوسط إتمام المسار</span></div><div className="progress-milestones">{detail.data?.courses?.map((course: any, index: number) => <div key={course.id}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{course.title}</strong><small>{course.progress}% مكتمل</small></div><i><em style={{ width: `${course.progress}%` }} /></i></div>)}</div>{detail.data?.quiz ? <div className="quiz-panel"><div className="section-tag">// KNOWLEDGE CHECK // PASS {detail.data!.quiz!.passingScore}%</div><h3>{detail.data!.quiz!.title}</h3>{detail.data!.quiz!.questions.map((question: any, index: number) => <fieldset key={question.id}><legend>{index + 1}. {question.prompt}</legend>{JSON.parse(question.optionsJson).map((option: string, optionIndex: number) => <label key={option}><input type="radio" name={`q-${question.id}`} checked={answers[index] === optionIndex} onChange={() => setAnswers(current => { const next = [...current]; next[index] = optionIndex; return next; })} /> {option}</label>)}</fieldset>)}<button className="primary-button" disabled={answers.length !== detail.data!.quiz!.questions.length || submitQuiz.isPending} onClick={() => submitQuiz.mutate({ quizId: detail.data!.quiz!.id, answers })}><Check size={15} /> SUBMIT ASSESSMENT</button>{detail.data.attempts?.[0] && <span className="quiz-last-result">آخر نتيجة: {detail.data.attempts[0].score}%</span>}</div> : <div className="empty-state"><BrainCircuit size={22} /><p>لم تتم إضافة اختبار لهذا المسار بعد.</p></div>}{detail.data?.certificate && <div className="certificate-card"><Check size={20} /><div><strong>شهادة إتمام صادرة</strong><span>{detail.data.certificate.certificateCode} · {new Date(detail.data.certificate.issuedAt).toLocaleDateString("ar-EG")}</span></div></div>}</div></div>}</section>;
 }
 
-function CvesView({ cves, loading, error, search, setSearch, severity, setSeverity, page, totalPages, onPage, lastUpdated }: { cves: any[]; loading: boolean; error?: unknown; search: string; setSearch: (value: string) => void; severity: string; setSeverity: (value: any) => void; page: number; totalPages: number; onPage: (value: number) => void; lastUpdated?: string }) {
+function CvesView({ cves, total, loading, error, search, setSearch, severity, setSeverity, page, totalPages, onPage, lastUpdated }: { cves: any[]; total: number; loading: boolean; error?: unknown; search: string; setSearch: (value: string) => void; severity: string; setSeverity: (value: any) => void; page: number; totalPages: number; onPage: (value: number) => void; lastUpdated?: string }) {
   const [selectedCveId, setSelectedCveId] = useState<number | null>(null);
   const cveInput = useMemo(() => ({ id: selectedCveId ?? 0 }), [selectedCveId]);
   const cveDetail = trpc.cves.byId.useQuery(cveInput, { enabled: selectedCveId !== null });
-  if (loading) return <ModuleState title="جارٍ مزامنة مركز CVE..." />;
-  if (error) return <ModuleState title="تعذر تحميل إشارات CVE." error={error} />;
+  if (loading) return <ModuleState title="جارٍ تحميل سجل الثغرات من قاعدة البيانات..." />;
+  if (error) return <ModuleState title="تعذر تحميل سجل CVE." error={error} />;
+
   const criticalOnPage = cves.filter(cve => cve.severity === "critical").length;
   const highOnPage = cves.filter(cve => cve.severity === "high").length;
-  return <section className="module-stack cj-intel-page cj-cve-page"><div className="module-toolbar cj-intel-toolbar"><div className="search-box wide"><Search size={17} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="ابحث برقم CVE أو المنتج أو العنوان..." /></div><div className="filter-tabs"><Filter size={15} />{["all", "critical", "high", "medium", "low"].map(value => <button key={value} className={severity === value ? "active" : ""} onClick={() => setSeverity(value)}>{value.toUpperCase()}</button>)}</div><div className="sync-meta">NVD SYNC {lastUpdated ?? "DAILY"}</div></div><div className="intel-banner panel-card cj-page-hero cj-page-hero--cve"><div className="intel-glyph"><Bug size={28} /></div><div><div className="section-tag">// CVE INTELLIGENCE TERMINAL</div><h2>Know the weakness before it knows you.</h2><p>قاعدة بحث موحدة لإشارات الثغرات. فلتر حسب الخطورة وتحقق من المصدر قبل اتخاذ أي إجراء.</p></div><div className="intel-stat"><strong>{cves.length}</strong><span>results on this page</span></div></div><div className="cj-intel-metrics"><article><span>RESULTS ON THIS PAGE</span><strong>{cves.length}</strong><small>بعد تطبيق البحث والفلاتر</small></article><article><span>CRITICAL / THIS PAGE</span><strong className="is-critical">{criticalOnPage}</strong><small>نتائج حرجة ظاهرة حاليًا</small></article><article><span>HIGH / THIS PAGE</span><strong className="is-high">{highOnPage}</strong><small>نتائج عالية الخطورة ظاهرة</small></article></div><div className="cve-table panel-card cj-cve-table"><div className="table-head"><span>IDENTIFIER</span><span>THREAT VECTOR</span><span>SEVERITY</span><span>CVSS</span><span>DATE</span><span /></div>{cves.length ? cves.map(cve => <div className="table-row cj-cve-row" key={cve.id} onClick={() => setSelectedCveId(cve.id)} role="button" tabIndex={0} onKeyDown={event => event.key === "Enter" && setSelectedCveId(cve.id)}><div className="cve-id"><span className={`severity-dot ${cve.severity}`} /><strong>{cve.cveNumber}</strong></div><div><strong>{cve.title}</strong><span>{cve.affected}</span></div><div><span className={`severity-pill ${cve.severity}`}>{cve.severity.toUpperCase()}</span></div><div className="cvss-score">{cve.cvss}</div><div className="muted-cell">{cve.publishedDate}</div><a href={safeExternalUrl(cve.sourceUrl) ?? "https://nvd.nist.gov/"} target="_blank" rel="noopener noreferrer" className="row-link" onClick={event => event.stopPropagation()}><ArrowUpRight size={15} /></a></div>) : <div className="empty-state cj-cve-empty"><p>لا توجد نتائج مطابقة. جرّب تعديل البحث أو اختيار مستوى خطورة آخر.</p></div>}</div><div className="pagination-bar"><span>PAGE {page} / {Math.max(totalPages, 1)}</span><button className="small-button" disabled={page <= 1} onClick={() => onPage(Math.max(1, page - 1))}>PREV</button><button className="small-button" disabled={!totalPages || page >= totalPages} onClick={() => onPage(Math.min(totalPages, page + 1))}>NEXT</button></div>{selectedCveId !== null && <div className="modal-backdrop" onClick={() => setSelectedCveId(null)}><div className="detail-modal panel-card cve-detail cj-cve-detail" onClick={event => event.stopPropagation()}><button className="modal-close" onClick={() => setSelectedCveId(null)}><X size={16} /></button><div className="section-tag">// CVE INTELLIGENCE {cveDetail.isLoading ? "SYNCING" : "LOADED"}</div><div className="cve-detail-id"><span className={`severity-dot ${cveDetail.data?.severity ?? "high"}`} /><span>{cveDetail.data?.cveNumber ?? "CVE SIGNAL"}</span><b>{cveDetail.data?.cvss ?? "--"} CVSS</b></div><h2>{cveDetail.data?.title ?? "Loading signal..."}</h2><p>{cveDetail.data?.description ?? "جارٍ تحميل تفاصيل الإشارة..."}</p><div className="detail-meta"><span>AFFECTED: {cveDetail.data?.affected ?? "--"}</span><span>PUBLISHED: {cveDetail.data?.publishedDate ?? "--"}</span></div><a className="primary-button" href={safeExternalUrl(cveDetail.data?.sourceUrl) ?? "https://nvd.nist.gov/"} target="_blank" rel="noopener noreferrer">VERIFY SOURCE <ArrowUpRight size={15} /></a></div></div>}</section>;
+  const mediumOnPage = cves.filter(cve => cve.severity === "medium").length;
+  const lowOnPage = cves.filter(cve => cve.severity === "low").length;
+  const filters = ["all", "critical", "high", "medium", "low"] as const;
+
+  return (
+    <section className="module-stack cj-intel-page cj-cve-page">
+      <header className="cj-intel-page-head">
+        <div>
+          <span className="section-tag">// THREAT INTELLIGENCE / NVD</span>
+          <h2>مركز معلومات الثغرات</h2>
+          <p>ابحث عن الثغرات، راجع درجة الخطورة، وافتح مرجع NVD قبل اتخاذ أي إجراء دفاعي.</p>
+        </div>
+        <div className="cj-intel-live-status"><span className={lastUpdated?.toLowerCase().includes("success") ? "is-live" : ""} /> <span>آخر مزامنة: {lastUpdated || "غير متاحة"}</span></div>
+      </header>
+
+      <div className="intel-banner panel-card cj-page-hero cj-page-hero--cve">
+        <div className="intel-glyph"><ShieldAlert size={28} /></div>
+        <div className="cj-intel-hero-copy">
+          <div className="section-tag">// CVE INTELLIGENCE TERMINAL</div>
+          <h2>Know the weakness before it knows you.</h2>
+          <p>قاعدة بيانات الثغرات الأمنية المرتبطة بمصدر NVD. استخدم البحث والفلاتر للوصول إلى الإشارات ذات الصلة بنطاق عملك.</p>
+        </div>
+        <div className="intel-stat"><strong>{total.toLocaleString("en-US")}</strong><span>إجمالي السجلات المطابقة</span></div>
+      </div>
+
+      <div className="cj-intel-toolbar cj-cve-toolbar">
+        <div className="search-box wide"><Search size={17} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="ابحث برقم CVE أو المنتج أو الوصف..." aria-label="البحث في الثغرات" /></div>
+        <div className="filter-tabs" aria-label="فلترة حسب الخطورة">
+          <Filter size={15} />
+          {filters.map(value => <button type="button" key={value} className={severity === value ? "active" : ""} aria-pressed={severity === value} onClick={() => setSeverity(value)}>{value === "all" ? "الكل" : value.toUpperCase()}</button>)}
+        </div>
+      </div>
+
+      <div className="cj-intel-overview">
+        <article className="cj-intel-overview-card"><span>إجمالي النتائج</span><strong>{total.toLocaleString("en-US")}</strong><small>حسب البحث والفلاتر الحالية</small></article>
+        <article className="cj-intel-overview-card is-critical"><span>Critical / الصفحة الحالية</span><strong>{criticalOnPage}</strong><small>إشارات حرجة في النتائج المعروضة</small></article>
+        <article className="cj-intel-overview-card is-high"><span>High / الصفحة الحالية</span><strong>{highOnPage}</strong><small>إشارات عالية الخطورة</small></article>
+        <article className="cj-intel-overview-card"><span>Medium + Low / الصفحة</span><strong>{mediumOnPage + lowOnPage}</strong><small>{mediumOnPage} متوسطة · {lowOnPage} منخفضة</small></article>
+      </div>
+
+      <section className="cj-cve-feed panel-card" aria-label="نتائج الثغرات">
+        <div className="cj-cve-feed-head"><div><span className="section-tag">// VULNERABILITY FEED</span><h3>نتائج البحث</h3></div><span>{cves.length} سجل في الصفحة</span></div>
+        {cves.length ? (
+          <div className="cve-table cj-cve-table">
+            <div className="table-head"><span>IDENTIFIER</span><span>DESCRIPTION / AFFECTED</span><span>SEVERITY</span><span>CVSS</span><span>PUBLISHED</span><span /></div>
+            {cves.map(cve => (
+              <div className="table-row cj-cve-row" key={cve.id} onClick={() => setSelectedCveId(cve.id)} role="button" tabIndex={0} onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedCveId(cve.id); } }}>
+                <div className="cve-id"><span className={`severity-dot ${cve.severity}`} /><strong>{cve.cveNumber}</strong></div>
+                <div className="cj-cve-summary"><strong>{cve.title || "No title available"}</strong><span>{cve.affected || "Affected products not specified"}</span></div>
+                <div><span className={`severity-pill ${cve.severity}`}>{String(cve.severity || "unknown").toUpperCase()}</span></div>
+                <div className="cvss-score">{cve.cvss ?? "--"}</div>
+                <div className="muted-cell">{cve.publishedDate ? new Date(cve.publishedDate).toLocaleDateString("en-GB") : "--"}</div>
+                <button type="button" className="row-link" aria-label={`تفاصيل ${cve.cveNumber}`} onClick={event => { event.stopPropagation(); setSelectedCveId(cve.id); }}><ArrowUpRight size={15} /></button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="cj-intel-empty"><Search size={24} /><strong>لا توجد نتائج مطابقة</strong><p>جرّب تغيير كلمات البحث أو اختيار مستوى خطورة مختلف.</p><button type="button" className="secondary-button" onClick={() => { setSearch(""); setSeverity("all"); }}>مسح الفلاتر</button></div>
+        )}
+      </section>
+
+      <div className="pagination-bar cj-intel-pagination">
+        <span>PAGE {page} / {Math.max(totalPages, 1)}</span>
+        <button className="small-button" disabled={page <= 1} onClick={() => onPage(Math.max(1, page - 1))}>السابق</button>
+        <button className="small-button" disabled={!totalPages || page >= totalPages} onClick={() => onPage(Math.min(totalPages, page + 1))}>التالي</button>
+      </div>
+
+      {selectedCveId !== null && (
+        <div className="modal-backdrop" onClick={() => setSelectedCveId(null)}>
+          <div className="detail-modal panel-card cve-detail cj-cve-detail" onClick={event => event.stopPropagation()}>
+            <button className="modal-close" aria-label="إغلاق" onClick={() => setSelectedCveId(null)}><X size={16} /></button>
+            <div className="section-tag">// CVE INTELLIGENCE {cveDetail.isLoading ? "SYNCING" : "LOADED"}</div>
+            <div className="cve-detail-id"><span className={`severity-dot ${cveDetail.data?.severity ?? "high"}`} /><span>{cveDetail.data?.cveNumber ?? "CVE SIGNAL"}</span><b>{cveDetail.data?.cvss ?? "--"} CVSS</b></div>
+            <h2>{cveDetail.data?.title ?? "جارٍ تحميل تفاصيل الإشارة..."}</h2>
+            <p>{cveDetail.data?.description ?? "يتم جلب تفاصيل الثغرة من سجل المنصة."}</p>
+            <div className="detail-meta"><span>AFFECTED: {cveDetail.data?.affected ?? "--"}</span><span>PUBLISHED: {cveDetail.data?.publishedDate ?? "--"}</span></div>
+            <a className="primary-button" href={safeExternalUrl(cveDetail.data?.sourceUrl) ?? "https://nvd.nist.gov/"} target="_blank" rel="noopener noreferrer">VERIFY SOURCE <ArrowUpRight size={15} /></a>
+          </div>
+        </div>
+      )}
+    </section>
+  );
 }
 
 function ToolsView({ tools, loading, error, search, setSearch, category, setCategory, sort, setSort }: { tools: any[]; loading: boolean; error?: unknown; search: string; setSearch: (value: string) => void; category: string; setCategory: (value: string) => void; sort: "name" | "category" | "recent"; setSort: (value: "name" | "category" | "recent") => void }) {
@@ -363,7 +417,77 @@ function MalwareView({ items, loading, error, search, setSearch, category, setCa
   const mappedFamilies = items.filter(item => String(item.mitreTechniques ?? "").trim().length > 0).length;
   if (loading) return <ModuleState title="جارٍ تحميل مركز Malware..." />;
   if (error) return <ModuleState title="تعذر تحميل بيانات Malware." error={error} />;
-  return <section className="module-stack cj-intel-page cj-malware-page"><div className="module-toolbar cj-intel-toolbar"><div className="search-box wide"><Search size={17} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="ابحث باسم العائلة أو التقنية أو الوصف..." /></div><div className="filter-tabs"><Filter size={15} />{categories.map(value => <button key={value} className={category === value ? "active" : ""} onClick={() => setCategory(value)}>{value === "all" ? "الكل" : value}</button>)}</div><span className="result-count">{items.length} FAMILIES</span></div><div className="intel-banner panel-card cj-page-hero cj-page-hero--malware"><div className="intel-glyph"><Bug size={28} /></div><div><div className="section-tag">// MALWARE INTELLIGENCE</div><h2>افهم السلوك قبل بناء الدفاع.</h2><p>مركز داخلي للعائلات الخبيثة والتقنيات المرتبطة بها، مخصص للبحث والتحليل والدفاع القانوني.</p></div></div><div className="cj-intel-metrics"><article><span>FAMILIES MATCHED</span><strong>{items.length}</strong><small>نتائج ظاهرة بعد تطبيق الفلاتر</small></article><article><span>CRITICAL FAMILIES</span><strong className="is-critical">{criticalFamilies}</strong><small>عائلات حرجة ضمن النتائج الحالية</small></article><article><span>HIGH FAMILIES</span><strong className="is-high">{highFamilies}</strong><small>عائلات عالية الخطورة</small></article><article><span>MITRE MAPPED</span><strong>{mappedFamilies}</strong><small>عائلات لها تقنيات MITRE مسجلة</small></article></div>{items.length ? <div className="tools-grid cj-malware-grid">{items.map(item => <article className="tool-card panel-card cj-malware-card" key={item.id} onClick={() => setSelectedId(item.id)} role="button" tabIndex={0} onKeyDown={event => event.key === "Enter" && setSelectedId(item.id)}><div className="tool-card-top"><div className="tool-icon tool-1"><Bug size={20} /></div><span className={`severity-pill ${item.severity}`}>{item.severity}</span></div><h3>{item.name}</h3><p>{item.description}</p><div className="command-line"><span>MITRE</span>{item.mitreTechniques}</div><div className="detail-meta"><span>TARGETS: {item.targets}</span></div><button className="tool-link" onClick={event => { event.stopPropagation(); setSelectedId(item.id); }}>عرض التفاصيل <ArrowUpRight size={13} /></button></article>)}</div> : <ModuleState title="لم تُفهرس عائلات Malware بهذه الفلاتر بعد." empty />}{selectedId !== null && <div className="modal-backdrop" onClick={() => setSelectedId(null)}><div className="detail-modal panel-card cj-malware-detail" onClick={event => event.stopPropagation()}><button className="modal-close" onClick={() => setSelectedId(null)}><X size={16} /></button><div className="section-tag">// MALWARE PROFILE</div><h2>{detail.data?.name ?? "جارٍ التحميل"}</h2><p>{detail.data?.description}</p><div className="detail-meta"><span>{detail.data?.category}</span><span>{detail.data?.severity}</span><span>{detail.data?.targets}</span></div><div className="command-line"><span>MITRE TECHNIQUES</span>{detail.data?.mitreTechniques}</div>{safeExternalUrl(detail.data?.sourceUrl) && <a href={safeExternalUrl(detail.data?.sourceUrl)} target="_blank" rel="noopener noreferrer" className="primary-button">فتح المرجع <ArrowUpRight size={14} /></a>}</div></div>}</section>;
+
+  return (
+    <section className="module-stack cj-intel-page cj-malware-page">
+      <header className="cj-intel-page-head">
+        <div>
+          <span className="section-tag">// THREAT INTELLIGENCE / MALWARE</span>
+          <h2>مركز تحليل البرمجيات الخبيثة</h2>
+          <p>استعرض عائلات البرمجيات الخبيثة، تصنيفاتها، والأهداف والتقنيات المرتبطة بها.</p>
+        </div>
+        <div className="cj-intel-live-status"><span className="is-malware-live" /><span>Threat research catalog</span></div>
+      </header>
+
+      <div className="intel-banner panel-card cj-page-hero cj-page-hero--malware">
+        <div className="intel-glyph"><Bug size={28} /></div>
+        <div className="cj-intel-hero-copy"><div className="section-tag">// MALWARE INTELLIGENCE</div><h2>افهم السلوك قبل بناء الدفاع.</h2><p>مركز بحث دفاعي لعائلات البرمجيات الخبيثة، مع ربط المعلومات بالتصنيفات والتقنيات المعروفة عند توافرها في السجل.</p></div>
+        <div className="intel-stat"><strong>{items.length}</strong><span>عائلة مطابقة للفلاتر</span></div>
+      </div>
+
+      <div className="cj-intel-toolbar cj-malware-toolbar">
+        <div className="search-box wide"><Search size={17} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="ابحث باسم العائلة أو التقنية أو الوصف..." aria-label="البحث في عائلات Malware" /></div>
+        <div className="filter-tabs" aria-label="تصنيف البرمجيات الخبيثة"><Filter size={15} />{categories.map(value => <button type="button" key={value} className={category === value ? "active" : ""} aria-pressed={category === value} onClick={() => setCategory(value)}>{value === "all" ? "الكل" : value}</button>)}</div>
+      </div>
+
+      <div className="cj-intel-overview">
+        <article className="cj-intel-overview-card"><span>FAMILIES MATCHED</span><strong>{items.length}</strong><small>عدد العائلات المطابقة</small></article>
+        <article className="cj-intel-overview-card is-critical"><span>CRITICAL</span><strong>{criticalFamilies}</strong><small>ضمن نتائج البحث الحالية</small></article>
+        <article className="cj-intel-overview-card is-high"><span>HIGH</span><strong>{highFamilies}</strong><small>ضمن نتائج البحث الحالية</small></article>
+        <article className="cj-intel-overview-card"><span>MITRE MAPPED</span><strong>{mappedFamilies}</strong><small>عائلات مرتبطة بتقنيات MITRE</small></article>
+      </div>
+
+      {items.length ? (
+        <div className="tools-grid cj-malware-grid">
+          {items.map(item => {
+            const techniques = String(item.mitreTechniques ?? "").split(/[,;|]/).map(value => value.trim()).filter(Boolean).slice(0, 4);
+            return (
+              <article className="tool-card panel-card cj-malware-card" key={item.id} onClick={() => setSelectedId(item.id)} role="button" tabIndex={0} onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedId(item.id); } }}>
+                <div className="cj-malware-card-top"><span className="cj-malware-icon"><Bug size={20} /></span><span className={`severity-pill ${item.severity}`}>{String(item.severity || "unknown").toUpperCase()}</span></div>
+                <span className="cj-malware-category">{item.category || "Uncategorized family"}</span>
+                <h3>{item.name}</h3>
+                <p>{item.description || "لا يتوفر وصف لهذه العائلة حتى الآن."}</p>
+                <div className="cj-malware-tags">{techniques.length ? techniques.map(technique => <span key={technique}>{technique}</span>) : <span>MITRE mapping not available</span>}</div>
+                <div className="cj-malware-card-foot"><span>{item.targets || "Targets not specified"}</span><button type="button" className="tool-link" onClick={event => { event.stopPropagation(); setSelectedId(item.id); }}>التفاصيل <ArrowUpRight size={13} /></button></div>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="cj-intel-empty cj-malware-empty">
+          <span className="cj-empty-icon"><Bug size={26} /></span>
+          <span className="section-tag">// CATALOG AWAITING VERIFIED DATA</span>
+          <strong>لا توجد عائلات Malware منشورة حاليًا</strong>
+          <p>واجهة المركز جاهزة، لكن قاعدة البيانات لا تحتوي على عائلات مفهرسة الآن. لن نعرض بيانات تجريبية على أنها معلومات حقيقية.</p>
+          {(search || category !== "all") && <button type="button" className="secondary-button" onClick={() => { setSearch(""); setCategory("all"); }}>مسح البحث والفلاتر</button>}
+        </div>
+      )}
+
+      {selectedId !== null && (
+        <div className="modal-backdrop" onClick={() => setSelectedId(null)}>
+          <div className="detail-modal panel-card cj-malware-detail" onClick={event => event.stopPropagation()}>
+            <button className="modal-close" aria-label="إغلاق" onClick={() => setSelectedId(null)}><X size={16} /></button>
+            <div className="section-tag">// MALWARE PROFILE</div>
+            <h2>{detail.data?.name ?? "جارٍ تحميل الملف"}</h2>
+            <p>{detail.data?.description ?? "يتم تحميل تفاصيل العائلة."}</p>
+            <div className="detail-meta"><span>{detail.data?.category ?? "--"}</span><span>{detail.data?.severity ?? "--"}</span><span>{detail.data?.targets ?? "--"}</span></div>
+            <div className="command-line"><span>MITRE TECHNIQUES</span>{detail.data?.mitreTechniques ?? "Not mapped"}</div>
+            {safeExternalUrl(detail.data?.sourceUrl) && <a href={safeExternalUrl(detail.data?.sourceUrl)} target="_blank" rel="noopener noreferrer" className="primary-button">فتح المرجع <ArrowUpRight size={14} /></a>}
+          </div>
+        </div>
+      )}
+    </section>
+  );
 }
 
 function CtfView({ isAuthenticated, onSignIn }: { isAuthenticated: boolean; onSignIn: () => void }) {
