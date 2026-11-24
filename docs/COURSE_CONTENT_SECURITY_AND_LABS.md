@@ -51,7 +51,11 @@ Configure the configured S3/R2 bucket as private. Do not attach a public R2 cust
 
 No real container runtime is provisioned by this change. The production Worker previously did not pass `LAB_MANAGER_URL` / `LAB_MANAGER_TOKEN` into the API runtime; this PR now forwards these bindings. Actual execution still depends on deploying a separate isolated Lab Manager service that implements `POST /v1/instances` and `DELETE /v1/instances/{instanceId}`, then configuring `LAB_MANAGER_URL` as plain text and `LAB_MANAGER_TOKEN` as a Worker secret. The Labs UI and proposal flow do not start containers until that service is online.
 
-## 5. Access and rollout notes
+## 5. Lab runtime
+
+See [LAB_RUNTIME_ARCHITECTURE.md](./LAB_RUNTIME_ARCHITECTURE.md) for the existing Lab Manager API contract, the recommended Cloudflare Containers / Durable Objects model, resource restrictions, network isolation and deployment prerequisites. The runtime is not provisioned in this PR.
+
+## 6. Access and rollout notes
 
 - Learner lesson APIs require a signed-in session, a published course and published lesson, and `COURSES_COMING_SOON=false`.
 - The app does not yet have enrollment or payment entitlements. Once a course is opened, any authenticated account can read its published lessons; add enrollment/purchase checks before introducing paid course access.
