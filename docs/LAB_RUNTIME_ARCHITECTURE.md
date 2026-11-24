@@ -65,9 +65,19 @@ Cloudflare's published Workers Paid plan starts at USD 5/month and includes limi
 
 Do not enable this runtime or create paid infrastructure until the account plan, an initial lab image allowlist, expected concurrent sessions and a monthly spend ceiling have been approved.
 
-## Current blockers
+## What already exists in this repository
 
-- The connected Railway project currently has no services, so there is no deployed Lab Manager there.
-- The Cloudflare production Worker currently has no `LAB_MANAGER_URL` or `LAB_MANAGER_TOKEN` bindings configured.
-- Cloudflare's R2 bucket API reported that R2 must first be enabled in the dashboard. R2 is intended for private course assets; it is not the lab container runtime.
-- No container class, Durable Object binding, container image, or lab runtime deployment is included in this PR.
+- Root `Dockerfile`: builds the CyberJocx Node API image and starts the application after running PostgreSQL migrations.
+- Root `docker-compose.yml`: defines the API, background worker and a local **MySQL 8.4** service. This Compose file is a legacy local stack and is not a Neon-backed lab runtime.
+- `.github/workflows/docker-build.yml`: builds the Docker image for CI with `push: false`; it verifies the image but does not publish or deploy a Docker service.
+- `server/infrastructure/labs/provider.ts`: the existing lab adapter calls an external HTTP Lab Manager at `LAB_MANAGER_URL`; it does not start Docker containers itself.
+- A repository search did not find a Docker Engine SDK, `docker.sock` mount, or a Lab Manager implementation. This is only a repository-level finding; it does not inspect a separate Docker host outside the connected project.
+
+## Current production / integration state
+
+- Neon project `CyberJocx Production` (`jolly-pond-42042058`), default branch `main`, is the active PostgreSQL database.
+- The repository's last verified deployment architecture describes GitHub Pages for the frontend and the `cyberjocx-api` Cloudflare Worker for the API, connected to Neon through Hyperdrive. Confirm that architecture before changing the live API runtime.
+- The current Cloudflare Worker does not have `LAB_MANAGER_URL` or `LAB_MANAGER_TOKEN` bindings configured.
+- Cloudflare's R2 bucket API reports that R2 must first be enabled in the dashboard. R2 is intended for private course assets; it is not the lab container runtime.
+- No lab-specific Docker image, container orchestration service, or lab runtime deployment is included in this PR.
+- The instructor / encrypted-course migration in this PR has not been applied to the production Neon branch.
