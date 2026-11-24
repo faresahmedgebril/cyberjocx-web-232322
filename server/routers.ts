@@ -20,6 +20,7 @@ import { ENV } from "./config/env";
 import { NOTIFICATIONS_ENABLED, notifyAll } from "./modules/notifications/service";
 import { auditLogs, courseChangeRequests, courseLessons, instructorApplications, labInstances, labTemplates, trackLevelModules, trackLevels, tracks as tracksTable } from "../drizzle/schema";
 import { encryptCourseContent, decryptCourseContent } from "./modules/courses/content";
+import { hashPassword } from "./passwordAuth";
 import { getStorageProvider } from "./infrastructure/storage/provider";
 
 export const appRouter = router({
@@ -888,6 +889,73 @@ export const appRouter = router({
       if (!db) return [];
       return db.select({ id: users.id, name: users.name, email: users.email, role: users.role, createdAt: users.createdAt })
         .from(users).orderBy(desc(users.createdAt)).limit(200);
+    }),
+    managedAccounts: adminProcedure.query(async () => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable." });
+      return db.select({
+        id: users.id,
+        name: users.name,
+        email: users.email,
+        role: users.role,
+        loginMethod: users.loginMethod,
+        createdAt: users.createdAt,
+        lastSignedIn: users.lastSignedIn,
+      }).from(users).orderBy(desc(users.createdAt)).limit(250);
+    }),
+    createAccount: adminProcedure.input(z.object({
+      name: z.string().trim().min(2).max(120),
+      email: z.string().trim().email().max(320).transform(value => value.toLowerCase()),
+      password: z.string().min(8).max(128),
+      role: z.enum(["user", "instructor", "admin"]),
+    })).mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable." });
+
+      const openId = "email:" + input.email;
+      const existing = (await db.select({ id: users.id }).from(users)
+        .where(or(eq(users.openId, openId), sql`lower(${users.email}) = ${input.email}`)).limit(1))[0];
+      if (existing) {
+        throw new TRPCError({ code: "CONFLICT", message: "يوجد حساب بالفعل بهذا البريد الإلكتروني." });
+      }
+
+      const passwordHash = await hashPassword(input.password);
+      try {
+        const account = await db.transaction(async tx => {
+          const created = (await tx.insert(users).values({
+            openId,
+            name: input.name,
+            email: input.email,
+            loginMethod: "password",
+            passwordHash,
+            role: input.role,
+          }).returning({
+            id: users.id,
+            name: users.name,
+            email: users.email,
+            role: users.role,
+            createdAt: users.createdAt,
+          }))[0];
+
+          if (!created) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "تعذر إنشاء الحساب." });
+
+          await tx.insert(auditLogs).values({
+            actorUserId: ctx.user.id,
+            action: "user.account.create",
+            resourceType: "user",
+            resourceId: created.id,
+            metadataJson: JSON.stringify({ email: created.email, role: created.role, loginMethod: "password" }),
+          });
+          return created;
+        });
+        return { success: true as const, account };
+      } catch (error) {
+        if (error instanceof TRPCError) throw error;
+        if (typeof error === "object" && error !== null && "code" in error && (error as { code?: string }).code === "23505") {
+          throw new TRPCError({ code: "CONFLICT", message: "يوجد حساب بالفعل بهذا البريد الإلكتروني." });
+        }
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "تعذر إنشاء الحساب حاليًا." });
+      }
     }),
     courseReviewQueue: ownerAdminProcedure.query(async () => {
       const db = await getDb();

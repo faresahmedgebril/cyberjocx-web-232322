@@ -18,7 +18,7 @@ function deriveScrypt(password: string, salt: Uint8Array, length: number): Promi
     });
   });
 }
-async function hashPassword(password: string) {
+export async function hashPassword(password: string) {
   const salt = crypto.randomBytes(16);
   const derived = await deriveScrypt(password, salt, 64);
   return "scrypt$" + salt.toString("base64url") + "$" + derived.toString("base64url");

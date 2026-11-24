@@ -15,6 +15,7 @@ import LeaderboardView from "@/features/leaderboard/LeaderboardView";
 import NexusAssistantView from "@/features/ai/NexusAssistantView";
 import MalwareManager from "@/features/admin/MalwareManager";
 import AdminTrainingManager from "@/features/admin/AdminTrainingManager";
+import AccountManagementPanel from "@/features/admin/AccountManagementPanel";
 import { InstructorApplicationView, InstructorStudioView } from "@/features/instructor/InstructorPortal";
 import "./HomePagesPolish.css";
 
@@ -157,7 +158,7 @@ export default function Home() {
       {section === "leaderboard" && <LeaderboardView stats={{ points: isAuthenticated ? stats.points : null, coursesCompleted: isAuthenticated ? stats.coursesCompleted : null, cvesTracked: isAuthenticated ? (stats.cvesTracked || cves.length) : null }} userName={displayUserName} onSignIn={() => isAuthenticated ? navigate("profile") : startLogin()} />}
       {section === "settings" && <SettingsView user={user} isAuthenticated={isAuthenticated} onOpenProfile={() => navigate("profile")} />}
       {section === "ai" && <NexusAssistantView messages={aiMessages} input={aiInput} setInput={setAiInput} onAsk={() => { const message = aiInput.trim(); if (!message || !isAuthenticated || askAI.isPending) return; setAiMessages(messages => [...messages, { role: "user", content: message }]); askAI.mutate({ message, history: aiMessages.slice(-12) }); setAiInput(""); }} onNewChat={() => { setAiMessages([]); setAiInput(""); }} isLoading={askAI.isPending} isAuthenticated={isAuthenticated} onSignIn={startLogin} />}
-      {section === "admin" && (user?.role === "admin" ? <><AdminView /><AdminWorkflowPanel /><MalwareManager /><AdminTrainingManager /></> : <ModuleState title="لوحة الإدارة مخصصة لحساب المدير فقط." error />)}
+      {section === "admin" && (user?.role === "admin" ? <><AdminView /><AccountManagementPanel /><AdminWorkflowPanel /><MalwareManager /><AdminTrainingManager /></> : <ModuleState title="لوحة الإدارة مخصصة لحساب المدير فقط." error />)}
       {section === "instructorApply" && <InstructorApplicationView isAuthenticated={isAuthenticated} />}
       {section === "instructor" && (user?.role === "instructor" || user?.role === "admin" ? <InstructorStudioView /> : <ModuleState title="مساحة المدرّس مخصصة للحسابات المعتمدة فقط." error />)}
       {section === "ctf" && <CtfView isAuthenticated={isAuthenticated} onSignIn={startLogin} />}
@@ -716,11 +717,9 @@ function InstructorView() {
 
 function AdminWorkflowPanel() {
   const queue = trpc.admin.courseReviewQueue.useQuery(undefined,{refetchInterval:30_000});
-  const accounts = trpc.admin.users.useQuery(undefined,{refetchInterval:60_000});
   const audit = trpc.admin.audit.useQuery(undefined,{refetchInterval:60_000});
   const publish = trpc.admin.publishCourse.useMutation({onSuccess:()=>{void queue.refetch();toast.success("تم نشر الدورة وإرسال إشعار لكل المستخدمين.");},onError:error=>toast.error(error.message)});
   const review = trpc.admin.reviewCourseChange.useMutation({onSuccess:()=>{void queue.refetch();void audit.refetch();toast.success("تم تسجيل قرار المراجعة.");},onError:error=>toast.error(error.message)});
-  const setRole = trpc.admin.setUserRole.useMutation({onSuccess:()=>{void accounts.refetch();void audit.refetch();toast.success("تم تحديث صلاحية الحساب.");},onError:error=>toast.error(error.message)});
 
   return (
     <section className="cj-admin-workflow module-stack">
@@ -732,11 +731,6 @@ function AdminWorkflowPanel() {
             <div className="cj-admin-queue-group"><h4>Instructor update requests</h4>{queue.data?.changes.length?queue.data.changes.map(item=><div className="cj-admin-review-row is-change" key={item.id}><div><strong>{item.courseTitle}</strong><small>{item.instructorName||item.instructorEmail||"Instructor"} · {new Date(item.requestedAt).toLocaleString()}</small><pre>{item.changesJson}</pre></div><div className="cj-admin-review-actions"><button className="primary-button compact" disabled={review.isPending} onClick={()=>review.mutate({requestId:item.id,decision:"approve"})}>Approve</button><button className="small-button" disabled={review.isPending} onClick={()=>review.mutate({requestId:item.id,decision:"reject",note:"Please revise the requested change and resubmit."})}>Reject</button></div></div>):<p>No pending update requests.</p>}</div>
           </>
         )}
-      </section>
-
-      <section className="admin-table panel-card">
-        <div className="card-head"><div><div className="section-tag">// ACCESS MANAGEMENT</div><h3>Instructor accounts</h3></div><span>Owner only</span></div>
-        {accounts.error ? <ModuleState title="إدارة الأدوار متاحة لحساب المالك فقط." error={accounts.error}/> : accounts.data?.map(account=><div className="cj-admin-review-row" key={account.id}><div><strong>{account.name||"Unnamed account"}</strong><small>{account.email||`User #${account.id}`} · {account.role}</small></div>{account.role==="admin"?<span className="status-published">Platform admin</span>:<button className="small-button" disabled={setRole.isPending} onClick={()=>setRole.mutate({userId:account.id,role:account.role==="instructor"?"user":"instructor"})}>{account.role==="instructor"?"Remove instructor":"Grant instructor"}</button>}</div>)}
       </section>
 
       <section className="admin-table panel-card">
